@@ -15,38 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
 
 
-const initialTransactions: Transaction[] = [
-  {
-    id: "txn_3",
-    amountExn: 1500,
-    paidAmount: 135.0,
-    paidCurrency: "USDC",
-    date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
-    status: "Completed",
-  },
-  {
-    id: "txn_2",
-    amountExn: 550,
-    paidAmount: 0.25,
-    paidCurrency: "SOL",
-    date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
-    status: "Completed",
-  },
-  {
-    id: "txn_1",
-    amountExn: 2000,
-    paidAmount: 180.0,
-    paidCurrency: "USDT",
-    date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
-    status: "Completed",
-  },
-];
-
-const calculateTotalBalance = (transactions: Transaction[]) => {
-    return transactions.reduce((total, tx) => total + tx.amountExn, 0);
-};
-
-const PRESALE_WALLET_ADDRESS = "CXLV1AX6kY3y7isprh7wYd9g6g1GYkLdAjT25ytE1tE1";
+const PRESALE_WALLET_ADDRESS = "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xTrB7V5NndEKrwL";
 
 function DashboardLoadingSkeleton() {
   return (
@@ -109,30 +78,28 @@ export default function DashboardPage() {
           }));
           setTransactions(transactionsWithDates);
         } else {
-          setTransactions([]);
+          setTransactions([]); // New user, empty history
         }
       } catch (error) {
         console.error("Failed to parse transactions from localStorage", error);
         setTransactions([]);
       }
     } else {
-      setTransactions(initialTransactions);
+        // Not connected, show empty state or default
+        setTransactions([]);
     }
   }, [connected, publicKey]);
 
   useEffect(() => {
-    if (connected && publicKey) {
+    if (connected && publicKey && transactions.length > 0) {
       const storageKey = `exn_transactions_${publicKey.toBase58()}`;
-      // Do not save the initial example transactions if the user has no real transactions yet.
-      if (transactions.length > 0 && !transactions.some(tx => tx.id.startsWith('txn_'))) {
-        localStorage.setItem(storageKey, JSON.stringify(transactions));
-      }
+      localStorage.setItem(storageKey, JSON.stringify(transactions));
     }
   }, [transactions, connected, publicKey]);
 
 
   useEffect(() => {
-    const totalBalance = calculateTotalBalance(transactions);
+    const totalBalance = transactions.reduce((total, tx) => total + tx.amountExn, 0);
     setExnBalance(totalBalance);
   }, [transactions]);
 
@@ -204,14 +171,7 @@ export default function DashboardPage() {
             status: "Completed",
         };
         
-        setTransactions((prev) => {
-            const isInitial = prev.some(tx => tx.id.startsWith('txn_'));
-            if(isInitial) {
-                return [newTransaction];
-            }
-            return [newTransaction, ...prev];
-        });
-
+        setTransactions((prev) => [newTransaction, ...prev]);
 
         toast({
             title: "Purchase Successful!",
@@ -270,7 +230,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
-
-    
