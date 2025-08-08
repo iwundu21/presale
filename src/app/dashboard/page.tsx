@@ -129,40 +129,31 @@ export default function DashboardPage() {
 
     toast({
         title: "Creating transaction...",
-        description: "Please wait while we prepare your transaction.",
+        description: "Please confirm in your wallet.",
     });
 
     try {
-        const {
-            context: { slot: minContextSlot },
-            value: { blockhash, lastValidBlockHeight }
-        } = await connection.getLatestBlockhashAndContext();
+        const latestBlockhash = await connection.getLatestBlockhash();
         
-        const transaction = new SolanaTransaction({
-            recentBlockhash: blockhash,
-            feePayer: publicKey
-        }).add(
+        const transaction = new SolanaTransaction().add(
             SystemProgram.transfer({
                 fromPubkey: publicKey,
                 toPubkey: new PublicKey(PRESALE_WALLET_ADDRESS),
                 lamports: paidAmount * LAMPORTS_PER_SOL,
             })
         );
-        
-        toast({
-          title: "Confirm in wallet",
-          description: `Please confirm the purchase of ${exnAmount.toLocaleString()} EXN.`,
-        });
+        transaction.recentBlockhash = latestBlockhash.blockhash;
+        transaction.feePayer = publicKey;
 
         const signature = await sendTransaction(transaction, connection);
         
         toast({ title: "Processing transaction...", description: `Transaction sent: ${signature}` });
 
         await connection.confirmTransaction({
-          blockhash,
-          lastValidBlockHeight,
-          signature,
-        });
+            blockhash: latestBlockhash.blockhash,
+            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+            signature: signature,
+        }, 'confirmed');
 
         const newTransaction: Transaction = {
             id: signature,
