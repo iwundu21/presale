@@ -25,7 +25,6 @@ type DashboardContextType = {
     totalExnSold: number;
     connected: boolean;
     handlePurchase: (exnAmount: number, paidAmount: number, currency: string) => Promise<void>;
-    presaleEndDate: Date;
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
@@ -40,11 +39,10 @@ export function useDashboard() {
 
 type DashboardClientProviderProps = {
     children: React.ReactNode;
-    presaleEndDate: Date;
 };
 
 
-export function DashboardClientProvider({ children, presaleEndDate }: DashboardClientProviderProps) {
+export function DashboardClientProvider({ children }: DashboardClientProviderProps) {
   const { connected, publicKey, connecting, sendTransaction } = useWallet();
   const { connection } = useConnection();
   const [exnBalance, setExnBalance] = useState(0);
@@ -313,7 +311,6 @@ export function DashboardClientProvider({ children, presaleEndDate }: DashboardC
     totalExnSold,
     connected,
     handlePurchase,
-    presaleEndDate
   };
 
   return (

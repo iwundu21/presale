@@ -16,8 +16,12 @@ const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
     }).format(num);
 };
 
-export function PresaleProgressCard() {
-    const { totalExnSold, presaleEndDate } = useDashboard();
+type PresaleProgressCardProps = {
+    presaleEndDate: Date;
+}
+
+export function PresaleProgressCard({ presaleEndDate }: PresaleProgressCardProps) {
+    const { totalExnSold } = useDashboard();
     const [progress, setProgress] = useState(0);
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
     const [totalSoldValue, setTotalSoldValue] = useState(0);
@@ -34,7 +38,6 @@ export function PresaleProgressCard() {
         // Countdown timer logic
         const countdownTimer = setInterval(() => {
             const now = new Date();
-            // presaleEndDate is a Date object, passed from context
             const difference = new Date(presaleEndDate).getTime() - now.getTime();
 
             if (difference > 0) {

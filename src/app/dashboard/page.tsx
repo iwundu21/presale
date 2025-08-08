@@ -12,11 +12,11 @@ export default async function DashboardPage() {
   const presaleEndDate = await getPresaleEndDate();
   
   return (
-    <DashboardClientProvider presaleEndDate={presaleEndDate}>
+    <DashboardClientProvider>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
             <div className="lg:col-span-2 space-y-8">
                 <BalanceCard />
-                <PresaleProgressCard />
+                <PresaleProgressCard presaleEndDate={presaleEndDate} />
                 <BuyExnCard />
             </div>
             <div className="lg:col-span-3">
