@@ -164,15 +164,18 @@ export default function DashboardPage() {
     try {
         const latestBlockhash = await connection.getLatestBlockhash();
         
+        const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
+        const memoProgramPublicKey = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38");
+
         const transferInstruction = SystemProgram.transfer({
             fromPubkey: publicKey,
-            toPubkey: new PublicKey(PRESALE_WALLET_ADDRESS),
+            toPubkey: presaleWalletPublicKey,
             lamports: paidAmount * LAMPORTS_PER_SOL,
         });
         
         const memoInstruction = new TransactionInstruction({
             keys: [],
-            programId: new PublicKey("MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38"),
+            programId: memoProgramPublicKey,
             data: Buffer.from(`Exnus Presale: ${exnAmount.toLocaleString()} EXN`, "utf-8"),
         });
 
@@ -267,5 +270,7 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
 
     
