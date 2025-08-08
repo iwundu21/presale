@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
 import { SOFT_CAP, HARD_CAP, EXN_PRICE } from "@/config";
+import { PRESALE_END_DATE } from "@/presale-config";
 
-const PRESALE_END_DATE = new Date("2024-09-30T23:59:59Z");
 
 const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
     return new Intl.NumberFormat('en-US', {
