@@ -1,7 +1,7 @@
 
 "use client";
 
-import { History, CheckCircle2, ExternalLink } from "lucide-react";
+import { History, CheckCircle2, ExternalLink, XCircle, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -21,6 +21,35 @@ export type Transaction = {
 type TransactionHistoryTableProps = {
   transactions: Transaction[];
 };
+
+const StatusBadge = ({ status }: { status: Transaction["status"] }) => {
+  switch (status) {
+    case "Completed":
+      return (
+        <Badge variant="outline" className="border-green-500/50 text-green-400 bg-green-500/10">
+          <CheckCircle2 className="mr-1 h-3 w-3" />
+          {status}
+        </Badge>
+      );
+    case "Pending":
+      return (
+        <Badge variant="outline" className="border-amber-500/50 text-amber-400 bg-amber-500/10">
+          <AlertCircle className="mr-1 h-3 w-3 animate-pulse" />
+          {status}
+        </Badge>
+      );
+    case "Failed":
+      return (
+        <Badge variant="outline" className="border-red-500/50 text-red-400 bg-red-500/10">
+          <XCircle className="mr-1 h-3 w-3" />
+          {status}
+        </Badge>
+      );
+    default:
+      return <Badge>{status}</Badge>;
+  }
+};
+
 
 export function TransactionHistoryTable({ transactions }: TransactionHistoryTableProps) {
   return (
@@ -66,22 +95,19 @@ export function TransactionHistoryTable({ transactions }: TransactionHistoryTabl
                       </Tooltip>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Badge variant="outline" className="border-green-500/50 text-green-400 bg-green-500/10">
-                        <CheckCircle2 className="mr-1 h-3 w-3" />
-                        {tx.status}
-                      </Badge>
+                      <StatusBadge status={tx.status} />
                     </TableCell>
                     <TableCell className="text-right">
                        <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button asChild variant="ghost" size="icon">
-                             <Link href={`https://solscan.io/tx/${tx.id}`} target="_blank">
+                          <Button asChild variant="ghost" size="icon" disabled={tx.status === 'Pending'}>
+                             <Link href={`https://solscan.io/tx/${tx.id}`} target="_blank" aria-disabled={tx.status === 'Pending'}>
                                 <ExternalLink className="h-4 w-4 text-accent" />
                              </Link>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>View on Solscan</p>
+                           {tx.status === 'Pending' ? <p>Waiting for confirmation...</p> : <p>View on Solscan</p>}
                         </TooltipContent>
                       </Tooltip>
                     </TableCell>

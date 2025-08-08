@@ -71,9 +71,18 @@ export default function DashboardPage() {
 
 
   useEffect(() => {
-    const totalBalance = transactions.reduce((total, tx) => total + tx.amountExn, 0);
+    const totalBalance = transactions
+        .filter(tx => tx.status === 'Completed')
+        .reduce((total, tx) => total + tx.amountExn, 0);
     setExnBalance(totalBalance);
   }, [transactions]);
+
+  const updateTransactionStatus = (signature: string, status: "Completed" | "Failed") => {
+    setTransactions(prev =>
+      prev.map(tx => (tx.id === signature ? { ...tx, status } : tx))
+    );
+  };
+
 
   const handlePurchase = async (exnAmount: number, paidAmount: number, currency: string) => {
     if (!publicKey) {
@@ -85,11 +94,8 @@ export default function DashboardPage() {
       return;
     }
 
-    toast({
-      title: "Creating transaction...",
-      description: "Please check your wallet to approve.",
-    });
-
+    let signature: string | null = null;
+    
     try {
         const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
         const instructions: TransactionInstruction[] = [];
@@ -139,7 +145,7 @@ export default function DashboardPage() {
             );
         }
         
-        const { blockhash } = await connection.getLatestBlockhash();
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
 
         const message = new TransactionMessage({
             payerKey: publicKey,
@@ -148,20 +154,37 @@ export default function DashboardPage() {
         }).compileToV0Message();
 
         const transaction = new VersionedTransaction(message);
-        const signature = await sendTransaction(transaction, connection);
-        await connection.confirmTransaction(signature, 'processed');
-
+        
+        signature = await sendTransaction(transaction, connection);
+        
+        const tempId = signature || `temp-${Date.now()}`;
         const newTransaction: Transaction = {
-            id: signature,
+            id: tempId,
             amountExn: exnAmount,
             paidAmount,
             paidCurrency: currency,
             date: new Date(),
-            status: "Completed",
+            status: "Pending",
         };
-        
         setTransactions((prev) => [newTransaction, ...prev]);
 
+        toast({
+            title: "Transaction Sent",
+            description: "Waiting for confirmation...",
+        });
+
+        const confirmation = await connection.confirmTransaction({
+          signature,
+          blockhash,
+          lastValidBlockHeight
+        }, 'confirmed');
+
+        if (confirmation.value.err) {
+            throw new Error("Transaction failed to confirm.");
+        }
+
+        updateTransactionStatus(tempId, "Completed");
+        
         toast({
             title: "Purchase Successful!",
             description: `You purchased ${exnAmount.toLocaleString()} EXN.`,
@@ -171,8 +194,13 @@ export default function DashboardPage() {
     } catch (error: any) {
         console.error("Transaction failed:", error);
         
+        const tempId = signature || `temp-${Date.now()}`;
+        updateTransactionStatus(tempId, "Failed");
+
         let errorMessage = "An unknown error occurred.";
-        if (error.message) {
+        if (error.message.includes("User rejected the request")) {
+            errorMessage = "Transaction rejected in wallet.";
+        } else if (error.message) {
             errorMessage = error.message;
         }
 
