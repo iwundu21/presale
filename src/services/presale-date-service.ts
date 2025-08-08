@@ -1,8 +1,9 @@
 // This service now uses Firestore to store the presale end date.
 'use server';
 
-import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db as clientDb } from '@/lib/firebase';
+import { adminDb } from '@/lib/firebase-admin';
+import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 
 const CONFIG_COLLECTION = 'appConfig';
 const PRESALE_DOC = 'presale';
@@ -10,7 +11,12 @@ const PRESALE_DOC = 'presale';
 // Default value if not set in Firestore
 const DEFAULT_END_DATE = new Date("2024-09-30T23:59:59Z");
 
+function getDb() {
+    return adminDb || clientDb;
+}
+
 export async function getPresaleEndDate(): Promise<Date> {
+  const db = getDb();
   try {
     const docRef = doc(db, CONFIG_COLLECTION, PRESALE_DOC);
     const docSnap = await getDoc(docRef);
@@ -18,7 +24,7 @@ export async function getPresaleEndDate(): Promise<Date> {
     if (docSnap.exists()) {
       const data = docSnap.data();
       // Firestore stores timestamps, so we need to convert it back to a Date object
-      return data.endDate.toDate();
+      return (data.endDate as Timestamp).toDate();
     } else {
       // If the document doesn't exist, set it with the default value and return it
       console.log('Presale config not found in Firestore, creating with default date.');
@@ -33,6 +39,7 @@ export async function getPresaleEndDate(): Promise<Date> {
 }
 
 export async function setPresaleEndDate(newDate: Date): Promise<void> {
+   const db = getDb();
    try {
     const docRef = doc(db, CONFIG_COLLECTION, PRESALE_DOC);
     await setDoc(docRef, { endDate: newDate });
