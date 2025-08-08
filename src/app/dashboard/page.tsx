@@ -133,27 +133,32 @@ export default function DashboardPage() {
     });
 
     try {
-        const latestBlockhash = await connection.getLatestBlockhash();
-        
-        const transaction = new SolanaTransaction().add(
+        const transaction = new SolanaTransaction();
+        transaction.add(
             SystemProgram.transfer({
                 fromPubkey: publicKey,
                 toPubkey: new PublicKey(PRESALE_WALLET_ADDRESS),
                 lamports: paidAmount * LAMPORTS_PER_SOL,
             })
         );
-        transaction.recentBlockhash = latestBlockhash.blockhash;
+        
+        const {
+            context: { slot: minContextSlot },
+            value: { blockhash, lastValidBlockHeight }
+        } = await connection.getLatestBlockhashAndContext();
+        
+        transaction.recentBlockhash = blockhash;
         transaction.feePayer = publicKey;
 
-        const signature = await sendTransaction(transaction, connection);
+        const signature = await sendTransaction(transaction, connection, { minContextSlot });
         
         toast({ title: "Processing transaction...", description: `Transaction sent: ${signature}` });
 
         await connection.confirmTransaction({
-            blockhash: latestBlockhash.blockhash,
-            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-            signature: signature,
-        }, 'confirmed');
+            blockhash,
+            lastValidBlockHeight,
+            signature
+        });
 
         const newTransaction: Transaction = {
             id: signature,
@@ -172,6 +177,7 @@ export default function DashboardPage() {
         });
 
     } catch (error: any) {
+        console.error("Purchase failed", error);
         toast({
             title: "Purchase Failed",
             description: error?.message || "An unknown error occurred.",
