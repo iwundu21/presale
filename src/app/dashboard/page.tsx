@@ -11,6 +11,12 @@ import { PresaleProgressCard } from "@/components/presale-progress-card";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
+import { getAssociatedTokenAddress, createTransferInstruction } from "@solana/spl-token";
+
+
+const PRESALE_WALLET_ADDRESS = "9Kqt28pfMVBsBvXYYnYQCT2BZyorAwzbR6dUmgQfsZYW";
+const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // Mainnet
+const USDT_MINT = new PublicKey("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"); // Mainnet
 
 
 export default function DashboardPage() {
@@ -27,10 +33,10 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (!connecting && !connected) {
+    if (isClient && !connecting && !connected) {
       router.push('/');
     }
-  }, [connected, connecting, router]);
+  }, [isClient, connected, connecting, router]);
 
   useEffect(() => {
     if (connected && publicKey) {
@@ -45,14 +51,13 @@ export default function DashboardPage() {
           }));
           setTransactions(transactionsWithDates);
         } else {
-          setTransactions([]); // New user, empty history
+          setTransactions([]); 
         }
       } catch (error) {
         console.error("Failed to parse transactions from localStorage", error);
         setTransactions([]);
       }
     } else {
-        // Not connected, show empty state or default
         setTransactions([]);
     }
   }, [connected, publicKey]);
@@ -71,8 +76,8 @@ export default function DashboardPage() {
   }, [transactions]);
 
   const handlePurchase = async (exnAmount: number, paidAmount: number, currency: string) => {
-    if (!publicKey) {
-      toast({ title: "Wallet not connected", variant: "destructive" });
+    if (!publicKey || !PRESALE_WALLET_ADDRESS) {
+      toast({ title: "Wallet not connected or presale address not set", variant: "destructive" });
       return;
     }
 
@@ -82,38 +87,67 @@ export default function DashboardPage() {
     });
 
     try {
-        const recipientAddress = process.env.NEXT_PUBLIC_PRESALE_WALLET;
-        if (!recipientAddress) {
-          throw new Error("Presale wallet address is not configured.");
-        }
-
-        const presaleWalletPublicKey = new PublicKey(recipientAddress);
+        const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
+        const instructions: TransactionInstruction[] = [];
         const memoProgramPublicKey = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38");
 
-        const transferInstruction = SystemProgram.transfer({
-            fromPubkey: publicKey,
-            toPubkey: presaleWalletPublicKey,
-            lamports: paidAmount * LAMPORTS_PER_SOL,
-        });
+        if (currency === "SOL") {
+            instructions.push(SystemProgram.transfer({
+                fromPubkey: publicKey,
+                toPubkey: presaleWalletPublicKey,
+                lamports: paidAmount * LAMPORTS_PER_SOL,
+            }));
+        } else {
+            let mintPublicKey: PublicKey;
+            let decimals: number;
+            
+            if (currency === "USDC") {
+                mintPublicKey = USDC_MINT;
+                decimals = 6; 
+            } else if (currency === "USDT") {
+                mintPublicKey = USDT_MINT;
+                decimals = 6;
+            } else {
+                throw new Error("Unsupported currency");
+            }
 
-        const memoInstruction = new TransactionInstruction({
+            const fromTokenAccount = await getAssociatedTokenAddress(mintPublicKey, publicKey);
+            const toTokenAccount = await getAssociatedTokenAddress(mintPublicKey, presaleWalletPublicKey);
+
+            // Check if destination ATA exists
+            const toTokenAccountInfo = await connection.getAccountInfo(toTokenAccount);
+            if (!toTokenAccountInfo) {
+                // This is a simplification. In a real app, you might need to create it.
+                // For a presale, the recipient wallet should already have the ATA.
+                 throw new Error(`Recipient's ${currency} token account does not exist. Please contact support.`);
+            }
+
+            instructions.push(
+                createTransferInstruction(
+                    fromTokenAccount,
+                    toTokenAccount,
+                    publicKey,
+                    paidAmount * (10 ** decimals)
+                )
+            );
+        }
+
+        instructions.push(new TransactionInstruction({
             keys: [{ pubkey: publicKey, isSigner: true, isWritable: true }],
             programId: memoProgramPublicKey,
             data: Buffer.from(`Purchase ${exnAmount} EXN`, "utf-8"),
-        });
-
+        }));
+        
         const { blockhash } = await connection.getLatestBlockhash();
 
         const message = new TransactionMessage({
             payerKey: publicKey,
             recentBlockhash: blockhash,
-            instructions: [transferInstruction, memoInstruction],
+            instructions: instructions,
         }).compileToV0Message();
 
         const transaction = new VersionedTransaction(message);
-
         const signature = await sendTransaction(transaction, connection);
-
         await connection.confirmTransaction(signature, 'processed');
 
         const newTransaction: Transaction = {
@@ -137,9 +171,7 @@ export default function DashboardPage() {
         console.error("Transaction failed:", error);
         
         let errorMessage = "An unknown error occurred.";
-        if (error.message.includes("Non-base58 character") || error.message.includes("Invalid public key")) {
-            errorMessage = "An invalid public key was found in the configuration. Please contact support.";
-        } else if (error.message) {
+        if (error.message) {
             errorMessage = error.message;
         }
 
