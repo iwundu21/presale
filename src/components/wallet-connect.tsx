@@ -9,7 +9,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 type WalletConnectProps = {
@@ -24,18 +23,15 @@ export function WalletConnect({
   onDisconnect,
 }: WalletConnectProps) {
   if (isConnected) {
+    const formattedAddress = `${walletAddress.substring(0, 5)}...${walletAddress.substring(walletAddress.length - 5)}`;
+    const formattedAddressMobile = `${walletAddress.substring(0, 4)}...${walletAddress.substring(walletAddress.length - 4)}`;
+
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" className="flex items-center gap-2">
-            <Avatar className="h-6 w-6">
-              <AvatarImage src={`https://api.dicebear.com/8.x/bottts-neutral/svg?seed=${walletAddress}`} alt="Wallet Avatar" />
-              <AvatarFallback>
-                {walletAddress.substring(0, 2)}
-              </AvatarFallback>
-            </Avatar>
-            <span className="hidden sm:inline">{`${walletAddress.substring(0, 4)}...${walletAddress.substring(walletAddress.length - 4)}`}</span>
-            <span className="sm:hidden">Wallet</span>
+            <span className="hidden sm:inline">{formattedAddress}</span>
+            <span className="sm:hidden">{formattedAddressMobile}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
