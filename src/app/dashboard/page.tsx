@@ -10,6 +10,7 @@ import { TransactionHistoryTable, type Transaction } from "@/components/transact
 import { BalanceCard } from "@/components/balance-card";
 import { ExnusLogo } from "@/components/icons";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const initialTransactions: Transaction[] = [
   {
@@ -42,20 +43,55 @@ const calculateTotalBalance = (transactions: Transaction[]) => {
     return transactions.reduce((total, tx) => total + tx.amountExn, 0);
 };
 
+function DashboardLoadingSkeleton() {
+  return (
+    <div className="flex flex-col min-h-screen">
+       <header className="p-4 border-b border-white/10 sticky top-0 bg-background/80 backdrop-blur-sm z-10">
+        <div className="container mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <ExnusLogo className="h-8 w-8 text-primary" />
+            <h1 className="text-2xl font-bold text-white">Exnus</h1>
+          </div>
+          <div className="flex items-center gap-6">
+            <Skeleton className="h-10 w-40" />
+          </div>
+        </div>
+      </header>
+       <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+          <div className="lg:col-span-2 space-y-8">
+            <Skeleton className="h-44 w-full" />
+            <Skeleton className="h-80 w-full" />
+          </div>
+          <div className="lg:col-span-3">
+            <Skeleton className="h-[400px] w-full" />
+          </div>
+        </div>
+      </main>
+      <footer className="text-center p-4 text-sm text-muted-foreground border-t border-white/10">
+        © {new Date().getFullYear()} Exnus. All rights reserved.
+      </footer>
+    </div>
+  )
+}
+
+
 export default function DashboardPage() {
-  const { connected, publicKey, disconnect } = useWallet();
+  const { connected, publicKey, disconnect, connecting } = useWallet();
   const [exnBalance, setExnBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
-    if (!connected) {
+    // Wait until the wallet adapter is done connecting
+    if (!connecting && !connected) {
       router.push('/');
-    } else {
+    }
+    if(connected) {
        setTransactions(initialTransactions);
     }
-  }, [connected, router]);
+  }, [connected, connecting, router]);
 
   useEffect(() => {
     const totalBalance = calculateTotalBalance(transactions);
@@ -98,8 +134,8 @@ export default function DashboardPage() {
     }, 2500);
   };
   
-  if (!connected || !publicKey) {
-      return null; // Or a loading spinner
+  if (connecting || !publicKey) {
+      return <DashboardLoadingSkeleton />; 
   }
 
   return (
