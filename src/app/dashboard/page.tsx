@@ -126,7 +126,7 @@ export default function DashboardPage() {
 
   // Save transactions to localStorage whenever they change for a connected wallet
   useEffect(() => {
-    if (connected && publicKey && transactions !== initialTransactions) {
+    if (connected && publicKey && transactions.length > 0) {
       const storageKey = `exn_transactions_${publicKey.toBase58()}`;
       localStorage.setItem(storageKey, JSON.stringify(transactions));
     }
@@ -166,8 +166,6 @@ export default function DashboardPage() {
     try {
         const latestBlockhash = await connection.getLatestBlockhash();
         
-        const MEMO_PROGRAM_ID_STRING = "MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38";
-
         const transferInstruction = SystemProgram.transfer({
             fromPubkey: publicKey,
             toPubkey: new PublicKey(PRESALE_WALLET_ADDRESS),
@@ -176,7 +174,7 @@ export default function DashboardPage() {
         
         const memoInstruction = new TransactionInstruction({
             keys: [],
-            programId: new PublicKey(MEMO_PROGRAM_ID_STRING),
+            programId: new PublicKey("MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38"),
             data: Buffer.from(`Exnus Presale: ${exnAmount.toLocaleString()} EXN`, "utf-8"),
         });
 
@@ -249,7 +247,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
           <div className="lg:col-span-2 space-y-8">
             <BalanceCard balance={exnBalance} />
-            <PresaleProgressCard />
+            <PresaleProgressCard userPurchasedAmount={exnBalance} />
             <BuyExnCard isConnected={connected} onPurchase={handlePurchase} />
           </div>
           <div className="lg:col-span-3">

@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 // Presale configuration
 const TOTAL_PRESALE_SUPPLY = 50_000_000; // 50 Million EXN
 const PRESALE_END_DATE = new Date("2024-09-30T23:59:59Z");
-const MOCK_SOLD_AMOUNT = 12_500_000; // 12.5 Million EXN
+const BASE_SOLD_AMOUNT = 12_500_000; // Start with 12.5 Million EXN
 const EXN_PRICE = 0.09;
 
 const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
@@ -20,19 +20,27 @@ const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
     }).format(num);
 };
 
-export function PresaleProgressCard() {
+type PresaleProgressCardProps = {
+    userPurchasedAmount: number;
+}
+
+export function PresaleProgressCard({ userPurchasedAmount }: PresaleProgressCardProps) {
+    const [liveSoldAmount, setLiveSoldAmount] = useState(BASE_SOLD_AMOUNT);
     const [progress, setProgress] = useState(0);
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
     const [totalSoldValue, setTotalSoldValue] = useState(0);
 
+    const totalSold = liveSoldAmount + userPurchasedAmount;
+
     useEffect(() => {
-        const percentage = (MOCK_SOLD_AMOUNT / TOTAL_PRESALE_SUPPLY) * 100;
-        const soldValue = MOCK_SOLD_AMOUNT * EXN_PRICE;
+        const percentage = (totalSold / TOTAL_PRESALE_SUPPLY) * 100;
+        const soldValue = totalSold * EXN_PRICE;
         setTotalSoldValue(soldValue);
         
         const animation = setTimeout(() => setProgress(percentage), 300);
 
-        const timer = setInterval(() => {
+        // Countdown timer logic
+        const countdownTimer = setInterval(() => {
             const now = new Date();
             const difference = PRESALE_END_DATE.getTime() - now.getTime();
 
@@ -44,15 +52,21 @@ export function PresaleProgressCard() {
                 setTimeLeft({ days, hours, minutes, seconds });
             } else {
                  setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-                 clearInterval(timer);
+                 clearInterval(countdownTimer);
             }
         }, 1000);
 
+        // Live progress simulation logic
+        const liveProgressTimer = setInterval(() => {
+            setLiveSoldAmount(prev => prev + Math.floor(Math.random() * 50) + 10);
+        }, 2500); // Update every 2.5 seconds
+
         return () => {
             clearTimeout(animation);
-            clearInterval(timer);
+            clearInterval(countdownTimer);
+            clearInterval(liveProgressTimer);
         };
-    }, []);
+    }, [totalSold]);
 
     return (
         <Card className="w-full shadow-lg border-primary/20 bg-gradient-to-br from-card to-primary/5">
@@ -70,7 +84,7 @@ export function PresaleProgressCard() {
             <CardContent className="space-y-4">
                 <Progress value={progress} className="w-full h-3" />
                 <div className="flex justify-between items-center text-sm font-medium">
-                    <span className="text-muted-foreground">Sold: <span className="text-white font-bold">{formatNumber(MOCK_SOLD_AMOUNT)} EXN</span></span>
+                    <span className="text-muted-foreground">Sold: <span className="text-white font-bold">{formatNumber(totalSold)} EXN</span></span>
                     <span className="text-muted-foreground">Target: <span className="text-white font-bold">{formatNumber(TOTAL_PRESALE_SUPPLY)} EXN</span></span>
                 </div>
                  <div className="text-center">
@@ -83,19 +97,19 @@ export function PresaleProgressCard() {
                     <p className="text-sm text-muted-foreground mb-1">Presale Ends In</p>
                     <div className="grid grid-cols-4 gap-1 text-center">
                         <div>
-                            <p className="text-2xl font-bold text-primary">{timeLeft.days}</p>
+                            <p className="text-2xl font-bold text-primary">{String(timeLeft.days).padStart(2, '0')}</p>
                             <p className="text-xs text-muted-foreground">Days</p>
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-primary">{timeLeft.hours}</p>
+                            <p className="text-2xl font-bold text-primary">{String(timeLeft.hours).padStart(2, '0')}</p>
                             <p className="text-xs text-muted-foreground">Hours</p>
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-primary">{timeLeft.minutes}</p>
+                            <p className="text-2xl font-bold text-primary">{String(timeLeft.minutes).padStart(2, '0')}</p>
                             <p className="text-xs text-muted-foreground">Minutes</p>
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-primary">{timeLeft.seconds}</p>
+                            <p className="text-2xl font-bold text-primary">{String(timeLeft.seconds).padStart(2, '0')}</p>
                             <p className="text-xs text-muted-foreground">Seconds</p>
                         </div>
                     </div>
