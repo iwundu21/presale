@@ -20,7 +20,7 @@ export async function getPresaleEndDate(): Promise<Date> {
       return (data.endDate as Timestamp).toDate();
     } else {
       // If the document doesn't exist, set it with the default value and return it
-      console.log('Presale config not found in Firestore, creating with default date.');
+      console.log(`Presale config not found. Creating document at /${CONFIG_COLLECTION}/${PRESALE_DOC} with default date.`);
       await setPresaleEndDate(DEFAULT_END_DATE);
       return DEFAULT_END_DATE;
     }
