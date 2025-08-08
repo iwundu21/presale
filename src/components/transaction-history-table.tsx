@@ -75,7 +75,7 @@ export function TransactionHistoryTable({ transactions }: TransactionHistoryTabl
                        <Tooltip>
                         <TooltipTrigger asChild>
                           <Button asChild variant="ghost" size="icon">
-                             <Link href={`https://solscan.io/tx/${tx.id}?cluster=devnet`} target="_blank">
+                             <Link href={`https://solscan.io/tx/${tx.id}`} target="_blank">
                                 <ExternalLink className="h-4 w-4 text-accent" />
                              </Link>
                           </Button>
