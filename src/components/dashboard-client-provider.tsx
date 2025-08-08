@@ -9,7 +9,6 @@ import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, Version
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, EXN_PRICE } from "@/config";
-import { saveTransaction, getTransactions, getUser, updateUser } from "@/services/firestore-service";
 
 export type Transaction = {
   id: string;
@@ -115,16 +114,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const fetchUserData = useCallback(async () => {
     if (connected && publicKey) {
         fetchPresaleProgress();
-        const userWallet = publicKey.toBase58();
-        const [userData, userTransactions] = await Promise.all([
-          getUser(userWallet),
-          getTransactions(userWallet)
-        ]);
-
-        if (userData) {
-          setExnBalance(userData.exnBalance);
-        }
-        setTransactions(userTransactions);
+        // In a real app, you'd fetch data from a backend here.
+        // For this simplified version, we just reset state on wallet change.
+        setExnBalance(0);
+        setTransactions([]);
     } else {
         setTransactions([]);
         setExnBalance(0);
@@ -137,7 +130,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   
   const updateTransactionStatus = useCallback(async (signature: string, status: "Completed" | "Failed", txDetails: Omit<Transaction, 'status' | 'id' | 'date'>) => {
     if (!publicKey) return;
-    const userWallet = publicKey.toBase58();
 
     const finalTransaction: Transaction = {
         id: signature,
@@ -148,17 +140,13 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
      
     if (status === 'Completed') {
         const newBalance = exnBalance + txDetails.amountExn;
-        await Promise.all([
-          saveTransaction(userWallet, finalTransaction),
-          updateUser(userWallet, { exnBalance: newBalance, walletAddress: userWallet })
-        ]);
         setExnBalance(newBalance);
         fetchPresaleProgress();
     }
     
     // Update local state to reflect change immediately
-    const otherTransactions = transactions.filter(tx => tx.id !== signature);
-    setTransactions([finalTransaction, ...otherTransactions]);
+    const otherTransactions = transactions.filter(tx => tx.id !== signature && tx.id !== `pending-${txDetails.amountExn}`);
+    setTransactions([finalTransaction, ...otherTransactions].sort((a, b) => b.date.getTime() - a.date.getTime()));
 
   }, [publicKey, exnBalance, transactions, fetchPresaleProgress]);
 
@@ -177,7 +165,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     
     // Optimistically create pending transaction for UI
     const pendingTx: Transaction = {
-        id: `pending-${Date.now()}`,
+        id: `pending-${exnAmount}`, // Use a more stable temp ID
         amountExn: exnAmount,
         paidAmount,
         paidCurrency: currency,
@@ -264,7 +252,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             throw new Error("Transaction failed to confirm.");
         }
 
-        // --- Post-confirmation logic ---
         await updateTransactionStatus(signature, "Completed", {amountExn, paidAmount, paidCurrency});
         
         toast({
@@ -276,7 +263,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     } catch (error: any) {
         console.error("Transaction failed:", error);
         
-        // Remove pending tx and add failed tx
         setTransactions(prev => prev.filter(tx => tx.id !== pendingTx.id));
 
         if (signature) {

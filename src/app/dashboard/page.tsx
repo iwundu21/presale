@@ -1,4 +1,5 @@
-"use server";
+
+"use client";
 
 import { BuyExnCard } from "@/components/buy-exn-card";
 import { TransactionHistoryTable } from "@/components/transaction-history-table";
@@ -6,10 +7,16 @@ import { BalanceCard } from "@/components/balance-card";
 import { PresaleProgressCard } from "@/components/presale-progress-card";
 import { DashboardClientProvider } from "@/components/dashboard-client-provider";
 import { getPresaleEndDate } from "@/services/presale-date-service";
+import { useEffect, useState } from "react";
 
 
-export default async function DashboardPage() {
-  const presaleEndDate = await getPresaleEndDate();
+export default function DashboardPage() {
+  // Since the service is now client-side, we fetch the date in a useEffect hook.
+  const [presaleEndDate, setPresaleEndDate] = useState(new Date());
+
+  useEffect(() => {
+    setPresaleEndDate(getPresaleEndDate());
+  }, []);
   
   return (
     <DashboardClientProvider>

@@ -7,16 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Download } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { getPresaleEndDate, setPresaleEndDate } from '@/services/presale-date-service';
 import { useRouter } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 
 const ADMIN_WALLET_ADDRESS = "9Kqt28pfMVBsBvXYYnYQCT2BZyorAwzbR6dUmgQfsZYW";
-
-async function fetchCurrentDate() {
-    return getPresaleEndDate();
-}
 
 // Helper to format date for datetime-local input
 const toDateTimeLocal = (date: Date): string => {
@@ -33,7 +29,6 @@ const toDateTimeLocal = (date: Date): string => {
 export default function AdminPage() {
   const [currentEndDate, setCurrentEndDate] = useState<Date>(new Date());
   const [isLoading, setIsLoading] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
   const { publicKey, connected, connecting } = useWallet();
@@ -42,12 +37,9 @@ export default function AdminPage() {
   const [endDateInput, setEndDateInput] = useState('');
 
   useEffect(() => {
-    async function loadDate() {
-      const date = await fetchCurrentDate();
-      setCurrentEndDate(date);
-      setEndDateInput(toDateTimeLocal(date));
-    }
-    loadDate();
+    const date = getPresaleEndDate();
+    setCurrentEndDate(date);
+    setEndDateInput(toDateTimeLocal(date));
   }, []);
   
   useEffect(() => {
@@ -69,10 +61,10 @@ export default function AdminPage() {
 
     try {
       const newDate = new Date(endDateInput);
-      await setPresaleEndDate(newDate);
+      setPresaleEndDate(newDate); // This now updates in-memory
       toast({
         title: 'Configuration Updated',
-        description: 'Presale end date has been updated successfully.',
+        description: 'Presale end date has been updated for this session.',
         variant: 'success',
       });
       setCurrentEndDate(newDate);
@@ -85,38 +77,6 @@ export default function AdminPage() {
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleDownload = async () => {
-    setIsDownloading(true);
-    try {
-      const response = await fetch('/api/export');
-      if (!response.ok) {
-        throw new Error('Failed to fetch user data.');
-      }
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `exnus_user_data_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-      toast({
-        title: 'Download Started',
-        description: 'User data CSV is being downloaded.',
-        variant: 'success',
-      });
-    } catch (error: any) {
-       toast({
-        title: 'Download Failed',
-        description: error.message || 'An unknown error occurred.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsDownloading(false);
     }
   };
   
@@ -137,7 +97,7 @@ export default function AdminPage() {
         <Card className="shadow-lg border-primary/20">
           <CardHeader>
             <CardTitle className="text-2xl font-bold text-white">Presale Configuration</CardTitle>
-            <CardDescription>Configure the presale end date and time.</CardDescription>
+            <CardDescription>Configure the presale end date and time for the current session.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleDateSubmit} className="space-y-6">
@@ -159,19 +119,6 @@ export default function AdminPage() {
                 {isLoading ? <Loader2 className="animate-spin" /> : 'Save Changes'}
               </Button>
             </form>
-          </CardContent>
-        </Card>
-        
-        <Card className="shadow-lg border-primary/20">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold text-white">User Data</CardTitle>
-            <CardDescription>Download a CSV file of all users who have purchased tokens.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={handleDownload} className="w-full" variant="secondary" disabled={isDownloading}>
-              {isDownloading ? <Loader2 className="animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-              {isDownloading ? 'Exporting...' : 'Download User Data (CSV)'}
-            </Button>
           </CardContent>
         </Card>
       </div>
