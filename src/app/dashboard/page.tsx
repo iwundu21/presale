@@ -147,6 +147,7 @@ export default function DashboardPage() {
         } = await connection.getLatestBlockhashAndContext();
         
         transaction.recentBlockhash = blockhash;
+        transaction.feePayer = publicKey;
 
         toast({
           title: "Confirm in wallet",
