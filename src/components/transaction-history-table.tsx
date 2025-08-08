@@ -1,9 +1,10 @@
 
 "use client";
 
-import { History, CheckCircle2, ExternalLink, XCircle, AlertCircle } from "lucide-react";
+import { useState } from "react";
+import { History, CheckCircle2, ExternalLink, XCircle, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "./ui/button";
@@ -42,6 +43,27 @@ const StatusBadge = ({ status }: { status: Transaction["status"] }) => {
 
 export function TransactionHistoryTable() {
   const { transactions } = useDashboard();
+  const [currentPage, setCurrentPage] = useState(1);
+  const transactionsPerPage = 10;
+
+  const indexOfLastTransaction = currentPage * transactionsPerPage;
+  const indexOfFirstTransaction = indexOfLastTransaction - transactionsPerPage;
+  const currentTransactions = transactions.slice(indexOfFirstTransaction, indexOfLastTransaction);
+
+  const totalPages = Math.ceil(transactions.length / transactionsPerPage);
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
   return (
     <Card className="shadow-lg border-white/10">
       <CardHeader>
@@ -63,8 +85,8 @@ export function TransactionHistoryTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactions.length > 0 ? (
-                transactions.map((tx) => (
+              {currentTransactions.length > 0 ? (
+                currentTransactions.map((tx) => (
                   <TableRow key={tx.id}>
                     <TableCell>
                       <div className="font-medium text-white">
@@ -114,6 +136,23 @@ export function TransactionHistoryTable() {
           </Table>
         </TooltipProvider>
       </CardContent>
+       {totalPages > 1 && (
+        <CardFooter className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+            </span>
+            <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handlePrevPage} disabled={currentPage === 1}>
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Previous
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleNextPage} disabled={currentPage === totalPages}>
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+            </div>
+        </CardFooter>
+      )}
     </Card>
   );
 }
