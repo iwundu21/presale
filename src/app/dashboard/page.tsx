@@ -14,7 +14,7 @@ import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { getAssociatedTokenAddress, createTransferInstruction } from "@solana/spl-token";
 
 
-const PRESALE_WALLET_ADDRESS = "9Kqt28pfMVBsBvXYYnYQCT2BZyorAwzbR6dUmgQfsZYW";
+const PRESALE_WALLET_ADDRESS = process.env.NEXT_PUBLIC_PRESALE_WALLET;
 const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // Mainnet
 const USDT_MINT = new PublicKey("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"); // Mainnet
 
