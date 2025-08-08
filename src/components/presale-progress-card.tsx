@@ -1,0 +1,95 @@
+
+"use client";
+
+import { Flame } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { useState, useEffect } from "react";
+
+// Presale configuration
+const TOTAL_PRESALE_SUPPLY = 50_000_000; // 50 Million EXN
+const PRESALE_END_DATE = new Date("2024-09-30T23:59:59Z");
+const MOCK_SOLD_AMOUNT = 12_500_000; // 12.5 Million EXN
+
+const formatNumber = (num: number) => {
+    return new Intl.NumberFormat('en-US', {
+      notation: 'compact',
+      compactDisplay: 'short'
+    }).format(num);
+};
+
+export function PresaleProgressCard() {
+    const [progress, setProgress] = useState(0);
+    const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+    useEffect(() => {
+        const percentage = (MOCK_SOLD_AMOUNT / TOTAL_PRESALE_SUPPLY) * 100;
+        
+        const animation = setTimeout(() => setProgress(percentage), 300);
+
+        const timer = setInterval(() => {
+            const now = new Date();
+            const difference = PRESALE_END_DATE.getTime() - now.getTime();
+
+            if (difference > 0) {
+                const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+                const minutes = Math.floor((difference / 1000 / 60) % 60);
+                const seconds = Math.floor((difference / 1000) % 60);
+                setTimeLeft({ days, hours, minutes, seconds });
+            } else {
+                 setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+                 clearInterval(timer);
+            }
+        }, 1000);
+
+        return () => {
+            clearTimeout(animation);
+            clearInterval(timer);
+        };
+    }, []);
+
+    return (
+        <Card className="w-full shadow-lg border-primary/20 bg-gradient-to-br from-card to-primary/5">
+            <CardHeader>
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/20 rounded-md">
+                        <Flame className="h-6 w-6 text-primary"/>
+                    </div>
+                    <CardTitle className="text-2xl font-bold text-white">Presale Progress</CardTitle>
+                </div>
+                <CardDescription>
+                    The presale is live! Join the revolution.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <Progress value={progress} className="w-full h-3" />
+                <div className="flex justify-between items-center text-sm font-medium">
+                    <span className="text-muted-foreground">Sold: <span className="text-white font-bold">{formatNumber(MOCK_SOLD_AMOUNT)}</span></span>
+                    <span className="text-muted-foreground">Target: <span className="text-white font-bold">{formatNumber(TOTAL_PRESALE_SUPPLY)}</span></span>
+                </div>
+                 <div className="text-center bg-muted/50 rounded-lg p-2">
+                    <p className="text-sm text-muted-foreground mb-1">Presale Ends In</p>
+                    <div className="grid grid-cols-4 gap-1 text-center">
+                        <div>
+                            <p className="text-2xl font-bold text-primary">{timeLeft.days}</p>
+                            <p className="text-xs text-muted-foreground">Days</p>
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-primary">{timeLeft.hours}</p>
+                            <p className="text-xs text-muted-foreground">Hours</p>
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-primary">{timeLeft.minutes}</p>
+                            <p className="text-xs text-muted-foreground">Minutes</p>
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-primary">{timeLeft.seconds}</p>
+                            <p className="text-xs text-muted-foreground">Seconds</p>
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}

@@ -8,6 +8,7 @@ import { WalletConnect } from "@/components/wallet-connect";
 import { BuyExnCard } from "@/components/buy-exn-card";
 import { TransactionHistoryTable, type Transaction } from "@/components/transaction-history-table";
 import { BalanceCard } from "@/components/balance-card";
+import { PresaleProgressCard } from "@/components/presale-progress-card";
 import { ExnusLogo } from "@/components/icons";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -61,6 +62,7 @@ function DashboardLoadingSkeleton() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
           <div className="lg:col-span-2 space-y-8">
             <Skeleton className="h-44 w-full" />
+            <Skeleton className="h-56 w-full" />
             <Skeleton className="h-80 w-full" />
           </div>
           <div className="lg:col-span-3">
@@ -160,6 +162,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
           <div className="lg:col-span-2 space-y-8">
             <BalanceCard balance={exnBalance} />
+            <PresaleProgressCard />
             <BuyExnCard isConnected={connected} onPurchase={handlePurchase} />
           </div>
           <div className="lg:col-span-3">
@@ -174,3 +177,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
