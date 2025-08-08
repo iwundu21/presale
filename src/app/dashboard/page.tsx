@@ -93,7 +93,6 @@ export default function DashboardPage() {
     try {
         const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
         const instructions: TransactionInstruction[] = [];
-        const memoProgramPublicKey = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38");
 
         if (currency === "SOL") {
             instructions.push(SystemProgram.transfer({
@@ -139,12 +138,6 @@ export default function DashboardPage() {
                 )
             );
         }
-
-        instructions.push(new TransactionInstruction({
-            keys: [{ pubkey: publicKey, isSigner: true, isWritable: true }],
-            programId: memoProgramPublicKey,
-            data: Buffer.from(`Purchase ${exnAmount} EXN`, "utf-8"),
-        }));
         
         const { blockhash } = await connection.getLatestBlockhash();
 
