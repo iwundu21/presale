@@ -15,8 +15,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
 
 
-const PRESALE_WALLET_ADDRESS = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
-
 function DashboardLoadingSkeleton() {
   return (
     <div className="flex flex-col min-h-screen">
@@ -124,14 +122,27 @@ export default function DashboardPage() {
     });
 
     try {
-        const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
+        const recipientAddress = process.env.NEXT_PUBLIC_PRESALE_WALLET;
+        if (!recipientAddress) {
+          toast({ title: "Configuration Error", description: "Presale wallet address is not configured.", variant: "destructive" });
+          console.error("Presale wallet address is not set in .env file");
+          return;
+        }
+
+        let presaleWalletPublicKey: PublicKey;
+        try {
+            presaleWalletPublicKey = new PublicKey(recipientAddress);
+        } catch (error) {
+            toast({ title: "Configuration Error", description: "Invalid presale wallet address.", variant: "destructive" });
+            console.error("Invalid presale wallet address:", error);
+            return;
+        }
+
         const memoProgramPublicKey = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38");
 
         const transferInstruction = SystemProgram.transfer({
             fromPubkey: publicKey,
             toPubkey: presaleWalletPublicKey,
-            // Assuming the 'paidAmount' is in SOL for this example.
-            // If using SPL tokens, this will need a different instruction.
             lamports: paidAmount * LAMPORTS_PER_SOL,
         });
 
