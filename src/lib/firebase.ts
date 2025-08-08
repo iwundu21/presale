@@ -10,15 +10,16 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-function getFirebaseInstances() {
-    let app: FirebaseApp;
-    if (!getApps().length) {
-        app = initializeApp(firebaseConfig);
-    } else {
-        app = getApp();
-    }
-    const db = getFirestore(app);
-    return { app, db };
-}
+// Initialize Firebase
+let app: FirebaseApp;
+let db: Firestore;
 
-export { getFirebaseInstances };
+if (!getApps().length) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApp();
+}
+db = getFirestore(app);
+
+// Export the instances
+export { app, db };

@@ -1,3 +1,4 @@
+
 import * as admin from 'firebase-admin';
 
 let adminDb: admin.firestore.Firestore;
@@ -6,7 +7,7 @@ if (!admin.apps.length) {
     try {
         const serviceAccountJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
         if (!serviceAccountJson) {
-            throw new Error('GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable is not set or is empty.');
+            throw new Error('GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable is not set or is empty. This is required for server-side Firebase operations.');
         }
 
         const serviceAccount = JSON.parse(serviceAccountJson);
@@ -19,8 +20,9 @@ if (!admin.apps.length) {
         adminDb = admin.firestore();
 
     } catch (e: any) {
-        console.error("Failed to initialize firebase-admin:", e);
+        console.error("CRITICAL: Failed to initialize firebase-admin. This will cause server-side data fetching to fail.", e);
         // Re-throw the error to prevent the app from starting in a broken state
+        // This makes it clear that the environment is not configured correctly.
         throw new Error(`Firebase admin initialization failed: ${e.message}`);
     }
 } else {
