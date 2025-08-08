@@ -46,8 +46,9 @@ const updatePresaleConfigFlow = ai.defineFlow(
 
       await setPresaleEndDate(newDate);
       
-      // Revalidate the dashboard path to show the new date
+      // Revalidate the dashboard and admin paths to show the new date
       revalidatePath('/dashboard');
+      revalidatePath('/admin');
 
       return {
         success: true,

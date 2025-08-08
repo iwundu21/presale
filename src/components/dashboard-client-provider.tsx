@@ -9,6 +9,7 @@ import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, Version
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, EXN_PRICE } from "@/config";
+import { getTransactions, saveTransaction } from "@/services/firestore-service";
 
 export type Transaction = {
   id: string;
@@ -112,48 +113,31 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
 
   useEffect(() => {
-    if (connected && publicKey) {
-      fetchPresaleProgress();
-      const storageKey = `exn_transactions_${publicKey.toBase58()}`;
-      try {
-        const storedTransactions = localStorage.getItem(storageKey);
-        if (storedTransactions) {
-          const parsed = JSON.parse(storedTransactions);
-          const transactionsWithDates = parsed.map((tx: any) => ({
-            ...tx,
-            date: new Date(tx.date)
-          }));
-          
-          // Check for timed out transactions
-          const FIVE_MINUTES = 5 * 60 * 1000;
-          const now = new Date();
-          const updatedTransactions = transactionsWithDates.map((tx: Transaction) => {
-              if (tx.status === 'Pending' && now.getTime() - new Date(tx.date).getTime() > FIVE_MINUTES) {
-                  return { ...tx, status: 'Failed' };
-              }
-              return tx;
-          });
+    async function fetchTransactions() {
+        if (connected && publicKey) {
+            fetchPresaleProgress();
+            const userTransactions = await getTransactions(publicKey.toBase58());
 
-          setTransactions(updatedTransactions);
+            // Check for timed out pending transactions
+            const FIVE_MINUTES = 5 * 60 * 1000;
+            const now = new Date();
+            const updatedTransactions = userTransactions.map((tx: Transaction) => {
+                if (tx.status === 'Pending' && now.getTime() - new Date(tx.date).getTime() > FIVE_MINUTES) {
+                    const failedTx = { ...tx, status: 'Failed' as const };
+                    // Update in Firestore as well
+                    saveTransaction(publicKey.toBase58(), failedTx); 
+                    return failedTx;
+                }
+                return tx;
+            });
+            
+            setTransactions(updatedTransactions);
         } else {
-          setTransactions([]); 
+            setTransactions([]);
         }
-      } catch (error) {
-        console.error("Failed to parse transactions from localStorage", error);
-        setTransactions([]);
-      }
-    } else {
-        setTransactions([]);
     }
+    fetchTransactions();
   }, [connected, publicKey, fetchPresaleProgress]);
-
-  useEffect(() => {
-    if (connected && publicKey && transactions.length > 0) {
-      const storageKey = `exn_transactions_${publicKey.toBase58()}`;
-      localStorage.setItem(storageKey, JSON.stringify(transactions));
-    }
-  }, [transactions, connected, publicKey]);
-
 
   useEffect(() => {
     const totalBalance = transactions
@@ -162,14 +146,18 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     setExnBalance(totalBalance);
   }, [transactions]);
 
-  const updateTransactionStatus = useCallback((signature: string, status: "Completed" | "Failed") => {
-    setTransactions(prev =>
+  const updateTransactionStatus = useCallback(async (signature: string, status: "Completed" | "Failed", userAddress: string) => {
+     setTransactions(prev =>
       prev.map(tx => (tx.id === signature ? { ...tx, status } : tx))
     );
+     const txToUpdate = transactions.find(tx => tx.id === signature);
+     if (txToUpdate) {
+        await saveTransaction(userAddress, { ...txToUpdate, status });
+     }
      if (status === 'Completed') {
         fetchPresaleProgress();
     }
-  }, [fetchPresaleProgress]);
+  }, [fetchPresaleProgress, transactions]);
 
 
   const handlePurchase = useCallback(async (exnAmount: number, paidAmount: number, currency: string) => {
@@ -253,6 +241,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             date: new Date(),
             status: "Pending",
         };
+        // Save pending transaction to Firestore
+        await saveTransaction(publicKey.toBase58(), newTransaction);
         setTransactions((prev) => [newTransaction, ...prev]);
 
         
@@ -271,7 +261,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             throw new Error("Transaction failed to confirm.");
         }
 
-        updateTransactionStatus(signature, "Completed");
+        await updateTransactionStatus(signature, "Completed", publicKey.toBase58());
         
         toast({
             title: "Purchase Successful!",
@@ -283,7 +273,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         console.error("Transaction failed:", error);
         
         if (signature) {
-          updateTransactionStatus(signature, "Failed");
+          await updateTransactionStatus(signature, "Failed", publicKey.toBase58());
         }
 
         let errorMessage = "An unknown error occurred.";
