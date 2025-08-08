@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { useEffect, useState } from "react";
 
 type WalletConnectProps = {
   isConnected: boolean;
@@ -23,12 +22,6 @@ export function WalletConnect({
   walletAddress,
   onDisconnect,
 }: WalletConnectProps) {
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-      setIsClient(true);
-  }, []);
-
 
   if (isConnected) {
     const formattedAddress = `${walletAddress.substring(0, 5)}...${walletAddress.substring(walletAddress.length - 5)}`;
@@ -50,10 +43,6 @@ export function WalletConnect({
         </DropdownMenuContent>
       </DropdownMenu>
     );
-  }
-
-  if (!isClient) {
-    return null;
   }
 
   return (
