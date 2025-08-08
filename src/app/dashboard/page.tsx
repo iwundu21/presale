@@ -97,7 +97,18 @@ export default function DashboardPage() {
             ...tx,
             date: new Date(tx.date)
           }));
-          setTransactions(transactionsWithDates);
+          
+          // Check for timed out transactions
+          const FIVE_MINUTES = 5 * 60 * 1000;
+          const now = new Date();
+          const updatedTransactions = transactionsWithDates.map((tx: Transaction) => {
+              if (tx.status === 'Pending' && now.getTime() - new Date(tx.date).getTime() > FIVE_MINUTES) {
+                  return { ...tx, status: 'Failed' };
+              }
+              return tx;
+          });
+
+          setTransactions(updatedTransactions);
         } else {
           setTransactions([]); 
         }
