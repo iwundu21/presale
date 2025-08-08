@@ -1,11 +1,57 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, doc, setDoc, getDocs, orderBy, query, Timestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, getDocs, orderBy, query, Timestamp, getDoc } from 'firebase/firestore';
 import type { Transaction } from '@/components/dashboard-client-provider';
 
 const USERS_COLLECTION = 'users';
 const TRANSACTIONS_SUBCOLLECTION = 'transactions';
+
+export type UserData = {
+    walletAddress: string;
+    exnBalance: number;
+    updatedAt: Timestamp;
+};
+
+/**
+ * Creates or updates a user's main data document in Firestore.
+ * This is called after a successful transaction to ensure the balance is up to date.
+ * @param userId The user's public wallet address.
+ * @param exnBalance The user's new total EXN balance.
+ */
+export async function updateUserBalance(userId: string, exnBalance: number): Promise<void> {
+    try {
+        const userDocRef = doc(db, USERS_COLLECTION, userId);
+        const userData: UserData = {
+            walletAddress: userId,
+            exnBalance: exnBalance,
+            updatedAt: Timestamp.now()
+        };
+        await setDoc(userDocRef, userData, { merge: true });
+    } catch (error) {
+        console.error(`Failed to update balance for user ${userId}:`, error);
+        throw new Error('Could not update user balance in the database.');
+    }
+}
+
+/**
+ * Retrieves a user's data document from Firestore.
+ * @param userId The user's public wallet address.
+ * @returns The user's data or null if not found.
+ */
+export async function getUser(userId: string): Promise<UserData | null> {
+    try {
+        const userDocRef = doc(db, USERS_COLLECTION, userId);
+        const docSnap = await getDoc(userDocRef);
+        if (docSnap.exists()) {
+            return docSnap.data() as UserData;
+        }
+        return null;
+    } catch (error) {
+        console.error(`Failed to get user ${userId}:`, error);
+        return null;
+    }
+}
 
 
 /**
@@ -61,6 +107,30 @@ export async function getTransactions(userId: string): Promise<Transaction[]> {
     } catch (error) {
         console.error(`Failed to get transactions for user ${userId}:`, error);
         // Return an empty array on error so the UI doesn't break
+        return [];
+    }
+}
+
+
+/**
+ * Retrieves all user documents from the users collection.
+ * Intended for admin use.
+ * @returns A promise that resolves to an array of user data.
+ */
+export async function getAllUsers(): Promise<UserData[]> {
+    try {
+        const usersColRef = collection(db, USERS_COLLECTION);
+        const q = query(usersColRef, orderBy('updatedAt', 'desc'));
+        const querySnapshot = await getDocs(q);
+
+        const users: UserData[] = [];
+        querySnapshot.forEach((doc) => {
+            users.push(doc.data() as UserData);
+        });
+
+        return users;
+    } catch (error) {
+        console.error("Failed to get all users:", error);
         return [];
     }
 }
