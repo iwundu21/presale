@@ -12,7 +12,7 @@ import { PresaleProgressCard } from "@/components/presale-progress-card";
 import { ExnusLogo } from "@/components/icons";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
+import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
 
 
 const initialTransactions: Transaction[] = [
@@ -89,6 +89,8 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const PRESALE_WALLET_ADDRESS = "CXLV1AX6kY3y7isprh7wYd9g6g1GYkLdAjT25ytE1tE1";
+  const MEMO_PROGRAM_ID = new PublicKey("Memo1UhkJRfHyvLMcVucJwxXeuD728Ecl5CJJsVjWgekn");
+
 
   useEffect(() => {
     if (!connecting && !connected) {
@@ -99,13 +101,18 @@ export default function DashboardPage() {
   useEffect(() => {
       if (connected && publicKey) {
         const storageKey = `exn_transactions_${publicKey.toBase58()}`;
-        const storedTransactions = localStorage.getItem(storageKey);
-        if (storedTransactions) {
-            setTransactions(JSON.parse(storedTransactions).map((tx: any) => ({
-                ...tx,
-                date: new Date(tx.date) // Dates need to be converted back from string
-            })));
-        } else {
+        try {
+            const storedTransactions = localStorage.getItem(storageKey);
+            if (storedTransactions) {
+                setTransactions(JSON.parse(storedTransactions).map((tx: any) => ({
+                    ...tx,
+                    date: new Date(tx.date) // Dates need to be converted back from string
+                })));
+            } else {
+                setTransactions(initialTransactions);
+            }
+        } catch (error) {
+            console.error("Failed to parse transactions from localStorage", error);
             setTransactions(initialTransactions);
         }
       }
@@ -158,10 +165,16 @@ export default function DashboardPage() {
             lamports: paidAmount * LAMPORTS_PER_SOL,
         });
 
+        const memoInstruction = new TransactionInstruction({
+            keys: [],
+            programId: MEMO_PROGRAM_ID,
+            data: Buffer.from(`Exnus Presale: ${exnAmount.toLocaleString()} EXN`, "utf-8"),
+        });
+
         const message = new TransactionMessage({
             payerKey: publicKey,
             recentBlockhash: latestBlockhash.blockhash,
-            instructions: [transferInstruction],
+            instructions: [transferInstruction, memoInstruction],
         }).compileToV0Message();
         
         const transaction = new VersionedTransaction(message);
