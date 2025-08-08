@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
 
 
-const PRESALE_WALLET_ADDRESS = "9m5T5YfSHk6wgPEtS2a14GZ8a52S3g2a3a5K5X5y5r5K";
+const PRESALE_WALLET_ADDRESS = "4abS1WAf2a14GZ8a52S3g2a3a5K5X5y5r5KSHk6wgPEtS2";
 
 function DashboardLoadingSkeleton() {
   return (
@@ -114,36 +114,72 @@ export default function DashboardPage() {
 
   const handlePurchase = async (exnAmount: number, paidAmount: number, currency: string) => {
     if (!publicKey) {
-        toast({ title: "Wallet not connected", variant: "destructive" });
-        return;
+      toast({ title: "Wallet not connected", variant: "destructive" });
+      return;
     }
 
     toast({
-        title: "Processing transaction...",
-        description: "Please wait.",
+      title: "Creating transaction...",
+      description: "Please check your wallet to approve.",
     });
 
-    // Simulate a delay for effect
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+        const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
+        const memoProgramPublicKey = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38");
 
-    const signature = `SIMULATED_${Math.random().toString(36).substring(2, 15)}`
+        const transferInstruction = SystemProgram.transfer({
+            fromPubkey: publicKey,
+            toPubkey: presaleWalletPublicKey,
+            // Assuming the 'paidAmount' is in SOL for this example.
+            // If using SPL tokens, this will need a different instruction.
+            lamports: paidAmount * LAMPORTS_PER_SOL,
+        });
 
-    const newTransaction: Transaction = {
-        id: signature,
-        amountExn: exnAmount,
-        paidAmount,
-        paidCurrency: currency,
-        date: new Date(),
-        status: "Completed",
-    };
-    
-    setTransactions((prev) => [newTransaction, ...prev]);
+        const memoInstruction = new TransactionInstruction({
+            keys: [{ pubkey: publicKey, isSigner: true, isWritable: true }],
+            programId: memoProgramPublicKey,
+            data: Buffer.from(`Purchase ${exnAmount} EXN`, "utf-8"),
+        });
 
-    toast({
-        title: "Purchase Successful! (Simulated)",
-        description: `You purchased ${exnAmount.toLocaleString()} EXN.`,
-        variant: "default"
-    });
+        const { blockhash } = await connection.getLatestBlockhash();
+
+        const message = new TransactionMessage({
+            payerKey: publicKey,
+            recentBlockhash: blockhash,
+            instructions: [transferInstruction, memoInstruction],
+        }).compileToV0Message();
+
+        const transaction = new VersionedTransaction(message);
+
+        const signature = await sendTransaction(transaction, connection);
+
+        await connection.confirmTransaction(signature, 'processed');
+
+        const newTransaction: Transaction = {
+            id: signature,
+            amountExn: exnAmount,
+            paidAmount,
+            paidCurrency: currency,
+            date: new Date(),
+            status: "Completed",
+        };
+        
+        setTransactions((prev) => [newTransaction, ...prev]);
+
+        toast({
+            title: "Purchase Successful!",
+            description: `You purchased ${exnAmount.toLocaleString()} EXN.`,
+            variant: "default"
+        });
+
+    } catch (error: any) {
+        console.error("Transaction failed:", error);
+        toast({
+            title: "Transaction Failed",
+            description: error.message || "An unknown error occurred.",
+            variant: "destructive",
+        });
+    }
   };
   
   if (connecting || (!connected && !publicKey)) {
