@@ -128,7 +128,10 @@ export default function DashboardPage() {
   useEffect(() => {
     if (connected && publicKey && transactions.length > 0) {
       const storageKey = `exn_transactions_${publicKey.toBase58()}`;
-      localStorage.setItem(storageKey, JSON.stringify(transactions));
+      // Only save if the transactions are not the initial ones
+      if (JSON.stringify(transactions) !== JSON.stringify(initialTransactions)) {
+        localStorage.setItem(storageKey, JSON.stringify(transactions));
+      }
     }
   }, [transactions, connected, publicKey]);
 
@@ -203,7 +206,13 @@ export default function DashboardPage() {
             status: "Completed",
         };
         // Add new transaction to the start of the list
-        setTransactions((prev) => [newTransaction, ...prev]);
+        setTransactions((prev) => {
+            // If the previous transactions were the initial ones, start fresh
+            if(JSON.stringify(prev) === JSON.stringify(initialTransactions)) {
+                return [newTransaction];
+            }
+            return [newTransaction, ...prev];
+        });
 
         toast({
             title: "Purchase Successful!",
