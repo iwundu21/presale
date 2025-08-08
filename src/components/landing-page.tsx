@@ -29,10 +29,12 @@ export function LandingPage({ onConnect, isConnecting }: LandingPageProps) {
         <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
           Exnus is not just a token; it's a revolution in decentralized intelligence. We're building a new ecosystem where your ideas have value and your data remains your own.
         </p>
-        <Button size="lg" onClick={onConnect} disabled={!isClient || connecting || !!wallet}>
-            {connecting ? "Entering Ecosystem..." : "Enter the Ecosystem"}
-          <ArrowRight className="ml-2 h-5 w-5"/>
-        </Button>
+        {isClient && (
+            <Button size="lg" onClick={onConnect} disabled={connecting || !!wallet}>
+                {connecting ? "Entering Ecosystem..." : "Enter the Ecosystem"}
+              <ArrowRight className="ml-2 h-5 w-5"/>
+            </Button>
+        )}
       </section>
 
       {/* Features Section */}
