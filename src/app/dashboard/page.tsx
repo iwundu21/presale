@@ -188,7 +188,7 @@ export default function DashboardPage() {
         toast({
             title: "Purchase Successful!",
             description: `You purchased ${exnAmount.toLocaleString()} EXN.`,
-            variant: "default"
+            variant: "success"
         });
 
     } catch (error: any) {
