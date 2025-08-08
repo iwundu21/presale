@@ -172,8 +172,8 @@ export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
           Current Price: <strong>${EXN_PRICE}</strong> per EXN
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="relative">
+      <CardContent className="space-y-4">
+        <div>
           <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-2">
             <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground">You Pay</span>
@@ -197,7 +197,7 @@ export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
                   disabled={currency === 'SOL' && isLoadingPrice}
               />
                <Select value={currency} onValueChange={setCurrency}>
-                  <SelectTrigger className="w-auto h-auto bg-transparent border-none text-white font-medium focus:ring-0">
+                  <SelectTrigger className="w-[120px] h-auto bg-secondary border-secondary text-white font-medium focus:ring-0">
                     <SelectValue placeholder="Coin" />
                   </SelectTrigger>
                   <SelectContent>
@@ -208,12 +208,14 @@ export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
                 </Select>
             </div>
           </div>
-          
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 p-1 bg-card border rounded-full">
-            <ArrowDown className="h-5 w-5 text-muted-foreground" />
-          </div>
+        </div>
 
-          <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-2 mt-2">
+        <div className="flex justify-center my-2">
+          <ArrowDown className="h-5 w-5 text-muted-foreground" />
+        </div>
+
+        <div>
+          <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">You Receive</span>
               <span className="text-white font-medium">EXN</span>
@@ -233,6 +235,7 @@ export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
             )}
           </div>
         </div>
+
         {currency === 'SOL' && solPrice && (
             <p className="text-xs text-muted-foreground text-center mt-2">
                 Current SOL Price: ~${solPrice.toFixed(2)}
