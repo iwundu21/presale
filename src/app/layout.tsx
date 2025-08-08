@@ -8,7 +8,10 @@ import { AppRouterCacheProvider } from '@mui/material-nextjs/v13-appRouter';
 import { WalletProvider } from '@/components/wallet-provider';
 
 export const metadata: Metadata = {
-  title: 'Exnus',
+  title: {
+    template: '%s | Exnus',
+    default: 'Exnus',
+  },
   description: 'Purchase EXN Tokens',
   applicationName: 'Exnus',
 };
