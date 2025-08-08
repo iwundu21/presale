@@ -12,7 +12,7 @@ type LandingPageProps = {
 };
 
 export function LandingPage({ onConnect, isConnecting }: LandingPageProps) {
-    const { wallet, connecting } = useWallet();
+    const { wallet } = useWallet();
     const [isClient, setIsClient] = useState(false);
 
     useEffect(() => {
@@ -30,8 +30,8 @@ export function LandingPage({ onConnect, isConnecting }: LandingPageProps) {
           Exnus is not just a token; it's a revolution in decentralized intelligence. We're building a new ecosystem where your ideas have value and your data remains your own.
         </p>
         {isClient && (
-            <Button size="lg" onClick={onConnect} disabled={connecting || !!wallet}>
-                {connecting ? "Entering Ecosystem..." : "Enter the Ecosystem"}
+            <Button size="lg" onClick={onConnect} disabled={isConnecting || !!wallet}>
+                {isConnecting ? "Entering Ecosystem..." : "Enter the Ecosystem"}
               <ArrowRight className="ml-2 h-5 w-5"/>
             </Button>
         )}
