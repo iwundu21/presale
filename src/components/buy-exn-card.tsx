@@ -148,4 +148,3 @@ export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
     </Card>
   );
 }
-
