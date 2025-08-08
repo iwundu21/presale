@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
 
 
-const PRESALE_WALLET_ADDRESS = "So11111111111111111111111111111111111111112";
+const PRESALE_WALLET_ADDRESS = "9m5T5YfSHk6wgPEtS2a14GZ8a52S3g2a3a5K5X5y5r5K";
 
 function DashboardLoadingSkeleton() {
   return (
@@ -118,75 +118,32 @@ export default function DashboardPage() {
         return;
     }
 
-    if (currency !== 'SOL') {
-        toast({ title: "Only SOL payments are supported in this demo", variant: "destructive" });
-        return;
-    }
-
     toast({
-        title: "Creating transaction...",
-        description: "Please confirm in your wallet.",
+        title: "Processing transaction...",
+        description: "Please wait.",
     });
 
-    try {
-        const latestBlockhash = await connection.getLatestBlockhash();
-        
-        const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
-        const memoProgramPublicKey = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38");
+    // Simulate a delay for effect
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
-        const transferInstruction = SystemProgram.transfer({
-            fromPubkey: publicKey,
-            toPubkey: presaleWalletPublicKey,
-            lamports: paidAmount * LAMPORTS_PER_SOL,
-        });
-        
-        const memoInstruction = new TransactionInstruction({
-            keys: [],
-            programId: memoProgramPublicKey,
-            data: Buffer.from(`Exnus Presale: ${exnAmount.toLocaleString()} EXN`, "utf-8"),
-        });
+    const signature = `SIMULATED_${Math.random().toString(36).substring(2, 15)}`
 
-        const message = new TransactionMessage({
-            payerKey: publicKey,
-            recentBlockhash: latestBlockhash.blockhash,
-            instructions: [transferInstruction, memoInstruction],
-        }).compileToV0Message();
-        
-        const transaction = new VersionedTransaction(message);
-        
-        const signature = await sendTransaction(transaction, connection);
-        
-        await connection.confirmTransaction({
-            blockhash: latestBlockhash.blockhash,
-            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-            signature,
-        });
+    const newTransaction: Transaction = {
+        id: signature,
+        amountExn: exnAmount,
+        paidAmount,
+        paidCurrency: currency,
+        date: new Date(),
+        status: "Completed",
+    };
+    
+    setTransactions((prev) => [newTransaction, ...prev]);
 
-        const newTransaction: Transaction = {
-            id: signature,
-            amountExn: exnAmount,
-            paidAmount,
-            paidCurrency: currency,
-            date: new Date(),
-            status: "Completed",
-        };
-        
-        setTransactions((prev) => [newTransaction, ...prev]);
-
-        toast({
-            title: "Purchase Successful!",
-            description: `You purchased ${exnAmount.toLocaleString()} EXN. Tx: ${signature.substring(0,10)}...`,
-            variant: "default"
-        });
-
-    } catch (error: any) {
-        console.error("Purchase failed", error);
-        toast({
-            title: "Purchase Failed",
-            description: error?.message || "An unknown error occurred.",
-            variant: "destructive",
-        });
-    }
+    toast({
+        title: "Purchase Successful! (Simulated)",
+        description: `You purchased ${exnAmount.toLocaleString()} EXN.`,
+        variant: "default"
+    });
   };
   
   if (connecting || (!connected && !publicKey)) {
