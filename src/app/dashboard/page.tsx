@@ -93,7 +93,7 @@ export default function DashboardPage() {
     setTimeout(() => {
       const newTransaction: Transaction = {
         id: `txn_${Date.now()}`,
-        amountExn,
+        amountExn: exnAmount,
         paidAmount,
         paidCurrency: currency,
         date: new Date(),
