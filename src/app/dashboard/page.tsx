@@ -98,29 +98,37 @@ export default function DashboardPage() {
   }, [connected, connecting, router]);
 
   useEffect(() => {
-      if (connected && publicKey) {
-        const storageKey = `exn_transactions_${publicKey.toBase58()}`;
-        try {
-            const storedTransactions = localStorage.getItem(storageKey);
-            if (storedTransactions) {
-                setTransactions(JSON.parse(storedTransactions).map((tx: any) => ({
-                    ...tx,
-                    date: new Date(tx.date) // Dates need to be converted back from string
-                })));
-            } else {
-                setTransactions(initialTransactions);
-            }
-        } catch (error) {
-            console.error("Failed to parse transactions from localStorage", error);
-            setTransactions(initialTransactions);
+    if (connected && publicKey) {
+      const storageKey = `exn_transactions_${publicKey.toBase58()}`;
+      try {
+        const storedTransactions = localStorage.getItem(storageKey);
+        if (storedTransactions) {
+          setTransactions(JSON.parse(storedTransactions).map((tx: any) => ({
+            ...tx,
+            date: new Date(tx.date)
+          })));
+        } else {
+          // If no transactions in storage, start with an empty list for this user.
+          setTransactions([]);
         }
+      } catch (error) {
+        console.error("Failed to parse transactions from localStorage", error);
+        setTransactions([]);
       }
+    } else {
+        // When disconnected, show initial transactions.
+        setTransactions(initialTransactions)
+    }
   }, [connected, publicKey]);
 
   useEffect(() => {
-      if(transactions.length > 0 && publicKey) {
+      // Only save to localStorage if there is a connected wallet and there are transactions
+      if(publicKey && transactions.length > 0) {
         const storageKey = `exn_transactions_${publicKey.toBase58()}`;
-        localStorage.setItem(storageKey, JSON.stringify(transactions));
+        // Prevent saving initial example transactions to a user's storage
+        if (transactions !== initialTransactions) {
+             localStorage.setItem(storageKey, JSON.stringify(transactions));
+        }
       }
   }, [transactions, publicKey]);
 
