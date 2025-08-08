@@ -6,8 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
 import { SOFT_CAP, HARD_CAP, EXN_PRICE } from "@/config";
-import { PRESALE_END_DATE } from "@/presale-config";
-
 
 const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
     return new Intl.NumberFormat('en-US', {
@@ -19,9 +17,10 @@ const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
 
 type PresaleProgressCardProps = {
     totalSold: number;
+    presaleEndDate: Date;
 }
 
-export function PresaleProgressCard({ totalSold }: PresaleProgressCardProps) {
+export function PresaleProgressCard({ totalSold, presaleEndDate }: PresaleProgressCardProps) {
     const [progress, setProgress] = useState(0);
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
     const [totalSoldValue, setTotalSoldValue] = useState(0);
@@ -38,7 +37,8 @@ export function PresaleProgressCard({ totalSold }: PresaleProgressCardProps) {
         // Countdown timer logic
         const countdownTimer = setInterval(() => {
             const now = new Date();
-            const difference = PRESALE_END_DATE.getTime() - now.getTime();
+            // presaleEndDate is a Date object, passed as prop
+            const difference = new Date(presaleEndDate).getTime() - now.getTime();
 
             if (difference > 0) {
                 const days = Math.floor(difference / (1000 * 60 * 60 * 24));
@@ -55,7 +55,7 @@ export function PresaleProgressCard({ totalSold }: PresaleProgressCardProps) {
         return () => {
             clearInterval(countdownTimer);
         };
-    }, [totalSold]);
+    }, [totalSold, presaleEndDate]);
 
     return (
         <Card className="w-full shadow-lg border-primary/20 bg-gradient-to-br from-card to-primary/5">

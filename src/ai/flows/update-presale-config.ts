@@ -5,8 +5,8 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import fs from 'fs/promises';
-import path from 'path';
+import { setPresaleEndDate } from '@/services/presale-date-service';
+import { revalidatePath } from 'next/cache';
 
 const UpdatePresaleConfigInputSchema = z.object({
   endDate: z.string().describe('The new presale end date in ISO 8601 format.'),
@@ -39,19 +39,15 @@ const updatePresaleConfigFlow = ai.defineFlow(
   },
   async input => {
     try {
-      const configPath = path.join(process.cwd(), 'src', 'presale-config.ts');
-      
       const newDate = new Date(input.endDate);
       if (isNaN(newDate.getTime())) {
         throw new Error('Invalid date format provided.');
       }
 
-      const fileContent = `// THIS FILE IS MANAGED BY THE ADMIN DASHBOARD
-// DO NOT EDIT DIRECTLY
-export const PRESALE_END_DATE = new Date("${newDate.toISOString()}");
-`;
-
-      await fs.writeFile(configPath, fileContent, 'utf8');
+      await setPresaleEndDate(newDate);
+      
+      // Revalidate the dashboard path to show the new date
+      revalidatePath('/dashboard');
 
       return {
         success: true,

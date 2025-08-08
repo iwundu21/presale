@@ -1,21 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { updatePresaleConfig } from '@/ai/flows/update-presale-config';
-import { PRESALE_END_DATE } from '@/presale-config';
 import { Loader2 } from 'lucide-react';
+import { getPresaleEndDate } from '@/services/presale-date-service';
+
 
 export default function AdminPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Initialize state with the current date from config, formatted for the input
-  const [endDate, setEndDate] = useState(PRESALE_END_DATE.toISOString().slice(0, 16));
+  const [endDate, setEndDate] = useState('');
+  const [currentEndDate, setCurrentEndDate] = useState<Date | null>(null);
+
+  useEffect(() => {
+    async function fetchCurrentDate() {
+      try {
+        const date = await getPresaleEndDate();
+        setCurrentEndDate(date);
+        setEndDate(date.toISOString().slice(0, 16));
+      } catch (error) {
+         console.error("Failed to fetch current end date", error);
+         toast({
+            title: 'Error fetching current date',
+            description: 'Could not load the currently configured presale end date.',
+            variant: 'destructive',
+         });
+      }
+    }
+    fetchCurrentDate();
+  }, [toast]);
+
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -29,6 +48,9 @@ export default function AdminPage() {
           description: result.message,
           variant: 'success',
         });
+        // Refetch the date to update the "Current value" text
+        const newDate = await getPresaleEndDate();
+        setCurrentEndDate(newDate);
       } else {
         throw new Error(result.message);
       }
@@ -63,9 +85,9 @@ export default function AdminPage() {
                   className="bg-input border-border"
                   required
                 />
-                 <p className="text-xs text-muted-foreground pt-1">
-                    Current value: {new Date(PRESALE_END_DATE).toLocaleString()}
-                </p>
+                 {currentEndDate && <p className="text-xs text-muted-foreground pt-1">
+                    Current value: {currentEndDate.toLocaleString()}
+                </p>}
               </div>
               <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold" disabled={isLoading}>
                 {isLoading ? <Loader2 className="animate-spin" /> : 'Save Changes'}
