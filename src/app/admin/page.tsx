@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,31 +10,42 @@ import { useToast } from '@/hooks/use-toast';
 import { updatePresaleConfig } from '@/ai/flows/update-presale-config';
 import { Loader2 } from 'lucide-react';
 import { getPresaleEndDate } from '@/services/presale-date-service';
+import { useRouter } from 'next/navigation';
+
+async function fetchCurrentDate() {
+    return getPresaleEndDate();
+}
+
+// Helper to format date for datetime-local input
+const toDateTimeLocal = (date: Date): string => {
+  const ten = (i: number) => (i < 10 ? '0' : '') + i;
+  const YYYY = date.getFullYear();
+  const MM = ten(date.getMonth() + 1);
+  const DD = ten(date.getDate());
+  const HH = ten(date.getHours());
+  const mm = ten(date.getMinutes());
+  return `${YYYY}-${MM}-${DD}T${HH}:${mm}`;
+};
 
 
 export default function AdminPage() {
-  const { toast } = useToast();
+  const [currentEndDate, setCurrentEndDate] = useState<Date>(new Date());
   const [isLoading, setIsLoading] = useState(false);
-  const [endDate, setEndDate] = useState('');
-  const [currentEndDate, setCurrentEndDate] = useState<Date | null>(null);
+  const { toast } = useToast();
+  const router = useRouter();
+  
+  // Use state to manage the form input value
+  const [endDateInput, setEndDateInput] = useState('');
 
-  useEffect(() => {
-    async function fetchCurrentDate() {
-      try {
-        const date = await getPresaleEndDate();
-        setCurrentEndDate(date);
-        setEndDate(date.toISOString().slice(0, 16));
-      } catch (error) {
-         console.error("Failed to fetch current end date", error);
-         toast({
-            title: 'Error fetching current date',
-            description: 'Could not load the currently configured presale end date.',
-            variant: 'destructive',
-         });
-      }
+  // Fetch and set the date on initial component mount
+  useState(() => {
+    async function loadDate() {
+      const date = await fetchCurrentDate();
+      setCurrentEndDate(date);
+      setEndDateInput(toDateTimeLocal(date));
     }
-    fetchCurrentDate();
-  }, [toast]);
+    loadDate();
+  });
 
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -41,7 +53,7 @@ export default function AdminPage() {
     setIsLoading(true);
 
     try {
-      const result = await updatePresaleConfig({ endDate });
+      const result = await updatePresaleConfig({ endDate: endDateInput });
       if (result.success) {
         toast({
           title: 'Success!',
@@ -49,8 +61,9 @@ export default function AdminPage() {
           variant: 'success',
         });
         // Refetch the date to update the "Current value" text
-        const newDate = await getPresaleEndDate();
+        const newDate = await fetchCurrentDate();
         setCurrentEndDate(newDate);
+        router.refresh(); // Force a server-side refresh of the page
       } else {
         throw new Error(result.message);
       }
@@ -80,8 +93,8 @@ export default function AdminPage() {
                 <Input
                   id="endDate"
                   type="datetime-local"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  value={endDateInput}
+                  onChange={(e) => setEndDateInput(e.target.value)}
                   className="bg-input border-border"
                   required
                 />
