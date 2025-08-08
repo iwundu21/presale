@@ -76,8 +76,12 @@ export default function DashboardPage() {
   }, [transactions]);
 
   const handlePurchase = async (exnAmount: number, paidAmount: number, currency: string) => {
-    if (!publicKey || !PRESALE_WALLET_ADDRESS) {
-      toast({ title: "Wallet not connected or presale address not set", variant: "destructive" });
+    if (!publicKey) {
+      toast({ title: "Wallet not connected", variant: "destructive" });
+      return;
+    }
+     if (!PRESALE_WALLET_ADDRESS) {
+      toast({ title: "Presale address is not configured. Please contact support.", variant: "destructive" });
       return;
     }
 
@@ -114,11 +118,8 @@ export default function DashboardPage() {
             const fromTokenAccount = await getAssociatedTokenAddress(mintPublicKey, publicKey);
             const toTokenAccount = await getAssociatedTokenAddress(mintPublicKey, presaleWalletPublicKey);
 
-            // Check if destination ATA exists
             const toTokenAccountInfo = await connection.getAccountInfo(toTokenAccount);
             if (!toTokenAccountInfo) {
-                // This is a simplification. In a real app, you might need to create it.
-                // For a presale, the recipient wallet should already have the ATA.
                  throw new Error(`Recipient's ${currency} token account does not exist. Please contact support.`);
             }
 
