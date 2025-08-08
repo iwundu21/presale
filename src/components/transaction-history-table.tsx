@@ -1,10 +1,13 @@
+
 "use client";
 
-import { History, CheckCircle2 } from "lucide-react";
+import { History, CheckCircle2, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from "./ui/button";
+import Link from "next/link";
 
 export type Transaction = {
   id: string;
@@ -37,6 +40,7 @@ export function TransactionHistoryTable({ transactions }: TransactionHistoryTabl
                 <TableHead className="hidden sm:table-cell">Value</TableHead>
                 <TableHead className="hidden md:table-cell">Date</TableHead>
                 <TableHead className="text-right">Status</TableHead>
+                <TableHead className="text-right">View</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -67,11 +71,25 @@ export function TransactionHistoryTable({ transactions }: TransactionHistoryTabl
                         {tx.status}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-right">
+                       <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button asChild variant="ghost" size="icon">
+                             <Link href={`https://solscan.io/tx/${tx.id}?cluster=devnet`} target="_blank">
+                                <ExternalLink className="h-4 w-4 text-accent" />
+                             </Link>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>View on Solscan</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                     Connect your wallet to see your transactions.
                   </TableCell>
                 </TableRow>
