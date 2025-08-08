@@ -1,18 +1,11 @@
 'use server';
 
-import { db as clientDb } from '@/lib/firebase';
-import { adminDb } from '@/lib/firebase-admin';
+import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, orderBy, query, Timestamp } from 'firebase/firestore';
 import type { Transaction } from '@/components/dashboard-client-provider';
 
 const USERS_COLLECTION = 'users';
 const TRANSACTIONS_SUBCOLLECTION = 'transactions';
-
-function getDb() {
-    // This function will determine whether to use the admin SDK or client SDK
-    // based on the environment. For server-side actions, we prefer the admin SDK.
-    return adminDb || clientDb;
-}
 
 
 /**
@@ -21,7 +14,6 @@ function getDb() {
  * @param transaction The transaction object to save.
  */
 export async function saveTransaction(userId: string, transaction: Transaction): Promise<void> {
-  const db = getDb();
   try {
     const userDocRef = doc(db, USERS_COLLECTION, userId);
     const transactionsColRef = collection(userDocRef, TRANSACTIONS_SUBCOLLECTION);
@@ -46,7 +38,6 @@ export async function saveTransaction(userId: string, transaction: Transaction):
  * @returns A promise that resolves to an array of transactions.
  */
 export async function getTransactions(userId: string): Promise<Transaction[]> {
-    const db = getDb();
     try {
         const userDocRef = doc(db, USERS_COLLECTION, userId);
         const transactionsColRef = collection(userDocRef, TRANSACTIONS_SUBCOLLECTION);
