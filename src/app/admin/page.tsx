@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,9 @@ import { updatePresaleConfig } from '@/ai/flows/update-presale-config';
 import { Loader2 } from 'lucide-react';
 import { getPresaleEndDate } from '@/services/presale-date-service';
 import { useRouter } from 'next/navigation';
+import { useWallet } from '@solana/wallet-adapter-react';
+
+const ADMIN_WALLET_ADDRESS = "9Kqt28pfMVBsBvXYYnYQCT2BZyorAwzbR6dUmgQfsZYW";
 
 async function fetchCurrentDate() {
     return getPresaleEndDate();
@@ -33,19 +36,35 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const { publicKey, connected, connecting } = useWallet();
+  const [isAuthorized, setIsAuthorized] = useState(false);
   
   // Use state to manage the form input value
   const [endDateInput, setEndDateInput] = useState('');
 
   // Fetch and set the date on initial component mount
-  useState(() => {
+  useEffect(() => {
     async function loadDate() {
       const date = await fetchCurrentDate();
       setCurrentEndDate(date);
       setEndDateInput(toDateTimeLocal(date));
     }
     loadDate();
-  });
+  }, []);
+  
+  useEffect(() => {
+    if (!connecting) {
+      if (!connected) {
+        // If not connected, redirect to home to connect wallet
+        router.push('/');
+      } else if (publicKey && publicKey.toBase58() === ADMIN_WALLET_ADDRESS) {
+        setIsAuthorized(true);
+      } else {
+        // If connected with a non-admin wallet, redirect to user dashboard
+        router.push('/dashboard');
+      }
+    }
+  }, [publicKey, connected, connecting, router]);
 
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -77,6 +96,17 @@ export default function AdminPage() {
       setIsLoading(false);
     }
   };
+  
+  if (!isAuthorized) {
+    return (
+      <main className="container mx-auto p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Loader2 className="animate-spin h-8 w-8 mx-auto mb-4" />
+            <p className="text-muted-foreground">Verifying authorization...</p>
+          </div>
+      </main>
+    )
+  }
 
   return (
     <main className="container mx-auto p-4 sm:p-6 lg:p-8">
@@ -112,3 +142,4 @@ export default function AdminPage() {
     </main>
   );
 }
+
