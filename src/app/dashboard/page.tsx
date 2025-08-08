@@ -11,7 +11,7 @@ import { PresaleProgressCard } from "@/components/presale-progress-card";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
-import { getAssociatedTokenAddress, createTransferInstruction } from "@solana/spl-token";
+import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 
 
 const PRESALE_WALLET_ADDRESS = process.env.NEXT_PUBLIC_PRESALE_WALLET;
@@ -120,7 +120,14 @@ export default function DashboardPage() {
 
             const toTokenAccountInfo = await connection.getAccountInfo(toTokenAccount);
             if (!toTokenAccountInfo) {
-                 throw new Error(`Recipient's ${currency} token account does not exist. Please contact support.`);
+                instructions.push(
+                    createAssociatedTokenAccountInstruction(
+                        publicKey,
+                        toTokenAccount,
+                        presaleWalletPublicKey,
+                        mintPublicKey
+                    )
+                );
             }
 
             instructions.push(
