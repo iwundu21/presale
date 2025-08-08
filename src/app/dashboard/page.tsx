@@ -133,7 +133,12 @@ export default function DashboardPage() {
     });
 
     try {
-        const transaction = new SolanaTransaction().add(
+        const latestBlockhash = await connection.getLatestBlockhash('confirmed');
+
+        const transaction = new SolanaTransaction({
+            feePayer: publicKey,
+            recentBlockhash: latestBlockhash.blockhash,
+        }).add(
             SystemProgram.transfer({
                 fromPubkey: publicKey,
                 toPubkey: new PublicKey(PRESALE_WALLET_ADDRESS),
@@ -141,21 +146,13 @@ export default function DashboardPage() {
             })
         );
         
-        const {
-            context: { slot: minContextSlot },
-            value: { blockhash, lastValidBlockHeight }
-        } = await connection.getLatestBlockhashAndContext();
-
-        transaction.recentBlockhash = blockhash;
-        transaction.feePayer = publicKey;
-
         const signature = await sendTransaction(transaction, connection);
         
         toast({ title: "Processing transaction...", description: `Transaction sent: ${signature}` });
 
         await connection.confirmTransaction({
-            blockhash,
-            lastValidBlockHeight,
+            blockhash: latestBlockhash.blockhash,
+            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
             signature
         });
 
