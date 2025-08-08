@@ -1,3 +1,4 @@
+
 import type {Metadata} from 'next';
 import './globals.css';
 import '@solana/wallet-adapter-react-ui/styles.css';
@@ -9,6 +10,7 @@ import { WalletProvider } from '@/components/wallet-provider';
 export const metadata: Metadata = {
   title: 'Exnus',
   description: 'Purchase EXN Tokens',
+  applicationName: 'Exnus',
 };
 
 export default function RootLayout({
