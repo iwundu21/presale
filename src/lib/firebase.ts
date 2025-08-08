@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,16 +13,5 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
-
-// If you are running the project locally, you can connect to the Firestore emulator
-if (process.env.NODE_ENV === 'development' && process.env.FIRESTORE_EMULATOR_HOST) {
-    try {
-        connectFirestoreEmulator(db, 'localhost', 8080);
-        console.log("Connected to Firestore Emulator");
-    } catch(e) {
-        console.log("Failed to connect to emulator", e)
-    }
-}
-
 
 export { app, db };
