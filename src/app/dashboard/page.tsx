@@ -133,17 +133,21 @@ export default function DashboardPage() {
     });
 
     try {
-        const transaction = new SolanaTransaction().add(
+        const {
+            context: { slot: minContextSlot },
+            value: { blockhash, lastValidBlockHeight }
+        } = await connection.getLatestBlockhashAndContext();
+        
+        const transaction = new SolanaTransaction({
+            recentBlockhash: blockhash,
+            feePayer: publicKey
+        }).add(
             SystemProgram.transfer({
                 fromPubkey: publicKey,
                 toPubkey: new PublicKey(PRESALE_WALLET_ADDRESS),
                 lamports: paidAmount * LAMPORTS_PER_SOL,
             })
         );
-        
-        const blockhash = await connection.getLatestBlockhash();
-        transaction.feePayer = publicKey;
-        transaction.recentBlockhash = blockhash.blockhash;
         
         toast({
           title: "Confirm in wallet",
@@ -155,8 +159,8 @@ export default function DashboardPage() {
         toast({ title: "Processing transaction...", description: `Transaction sent: ${signature}` });
 
         await connection.confirmTransaction({
-          blockhash: blockhash.blockhash,
-          lastValidBlockHeight: blockhash.lastValidBlockHeight,
+          blockhash,
+          lastValidBlockHeight,
           signature,
         });
 
