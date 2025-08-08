@@ -126,10 +126,11 @@ export default function DashboardPage() {
 
   // Save transactions to localStorage whenever they change for a connected wallet
   useEffect(() => {
-    if (connected && publicKey && transactions.length > 0) {
+    if (connected && publicKey) {
       const storageKey = `exn_transactions_${publicKey.toBase58()}`;
-      // Only save if the transactions are not the initial ones
-      if (JSON.stringify(transactions) !== JSON.stringify(initialTransactions)) {
+      // Do not save the initial example transactions
+      const isInitial = transactions.some(tx => tx.id.startsWith('txn_'));
+      if (!isInitial) {
         localStorage.setItem(storageKey, JSON.stringify(transactions));
       }
     }
@@ -205,14 +206,16 @@ export default function DashboardPage() {
             date: new Date(),
             status: "Completed",
         };
+        
         // Add new transaction to the start of the list
         setTransactions((prev) => {
-            // If the previous transactions were the initial ones, start fresh
-            if(JSON.stringify(prev) === JSON.stringify(initialTransactions)) {
+            const isInitial = prev.some(tx => tx.id.startsWith('txn_'));
+            if(isInitial) {
                 return [newTransaction];
             }
             return [newTransaction, ...prev];
         });
+
 
         toast({
             title: "Purchase Successful!",
@@ -230,7 +233,7 @@ export default function DashboardPage() {
     }
   };
   
-  if (connecting || !publicKey) {
+  if (connecting || (!connected && !publicKey)) {
       return <DashboardLoadingSkeleton />; 
   }
 
@@ -245,7 +248,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-6">
             <WalletConnect
               isConnected={connected}
-              walletAddress={publicKey.toBase58()}
+              walletAddress={publicKey ? publicKey.toBase58() : ""}
               onDisconnect={handleDisconnect}
             />
           </div>
@@ -271,3 +274,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
