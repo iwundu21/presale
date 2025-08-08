@@ -9,6 +9,7 @@ import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, Version
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, EXN_PRICE } from "@/config";
+import { saveTransaction, getTransactions, getUser, updateUser } from "@/services/firestore-service";
 
 export type Transaction = {
   id: string;
@@ -114,8 +115,16 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const fetchUserData = useCallback(async () => {
     if (connected && publicKey) {
         fetchPresaleProgress();
-        // Since there is no database, data is not fetched.
-        // You could re-implement with localStorage if temporary persistence is needed.
+        const userWallet = publicKey.toBase58();
+        const [userData, userTransactions] = await Promise.all([
+          getUser(userWallet),
+          getTransactions(userWallet)
+        ]);
+
+        if (userData) {
+          setExnBalance(userData.exnBalance);
+        }
+        setTransactions(userTransactions);
     } else {
         setTransactions([]);
         setExnBalance(0);
@@ -126,22 +135,32 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     fetchUserData();
   }, [fetchUserData]);
   
-  const updateTransactionStatus = useCallback(async (signature: string, status: "Completed" | "Failed") => {
-     setTransactions(prevTxs => prevTxs.map(tx => {
-        if (tx.id === signature) {
-            return { ...tx, status };
-        }
-        return tx;
-     }));
-      
-     if (status === 'Completed') {
-        const tx = transactions.find(t => t.id === signature);
-        if (tx) {
-            setExnBalance(prev => prev + tx.amountExn);
-        }
+  const updateTransactionStatus = useCallback(async (signature: string, status: "Completed" | "Failed", txDetails: Omit<Transaction, 'status' | 'id' | 'date'>) => {
+    if (!publicKey) return;
+    const userWallet = publicKey.toBase58();
+
+    const finalTransaction: Transaction = {
+        id: signature,
+        ...txDetails,
+        date: new Date(),
+        status
+    };
+     
+    if (status === 'Completed') {
+        const newBalance = exnBalance + txDetails.amountExn;
+        await Promise.all([
+          saveTransaction(userWallet, finalTransaction),
+          updateUser(userWallet, { exnBalance: newBalance, walletAddress: userWallet })
+        ]);
+        setExnBalance(newBalance);
         fetchPresaleProgress();
     }
-  }, [fetchPresaleProgress, transactions]);
+    
+    // Update local state to reflect change immediately
+    const otherTransactions = transactions.filter(tx => tx.id !== signature);
+    setTransactions([finalTransaction, ...otherTransactions]);
+
+  }, [publicKey, exnBalance, transactions, fetchPresaleProgress]);
 
 
   const handlePurchase = useCallback(async (exnAmount: number, paidAmount: number, currency: string) => {
@@ -155,6 +174,17 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
 
     let signature: string | null = null;
+    
+    // Optimistically create pending transaction for UI
+    const pendingTx: Transaction = {
+        id: `pending-${Date.now()}`,
+        amountExn: exnAmount,
+        paidAmount,
+        paidCurrency: currency,
+        date: new Date(),
+        status: "Pending",
+    };
+    setTransactions((prev) => [pendingTx, ...prev]);
     
     try {
         const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
@@ -216,17 +246,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         const transaction = new VersionedTransaction(message);
         signature = await sendTransaction(transaction, connection);
         
-        const newTransaction: Transaction = {
-            id: signature,
-            amountExn: exnAmount,
-            paidAmount,
-            paidCurrency: currency,
-            date: new Date(),
-            status: "Pending",
-        };
-        
-        // Optimistically update UI
-        setTransactions((prev) => [newTransaction, ...prev]);
+        // Remove pending tx
+        setTransactions(prev => prev.filter(tx => tx.id !== pendingTx.id));
         
         toast({
             title: "Transaction Sent",
@@ -244,7 +265,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         }
 
         // --- Post-confirmation logic ---
-        await updateTransactionStatus(signature, "Completed");
+        await updateTransactionStatus(signature, "Completed", {amountExn, paidAmount, paidCurrency});
         
         toast({
             title: "Purchase Successful!",
@@ -255,8 +276,11 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     } catch (error: any) {
         console.error("Transaction failed:", error);
         
+        // Remove pending tx and add failed tx
+        setTransactions(prev => prev.filter(tx => tx.id !== pendingTx.id));
+
         if (signature) {
-          await updateTransactionStatus(signature, "Failed");
+          await updateTransactionStatus(signature, "Failed", {amountExn, paidAmount, paidCurrency});
         }
 
         let errorMessage = "An unknown error occurred.";
