@@ -157,7 +157,6 @@ export default function DashboardPage() {
     }
 
     let signature: string | null = null;
-    const tempId = `temp-${Date.now()}`;
     
     try {
         const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
@@ -218,8 +217,10 @@ export default function DashboardPage() {
 
         const transaction = new VersionedTransaction(message);
 
+        signature = await sendTransaction(transaction, connection);
+        
         const newTransaction: Transaction = {
-            id: tempId,
+            id: signature,
             amountExn: exnAmount,
             paidAmount,
             paidCurrency: currency,
@@ -228,9 +229,6 @@ export default function DashboardPage() {
         };
         setTransactions((prev) => [newTransaction, ...prev]);
 
-        signature = await sendTransaction(transaction, connection);
-        
-        setTransactions(prev => prev.map(tx => tx.id === tempId ? { ...tx, id: signature! } : tx));
         
         toast({
             title: "Transaction Sent",
@@ -258,8 +256,9 @@ export default function DashboardPage() {
     } catch (error: any) {
         console.error("Transaction failed:", error);
         
-        const finalId = signature || tempId;
-        updateTransactionStatus(finalId, "Failed");
+        if (signature) {
+          updateTransactionStatus(signature, "Failed");
+        }
 
         let errorMessage = "An unknown error occurred.";
         if (error.message.includes("User rejected the request")) {
