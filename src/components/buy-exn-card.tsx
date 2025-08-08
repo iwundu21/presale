@@ -11,14 +11,14 @@ import { Skeleton } from "./ui/skeleton";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { getAssociatedTokenAddress } from "@solana/spl-token";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { USDC_MINT, USDT_MINT } from "@/config";
+import { USDC_MINT, USDT_MINT, EXN_PRICE } from "@/config";
 
 type BuyExnCardProps = {
   isConnected: boolean;
   onPurchase: (exnAmount: number, paidAmount: number, currency: string) => void;
 };
 
-const EXN_PRICE = 0.09;
+const SOL_GAS_BUFFER = 0.01; // Reserve 0.01 SOL for gas fees
 
 export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
   const { publicKey } = useWallet();
@@ -30,6 +30,7 @@ export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
   const [isLoadingPrice, setIsLoadingPrice] = useState(false);
   const [balances, setBalances] = useState({ SOL: 0, USDC: 0, USDT: 0 });
   const [isFetchingBalance, setIsFetchingBalance] = useState(false);
+  const [balanceError, setBalanceError] = useState("");
 
   useEffect(() => {
     const fetchSolPrice = async () => {
@@ -126,10 +127,25 @@ export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
     return usdValue.toFixed(2);
   };
 
-
   useEffect(() => {
     setReceiveAmount(calculateReceiveAmount(payAmount, currency, solPrice));
   }, [payAmount, currency, solPrice]);
+
+  useEffect(() => {
+    const numericPayAmount = parseFloat(payAmount);
+    if (isNaN(numericPayAmount)) {
+      setBalanceError("");
+      return;
+    }
+    
+    const maxBalance = currency === 'SOL' ? balances.SOL - SOL_GAS_BUFFER : balances[currency as keyof typeof balances];
+
+    if (numericPayAmount > maxBalance) {
+      setBalanceError("Insufficient balance.");
+    } else {
+      setBalanceError("");
+    }
+  }, [payAmount, currency, balances]);
 
 
   const handlePayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -155,9 +171,9 @@ export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
     }
   };
   
-  const isPurchaseDisabled = !isConnected || !parseFloat(payAmount) || parseFloat(payAmount) <= 0 || (currency === 'SOL' && isLoadingPrice);
-
   const currentBalance = balances[currency as keyof typeof balances];
+  const maxSpend = currency === 'SOL' ? currentBalance - SOL_GAS_BUFFER : currentBalance;
+  const isPurchaseDisabled = !isConnected || !parseFloat(payAmount) || parseFloat(payAmount) <= 0 || (currency === 'SOL' && isLoadingPrice) || !!balanceError;
 
   return (
     <Card className="w-full shadow-lg border-primary/20 bg-gradient-to-br from-card to-primary/5">
@@ -178,12 +194,12 @@ export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
             <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground">You Pay</span>
                 {isConnected && (
-                  <span className="text-muted-foreground">
+                  <button onClick={() => setPayAmount(maxSpend > 0 ? maxSpend.toFixed(currency === 'SOL' ? 5 : 2) : "0")} className="text-muted-foreground hover:text-white transition-colors">
                     Balance: {isFetchingBalance 
                       ? <Skeleton className="h-4 w-16 inline-block" /> 
                       : `${currentBalance.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${currency}`
                     }
-                  </span>
+                  </button>
                 )}
             </div>
             <div className="flex items-center gap-2">
@@ -208,6 +224,7 @@ export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
                 </Select>
             </div>
           </div>
+          {balanceError && <p className="text-xs text-red-400 mt-1 pl-1">{balanceError} {currency === 'SOL' && `(Requires ~${SOL_GAS_BUFFER} SOL for fees)`}</p>}
         </div>
 
         <div className="flex justify-center my-2">
@@ -249,7 +266,7 @@ export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
             disabled={isPurchaseDisabled}
             onClick={handleBuyNow}
         >
-          {isLoadingPrice && currency === 'SOL' ? 'Loading Price...' : (isConnected ? "Buy EXN" : "Connect Wallet to Buy")}
+          {isLoadingPrice && currency === 'SOL' ? 'Loading Price...' : (isConnected ? (balanceError || "Buy EXN") : "Connect Wallet to Buy")}
         </Button>
       </CardFooter>
     </Card>
