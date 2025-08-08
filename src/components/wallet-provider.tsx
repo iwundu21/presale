@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { FC, useMemo } from 'react';
+import React, { FC, useMemo, useCallback } from 'react';
 import { ConnectionProvider, WalletProvider as SolanaWalletProvider } from '@solana/wallet-adapter-react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
@@ -28,9 +28,16 @@ export const WalletProvider: FC<Props> = ({ children }) => {
         [network]
     );
 
+    const onError = useCallback(
+        (error: any) => {
+            console.error(error);
+        },
+        []
+    );
+
     return (
         <ConnectionProvider endpoint={endpoint}>
-            <SolanaWalletProvider wallets={wallets}>
+            <SolanaWalletProvider wallets={wallets} onError={onError} autoConnect={false}>
                 <WalletModalProvider>
                     {children}
                 </WalletModalProvider>
