@@ -133,8 +133,7 @@ export default function DashboardPage() {
     });
 
     try {
-        const transaction = new SolanaTransaction();
-        transaction.add(
+        const transaction = new SolanaTransaction().add(
             SystemProgram.transfer({
                 fromPubkey: publicKey,
                 toPubkey: new PublicKey(PRESALE_WALLET_ADDRESS),
@@ -146,11 +145,11 @@ export default function DashboardPage() {
             context: { slot: minContextSlot },
             value: { blockhash, lastValidBlockHeight }
         } = await connection.getLatestBlockhashAndContext();
-        
+
         transaction.recentBlockhash = blockhash;
         transaction.feePayer = publicKey;
 
-        const signature = await sendTransaction(transaction, connection, { minContextSlot });
+        const signature = await sendTransaction(transaction, connection);
         
         toast({ title: "Processing transaction...", description: `Transaction sent: ${signature}` });
 
