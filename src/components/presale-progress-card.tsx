@@ -25,12 +25,11 @@ type PresaleProgressCardProps = {
 }
 
 export function PresaleProgressCard({ userPurchasedAmount }: PresaleProgressCardProps) {
-    const [liveSoldAmount, setLiveSoldAmount] = useState(BASE_SOLD_AMOUNT);
     const [progress, setProgress] = useState(0);
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
     const [totalSoldValue, setTotalSoldValue] = useState(0);
 
-    const totalSold = liveSoldAmount + userPurchasedAmount;
+    const totalSold = BASE_SOLD_AMOUNT + userPurchasedAmount;
 
     useEffect(() => {
         const percentage = (totalSold / TOTAL_PRESALE_SUPPLY) * 100;
@@ -56,15 +55,9 @@ export function PresaleProgressCard({ userPurchasedAmount }: PresaleProgressCard
             }
         }, 1000);
 
-        // Live progress simulation logic
-        const liveProgressTimer = setInterval(() => {
-            setLiveSoldAmount(prev => prev + Math.floor(Math.random() * 50) + 10);
-        }, 2500); // Update every 2.5 seconds
-
         return () => {
             clearTimeout(animation);
             clearInterval(countdownTimer);
-            clearInterval(liveProgressTimer);
         };
     }, [totalSold]);
 
