@@ -8,6 +8,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "./ui/skeleton";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { getAssociatedTokenAddress } from "@solana/spl-token";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { USDC_MINT, USDT_MINT } from "@/config";
 
 type BuyExnCardProps = {
   isConnected: boolean;
@@ -17,11 +21,15 @@ type BuyExnCardProps = {
 const EXN_PRICE = 0.09;
 
 export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
+  const { publicKey } = useWallet();
+  const { connection } = useConnection();
   const [payAmount, setPayAmount] = useState("100.00");
   const [receiveAmount, setReceiveAmount] = useState("");
   const [currency, setCurrency] = useState("USDC");
   const [solPrice, setSolPrice] = useState<number | null>(null);
   const [isLoadingPrice, setIsLoadingPrice] = useState(false);
+  const [balances, setBalances] = useState({ SOL: 0, USDC: 0, USDT: 0 });
+  const [isFetchingBalance, setIsFetchingBalance] = useState(false);
 
   useEffect(() => {
     const fetchSolPrice = async () => {
@@ -32,7 +40,6 @@ export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
         setSolPrice(data.solana.usd);
       } catch (error) {
         console.error("Failed to fetch SOL price", error);
-        // Fallback or error handling
         setSolPrice(150); // Setting a fallback price
       }
       setIsLoadingPrice(false);
@@ -40,6 +47,52 @@ export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
 
     fetchSolPrice();
   }, []);
+  
+  useEffect(() => {
+    const fetchBalances = async () => {
+        if (!isConnected || !publicKey) return;
+        setIsFetchingBalance(true);
+        try {
+            // Fetch SOL balance
+            const solBalance = await connection.getBalance(publicKey);
+
+            // Fetch USDC balance
+            let usdcBalance = 0;
+            try {
+                const usdcTokenAccount = await getAssociatedTokenAddress(USDC_MINT, publicKey);
+                const usdcTokenAccountInfo = await connection.getParsedAccountInfo(usdcTokenAccount);
+                 if (usdcTokenAccountInfo.value) {
+                    usdcBalance = (usdcTokenAccountInfo.value.data as any).parsed.info.tokenAmount.uiAmount;
+                }
+            } catch (e) {
+                console.log("Could not fetch USDC balance for user, likely no account exists yet.");
+            }
+           
+            // Fetch USDT balance
+            let usdtBalance = 0;
+            try {
+                const usdtTokenAccount = await getAssociatedTokenAddress(USDT_MINT, publicKey);
+                const usdtTokenAccountInfo = await connection.getParsedAccountInfo(usdtTokenAccount);
+                if (usdtTokenAccountInfo.value) {
+                    usdtBalance = (usdtTokenAccountInfo.value.data as any).parsed.info.tokenAmount.uiAmount;
+                }
+            } catch (e) {
+                 console.log("Could not fetch USDT balance for user, likely no account exists yet.");
+            }
+
+            setBalances({
+                SOL: solBalance / LAMPORTS_PER_SOL,
+                USDC: usdcBalance,
+                USDT: usdtBalance
+            });
+        } catch (error) {
+            console.error("Failed to fetch wallet balances", error);
+        }
+        setIsFetchingBalance(false);
+    };
+
+    fetchBalances();
+  }, [isConnected, publicKey, connection]);
 
   const calculateReceiveAmount = (pay: string, curr: string, priceOfSol: number | null) => {
       const numericPayAmount = parseFloat(pay);
@@ -104,6 +157,8 @@ export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
   
   const isPurchaseDisabled = !isConnected || !parseFloat(payAmount) || parseFloat(payAmount) <= 0 || (currency === 'SOL' && isLoadingPrice);
 
+  const currentBalance = balances[currency as keyof typeof balances];
+
   return (
     <Card className="w-full shadow-lg border-primary/20 bg-gradient-to-br from-card to-primary/5">
       <CardHeader>
@@ -120,10 +175,29 @@ export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
       <CardContent>
         <div className="relative">
           <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">You Pay</span>
-              <Select value={currency} onValueChange={setCurrency}>
-                  <SelectTrigger className="w-auto h-auto bg-transparent border-none text-white font-medium">
+            <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">You Pay</span>
+                {isConnected && (
+                  <span className="text-muted-foreground">
+                    Balance: {isFetchingBalance 
+                      ? <Skeleton className="h-4 w-16 inline-block" /> 
+                      : `${currentBalance.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${currency}`
+                    }
+                  </span>
+                )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Input 
+                  id="pay" 
+                  type="text" 
+                  value={payAmount} 
+                  onChange={handlePayChange} 
+                  placeholder="0.00" 
+                  className="text-2xl font-bold bg-transparent border-none h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0 flex-grow"
+                  disabled={currency === 'SOL' && isLoadingPrice}
+              />
+               <Select value={currency} onValueChange={setCurrency}>
+                  <SelectTrigger className="w-auto h-auto bg-transparent border-none text-white font-medium focus:ring-0">
                     <SelectValue placeholder="Coin" />
                   </SelectTrigger>
                   <SelectContent>
@@ -133,15 +207,6 @@ export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
                   </SelectContent>
                 </Select>
             </div>
-            <Input 
-                id="pay" 
-                type="text" 
-                value={payAmount} 
-                onChange={handlePayChange} 
-                placeholder="0.00" 
-                className="text-2xl font-bold bg-transparent border-none h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                disabled={currency === 'SOL' && isLoadingPrice}
-            />
           </div>
           
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 p-1 bg-card border rounded-full">
@@ -187,4 +252,3 @@ export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
     </Card>
   );
 }
-
