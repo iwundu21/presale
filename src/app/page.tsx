@@ -13,6 +13,10 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
+    document.title = "Exnus Presale";
+  }, []);
+
+  useEffect(() => {
     if (connected) {
       router.push('/dashboard');
     }
