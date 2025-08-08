@@ -130,15 +130,16 @@ export default function DashboardPage() {
         }
 
         let presaleWalletPublicKey: PublicKey;
+        let memoProgramPublicKey: PublicKey;
         try {
             presaleWalletPublicKey = new PublicKey(recipientAddress);
+            // Correct Memo Program v1 address.
+            memoProgramPublicKey = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38");
         } catch (error) {
-            toast({ title: "Configuration Error", description: "Invalid presale wallet address.", variant: "destructive" });
-            console.error("Invalid presale wallet address:", error);
+            toast({ title: "Configuration Error", description: "An invalid public key was found in the configuration.", variant: "destructive" });
+            console.error("Invalid public key:", error);
             return;
         }
-
-        const memoProgramPublicKey = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38");
 
         const transferInstruction = SystemProgram.transfer({
             fromPubkey: publicKey,
