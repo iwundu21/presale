@@ -25,14 +25,16 @@ export function AppHeader() {
                     <ExnusLogo className="h-8 w-8 text-primary" />
                     <h1 className="text-2xl font-bold text-white">Exnus</h1>
                 </div>
-                {isClient && (
-                    <WalletMultiButton style={{
-                        backgroundColor: isDashboard && connected ? 'hsl(var(--secondary))' : 'hsl(var(--primary))',
-                        color: isDashboard && connected ? 'hsl(var(--secondary-foreground))' : 'hsl(var(--primary-foreground))',
-                        borderRadius: 'var(--radius)',
-                        border: isDashboard && connected ? '1px solid hsl(var(--border))' : 'none'
-                    }} />
-                )}
+                <div className="wallet-adapter-dropdown">
+                    {isClient && (
+                        <WalletMultiButton style={{
+                            backgroundColor: isDashboard && connected ? 'hsl(var(--secondary))' : 'hsl(var(--primary))',
+                            color: isDashboard && connected ? 'hsl(var(--secondary-foreground))' : 'hsl(var(--primary-foreground))',
+                            borderRadius: 'var(--radius)',
+                            border: isDashboard && connected ? '1px solid hsl(var(--border))' : 'none'
+                        }} />
+                    )}
+                </div>
             </div>
         </header>
     );

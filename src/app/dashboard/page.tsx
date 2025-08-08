@@ -20,6 +20,11 @@ export default function DashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const { toast } = useToast();
   const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     if (!connecting && !connected) {
@@ -146,7 +151,7 @@ export default function DashboardPage() {
     }
   };
   
-  if (connecting || !publicKey) {
+  if (!isClient || connecting || !publicKey) {
       return <DashboardLoadingSkeleton />; 
   }
 
