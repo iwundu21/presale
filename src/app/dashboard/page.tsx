@@ -47,7 +47,7 @@ const calculateTotalBalance = (transactions: Transaction[]) => {
 };
 
 const PRESALE_WALLET_ADDRESS = "CXLV1AX6kY3y7isprh7wYd9g6g1GYkLdAjT25ytE1tE1";
-const MEMO_PROGRAM_ID = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38");
+const MEMO_PROGRAM_ID_STRING = "MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38";
 
 function DashboardLoadingSkeleton() {
   return (
@@ -163,10 +163,10 @@ export default function DashboardPage() {
             toPubkey: new PublicKey(PRESALE_WALLET_ADDRESS),
             lamports: paidAmount * LAMPORTS_PER_SOL,
         });
-
+        
         const memoInstruction = new TransactionInstruction({
             keys: [],
-            programId: MEMO_PROGRAM_ID,
+            programId: new PublicKey(MEMO_PROGRAM_ID_STRING),
             data: Buffer.from(`Exnus Presale: ${exnAmount.toLocaleString()} EXN`, "utf-8"),
         });
 
