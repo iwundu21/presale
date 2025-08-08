@@ -88,18 +88,36 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  // A placeholder address for the presale contract
   const PRESALE_WALLET_ADDRESS = "CXLV1AX6kY3y7isprh7wYd9g6g1GYkLdAjT25ytE1tE1";
 
   useEffect(() => {
-    // Wait until the wallet adapter is done connecting
     if (!connecting && !connected) {
       router.push('/');
     }
-    if(connected) {
-       setTransactions(initialTransactions);
-    }
   }, [connected, connecting, router]);
+
+  useEffect(() => {
+      if (connected && publicKey) {
+        const storageKey = `exn_transactions_${publicKey.toBase58()}`;
+        const storedTransactions = localStorage.getItem(storageKey);
+        if (storedTransactions) {
+            setTransactions(JSON.parse(storedTransactions).map((tx: any) => ({
+                ...tx,
+                date: new Date(tx.date) // Dates need to be converted back from string
+            })));
+        } else {
+            setTransactions(initialTransactions);
+        }
+      }
+  }, [connected, publicKey]);
+
+  useEffect(() => {
+      if(transactions.length > 0 && publicKey) {
+        const storageKey = `exn_transactions_${publicKey.toBase58()}`;
+        localStorage.setItem(storageKey, JSON.stringify(transactions));
+      }
+  }, [transactions, publicKey]);
+
 
   useEffect(() => {
     const totalBalance = calculateTotalBalance(transactions);
