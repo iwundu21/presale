@@ -9,11 +9,11 @@ import { WalletProvider } from '@/components/wallet-provider';
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | Exnus',
-    default: 'Exnus',
+    template: '%s | Exnus Presale',
+    default: 'Exnus Presale',
   },
   description: 'Purchase EXN Tokens',
-  applicationName: 'Exnus',
+  applicationName: 'Exnus Presale',
 };
 
 export default function RootLayout({
