@@ -12,7 +12,7 @@ import { PresaleProgressCard } from "@/components/presale-progress-card";
 import { ExnusLogo } from "@/components/icons";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SystemProgram, Transaction as SolanaTransaction, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 
 
 const initialTransactions: Transaction[] = [
@@ -132,24 +132,37 @@ export default function DashboardPage() {
     });
 
     try {
-        const transaction = new SolanaTransaction().add(
-            SystemProgram.transfer({
-                fromPubkey: publicKey,
-                toPubkey: new PublicKey(PRESALE_WALLET_ADDRESS),
-                lamports: paidAmount * LAMPORTS_PER_SOL,
-            })
-        );
+        // 1. Get the latest blockhash
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+
+        // 2. Create the instruction
+        const transferInstruction = SystemProgram.transfer({
+            fromPubkey: publicKey,
+            toPubkey: new PublicKey(PRESALE_WALLET_ADDRESS),
+            lamports: paidAmount * LAMPORTS_PER_SOL,
+        });
+
+        // 3. Create a new TransactionMessage with the instruction
+        const message = new TransactionMessage({
+            payerKey: publicKey,
+            recentBlockhash: blockhash,
+            instructions: [transferInstruction],
+        }).compileToV0Message();
+
+        // 4. Create a VersionedTransaction
+        const transaction = new VersionedTransaction(message);
         
+        // 5. Send the transaction
         const signature = await sendTransaction(transaction, connection);
         
         toast({ title: "Processing transaction...", description: `Transaction sent: ${signature}` });
 
-        const latestBlockhash = await connection.getLatestBlockhash('confirmed');
+        // 6. Confirm the transaction
         await connection.confirmTransaction({
-            blockhash: latestBlockhash.blockhash,
-            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+            blockhash,
+            lastValidBlockHeight,
             signature
-        });
+        }, 'confirmed');
 
         const newTransaction: Transaction = {
             id: signature,
