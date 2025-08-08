@@ -145,17 +145,12 @@ export default function DashboardPage() {
         transaction.feePayer = publicKey;
         transaction.recentBlockhash = blockhash.blockhash;
         
-        const {
-            context: { slot: minContextSlot },
-        } = await connection.getLatestBlockhashAndContext();
-
-
         toast({
           title: "Confirm in wallet",
           description: `Please confirm the purchase of ${exnAmount.toLocaleString()} EXN.`,
         });
 
-        const signature = await sendTransaction(transaction, connection, { minContextSlot });
+        const signature = await sendTransaction(transaction, connection);
         
         toast({ title: "Processing transaction...", description: `Transaction sent: ${signature}` });
 
