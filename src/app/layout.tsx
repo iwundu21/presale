@@ -5,7 +5,7 @@ import '@solana/wallet-adapter-react-ui/styles.css';
 import { Toaster } from "@/components/ui/toaster"
 import { cn } from '@/lib/utils';
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v13-appRouter';
-import { WalletProvider } from '@/components/wallet-provider';
+import { ClientWalletProvider } from '@/components/client-wallet-provider';
 
 export const metadata: Metadata = {
   title: {
@@ -30,10 +30,10 @@ export default function RootLayout({
       </head>
       <body className={cn("font-body antialiased", 'min-h-screen')}>
         <AppRouterCacheProvider>
-          <WalletProvider>
+          <ClientWalletProvider>
             {children}
             <Toaster />
-          </WalletProvider>
+          </ClientWalletProvider>
         </AppRouterCacheProvider>
       </body>
     </html>
