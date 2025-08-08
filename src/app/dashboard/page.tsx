@@ -132,8 +132,6 @@ export default function DashboardPage() {
     });
 
     try {
-        const latestBlockhash = await connection.getLatestBlockhash('confirmed');
-
         const transaction = new SolanaTransaction().add(
             SystemProgram.transfer({
                 fromPubkey: publicKey,
@@ -142,13 +140,11 @@ export default function DashboardPage() {
             })
         );
         
-        transaction.feePayer = publicKey;
-        transaction.recentBlockhash = latestBlockhash.blockhash;
-        
         const signature = await sendTransaction(transaction, connection);
         
         toast({ title: "Processing transaction...", description: `Transaction sent: ${signature}` });
 
+        const latestBlockhash = await connection.getLatestBlockhash('confirmed');
         await connection.confirmTransaction({
             blockhash: latestBlockhash.blockhash,
             lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
