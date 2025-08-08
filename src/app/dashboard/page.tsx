@@ -12,11 +12,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
-import { PRESALE_WALLET_ADDRESS } from "@/config";
-
-
-const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // Mainnet
-const USDT_MINT = new PublicKey("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"); // Mainnet
+import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, EXN_PRICE } from "@/config";
 
 
 export default function DashboardPage() {
@@ -27,6 +23,7 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
+  const [totalExnSold, setTotalExnSold] = useState(0);
 
   useEffect(() => {
     setIsClient(true);
@@ -37,9 +34,60 @@ export default function DashboardPage() {
       router.push('/');
     }
   }, [isClient, connected, connecting, router]);
+  
+  const fetchPresaleProgress = async () => {
+      if (!PRESALE_WALLET_ADDRESS) return;
+      try {
+        const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
+
+        // Fetch SOL balance
+        const solBalance = await connection.getBalance(presaleWalletPublicKey);
+        const solPriceResponse = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
+        const solPriceData = await solPriceResponse.json();
+        const solPrice = solPriceData.solana.usd;
+        const solValue = (solBalance / LAMPORTS_PER_SOL) * solPrice;
+
+        // Fetch USDC balance
+        let usdcValue = 0;
+        try {
+            const usdcTokenAccount = await getAssociatedTokenAddress(USDC_MINT, presaleWalletPublicKey);
+            const usdcTokenAccountInfo = await connection.getParsedAccountInfo(usdcTokenAccount);
+            if (usdcTokenAccountInfo.value) {
+                const usdcBalance = (usdcTokenAccountInfo.value.data as any).parsed.info.tokenAmount.uiAmount;
+                usdcValue = usdcBalance;
+            }
+        } catch(e) {
+            console.log("Could not fetch USDC balance, likely no account exists yet.");
+        }
+        
+        // Fetch USDT balance
+        let usdtValue = 0;
+        try {
+            const usdtTokenAccount = await getAssociatedTokenAddress(USDT_MINT, presaleWalletPublicKey);
+            const usdtTokenAccountInfo = await connection.getParsedAccountInfo(usdtTokenAccount);
+            if (usdtTokenAccountInfo.value) {
+                const usdtBalance = (usdtTokenAccountInfo.value.data as any).parsed.info.tokenAmount.uiAmount;
+                usdtValue = usdtBalance;
+            }
+        } catch(e) {
+            console.log("Could not fetch USDT balance, likely no account exists yet.");
+        }
+
+
+        const totalRaised = solValue + usdcValue + usdtValue;
+        const totalSold = totalRaised / EXN_PRICE;
+
+        setTotalExnSold(totalSold);
+
+      } catch (error) {
+          console.error("Failed to fetch presale progress:", error);
+      }
+  };
+
 
   useEffect(() => {
     if (connected && publicKey) {
+      fetchPresaleProgress();
       const storageKey = `exn_transactions_${publicKey.toBase58()}`;
       try {
         const storedTransactions = localStorage.getItem(storageKey);
@@ -81,6 +129,9 @@ export default function DashboardPage() {
     setTransactions(prev =>
       prev.map(tx => (tx.id === signature ? { ...tx, status } : tx))
     );
+     if (status === 'Completed') {
+        fetchPresaleProgress();
+    }
   };
 
 
@@ -95,6 +146,7 @@ export default function DashboardPage() {
     }
 
     let signature: string | null = null;
+    const tempId = `temp-${Date.now()}`;
     
     try {
         const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
@@ -154,10 +206,7 @@ export default function DashboardPage() {
         }).compileToV0Message();
 
         const transaction = new VersionedTransaction(message);
-        
-        signature = await sendTransaction(transaction, connection);
-        
-        const tempId = signature || `temp-${Date.now()}`;
+
         const newTransaction: Transaction = {
             id: tempId,
             amountExn: exnAmount,
@@ -168,6 +217,10 @@ export default function DashboardPage() {
         };
         setTransactions((prev) => [newTransaction, ...prev]);
 
+        signature = await sendTransaction(transaction, connection);
+        
+        setTransactions(prev => prev.map(tx => tx.id === tempId ? { ...tx, id: signature! } : tx));
+        
         toast({
             title: "Transaction Sent",
             description: "Waiting for confirmation...",
@@ -183,7 +236,7 @@ export default function DashboardPage() {
             throw new Error("Transaction failed to confirm.");
         }
 
-        updateTransactionStatus(tempId, "Completed");
+        updateTransactionStatus(signature, "Completed");
         
         toast({
             title: "Purchase Successful!",
@@ -194,8 +247,8 @@ export default function DashboardPage() {
     } catch (error: any) {
         console.error("Transaction failed:", error);
         
-        const tempId = signature || `temp-${Date.now()}`;
-        updateTransactionStatus(tempId, "Failed");
+        const finalId = signature || tempId;
+        updateTransactionStatus(finalId, "Failed");
 
         let errorMessage = "An unknown error occurred.";
         if (error.message.includes("User rejected the request")) {
@@ -220,7 +273,7 @@ export default function DashboardPage() {
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
       <div className="lg:col-span-2 space-y-8">
         <BalanceCard balance={exnBalance} />
-        <PresaleProgressCard userPurchasedAmount={exnBalance} />
+        <PresaleProgressCard totalSold={totalExnSold} />
         <BuyExnCard isConnected={connected} onPurchase={handlePurchase} />
       </div>
       <div className="lg:col-span-3">

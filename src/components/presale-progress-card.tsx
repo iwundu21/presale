@@ -5,11 +5,9 @@ import { Flame } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
+import { TOTAL_PRESALE_SUPPLY, EXN_PRICE } from "@/config";
 
-// Presale configuration
-const TOTAL_PRESALE_SUPPLY = 50_000_000; // 50 Million EXN
 const PRESALE_END_DATE = new Date("2024-09-30T23:59:59Z");
-const EXN_PRICE = 0.09;
 
 const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
     return new Intl.NumberFormat('en-US', {
@@ -20,15 +18,13 @@ const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
 };
 
 type PresaleProgressCardProps = {
-    userPurchasedAmount: number;
+    totalSold: number;
 }
 
-export function PresaleProgressCard({ userPurchasedAmount }: PresaleProgressCardProps) {
+export function PresaleProgressCard({ totalSold }: PresaleProgressCardProps) {
     const [progress, setProgress] = useState(0);
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
     const [totalSoldValue, setTotalSoldValue] = useState(0);
-
-    const totalSold = userPurchasedAmount;
 
     // Effect for updating progress bar and countdown
     useEffect(() => {
