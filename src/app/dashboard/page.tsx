@@ -10,8 +10,11 @@ import { TransactionHistoryTable, type Transaction } from "@/components/transact
 import { BalanceCard } from "@/components/balance-card";
 import { PresaleProgressCard } from "@/components/presale-progress-card";
 import { ExnusLogo } from "@/components/icons";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SystemProgram, Transaction as SolanaTransaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
+
 
 const initialTransactions: Transaction[] = [
   {
@@ -79,11 +82,15 @@ function DashboardLoadingSkeleton() {
 
 
 export default function DashboardPage() {
-  const { connected, publicKey, disconnect, connecting } = useWallet();
+  const { connected, publicKey, disconnect, connecting, sendTransaction } = useWallet();
+  const { connection } = useConnection();
   const [exnBalance, setExnBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const { toast } = useToast();
   const router = useRouter();
+
+  // A placeholder address for the presale contract
+  const PRESALE_WALLET_ADDRESS = "CXLV1AX6kY3y7isprh7wYd9g6g1GYkLdAjT25ytE1tE1";
 
   useEffect(() => {
     // Wait until the wallet adapter is done connecting
@@ -109,31 +116,72 @@ export default function DashboardPage() {
     router.push('/');
   };
 
-  const handlePurchase = (exnAmount: number, paidAmount: number, currency: string) => {
+  const handlePurchase = async (exnAmount: number, paidAmount: number, currency: string) => {
+    if (!publicKey || !sendTransaction) {
+        toast({ title: "Wallet not connected", variant: "destructive" });
+        return;
+    }
+
+    if (currency !== 'SOL') {
+        toast({ title: "Only SOL payments are supported in this demo", variant: "destructive" });
+        return;
+    }
+
     toast({
-      title: "Confirm in wallet",
-      description: `Please confirm the purchase of ${exnAmount.toLocaleString()} EXN.`,
+        title: "Creating transaction...",
+        description: "Please wait while we prepare your transaction.",
     });
 
-    // In a real app, you would now construct and send a transaction
-    // to your presale program/contract. The user would sign it in their wallet.
-    // For this step, we will simulate a successful transaction after a delay.
+    try {
+        const transaction = new SolanaTransaction().add(
+            SystemProgram.transfer({
+                fromPubkey: publicKey,
+                toPubkey: new PublicKey(PRESALE_WALLET_ADDRESS),
+                lamports: paidAmount * LAMPORTS_PER_SOL,
+            })
+        );
+        
+        const {
+            context: { slot: minContextSlot },
+            value: { blockhash, lastValidBlockHeight }
+        } = await connection.getLatestBlockhashAndContext();
+        
+        transaction.recentBlockhash = blockhash;
 
-    setTimeout(() => {
-      const newTransaction: Transaction = {
-        id: `txn_${Date.now()}`,
-        amountExn: exnAmount,
-        paidAmount,
-        paidCurrency: currency,
-        date: new Date(),
-        status: "Completed",
-      };
-      setTransactions((prev) => [newTransaction, ...prev]);
-      toast({
-        title: "Purchase Successful!",
-        description: `You purchased ${exnAmount.toLocaleString()} EXN.`,
-      });
-    }, 2500);
+        toast({
+          title: "Confirm in wallet",
+          description: `Please confirm the purchase of ${exnAmount.toLocaleString()} EXN.`,
+        });
+
+        const signature = await sendTransaction(transaction, connection, { minContextSlot });
+        
+        toast({ title: "Processing transaction...", description: `Transaction sent: ${signature}` });
+
+        await connection.confirmTransaction({ blockhash, lastValidBlockHeight, signature });
+
+        const newTransaction: Transaction = {
+            id: signature,
+            amountExn: exnAmount,
+            paidAmount,
+            paidCurrency: currency,
+            date: new Date(),
+            status: "Completed",
+        };
+        setTransactions((prev) => [newTransaction, ...prev]);
+
+        toast({
+            title: "Purchase Successful!",
+            description: `You purchased ${exnAmount.toLocaleString()} EXN.`,
+            variant: "default"
+        });
+
+    } catch (error: any) {
+        toast({
+            title: "Purchase Failed",
+            description: error?.message || "An unknown error occurred.",
+            variant: "destructive",
+        });
+    }
   };
   
   if (connecting || !publicKey) {
@@ -177,4 +225,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
