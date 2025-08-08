@@ -36,6 +36,10 @@ const initialTransactions: Transaction[] = [
   },
 ];
 
+const calculateTotalBalance = (transactions: Transaction[]) => {
+    return transactions.reduce((total, tx) => total + tx.amountExn, 0);
+};
+
 export default function DashboardPage() {
   const [isConnected, setIsConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState("");
@@ -55,7 +59,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (isConnected) {
-      setExnBalance(4050);
       setTransactions(initialTransactions);
       setWalletAddress("4f...dE7m");
     } else {
@@ -64,6 +67,12 @@ export default function DashboardPage() {
       setWalletAddress("");
     }
   }, [isConnected]);
+
+  useEffect(() => {
+    const totalBalance = calculateTotalBalance(transactions);
+    setExnBalance(totalBalance);
+  }, [transactions]);
+
 
   const handleDisconnect = () => {
     localStorage.removeItem('walletConnected');
@@ -90,7 +99,6 @@ export default function DashboardPage() {
         status: "Completed",
       };
       setTransactions((prev) => [newTransaction, ...prev]);
-      setExnBalance((prev) => prev + exnAmount);
       toast({
         title: "Purchase Successful!",
         description: `You purchased ${exnAmount.toLocaleString()} EXN.`,
