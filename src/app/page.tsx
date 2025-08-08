@@ -8,7 +8,7 @@ import { LandingPage } from "@/components/landing-page";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 
 export default function Home() {
-  const { connected } = useWallet();
+  const { connected, connecting } = useWallet();
   const { setVisible } = useWalletModal();
   const router = useRouter();
 
@@ -23,7 +23,6 @@ export default function Home() {
   };
 
   return (
-    <LandingPage onConnect={handleConnect} isConnecting={false} />
+    <LandingPage onConnect={handleConnect} isConnecting={connecting} />
   );
 }
-

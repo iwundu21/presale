@@ -1,15 +1,8 @@
 
 "use client";
 
-import { LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 type WalletConnectProps = {
   isConnected: boolean;
@@ -22,33 +15,24 @@ export function WalletConnect({
   walletAddress,
   onDisconnect,
 }: WalletConnectProps) {
-  const { setVisible } = useWalletModal();
+  const { wallet } = useWallet();
 
-  if (isConnected) {
-    const formattedAddress = `${walletAddress.substring(0, 5)}...${walletAddress.substring(walletAddress.length - 5)}`;
-    const formattedAddressMobile = `${walletAddress.substring(0, 4)}...${walletAddress.substring(walletAddress.length - 4)}`;
-
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="flex items-center gap-2">
-            <span className="hidden sm:inline">{formattedAddress}</span>
-            <span className="sm:hidden">{formattedAddressMobile}</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onDisconnect}>
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Disconnect</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
+  if (wallet && isConnected) {
+    return <WalletMultiButton style={{
+      backgroundColor: 'hsl(var(--secondary))',
+      color: 'hsl(var(--secondary-foreground))',
+      borderRadius: 'var(--radius)',
+      border: '1px solid hsl(var(--border))'
+    }} />;
   }
 
   return (
-     <Button onClick={() => setVisible(true)}>
+     <WalletMultiButton style={{ 
+      backgroundColor: 'hsl(var(--primary))', 
+      color: 'hsl(var(--primary-foreground))',
+      borderRadius: 'var(--radius)'
+    }}>
       Connect Wallet
-    </Button>
+    </WalletMultiButton>
   );
 }
