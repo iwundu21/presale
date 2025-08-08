@@ -132,8 +132,12 @@ export default function DashboardPage() {
     });
 
     try {
-        // 1. Get the latest blockhash
-        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+        // 1. Get the latest blockhash and context
+        const {
+            context: { slot: minContextSlot },
+            value: { blockhash, lastValidBlockHeight }
+        } = await connection.getLatestBlockhashAndContext();
+
 
         // 2. Create the instruction
         const transferInstruction = SystemProgram.transfer({
@@ -153,7 +157,7 @@ export default function DashboardPage() {
         const transaction = new VersionedTransaction(message);
         
         // 5. Send the transaction
-        const signature = await sendTransaction(transaction, connection);
+        const signature = await sendTransaction(transaction, connection, { minContextSlot });
         
         toast({ title: "Processing transaction...", description: `Transaction sent: ${signature}` });
 
