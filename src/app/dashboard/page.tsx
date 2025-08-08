@@ -12,8 +12,7 @@ import { PresaleProgressCard } from "@/components/presale-progress-card";
 import { ExnusLogo } from "@/components/icons";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SystemProgram, Transaction as SolanaTransaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { PublicKey } from "@solana/web3.js";
+import { SystemProgram, Transaction as SolanaTransaction, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 
 
 const initialTransactions: Transaction[] = [
@@ -135,16 +134,16 @@ export default function DashboardPage() {
     try {
         const latestBlockhash = await connection.getLatestBlockhash('confirmed');
 
-        const transaction = new SolanaTransaction({
-            feePayer: publicKey,
-            recentBlockhash: latestBlockhash.blockhash,
-        }).add(
+        const transaction = new SolanaTransaction().add(
             SystemProgram.transfer({
                 fromPubkey: publicKey,
                 toPubkey: new PublicKey(PRESALE_WALLET_ADDRESS),
                 lamports: paidAmount * LAMPORTS_PER_SOL,
             })
         );
+        
+        transaction.feePayer = publicKey;
+        transaction.recentBlockhash = latestBlockhash.blockhash;
         
         const signature = await sendTransaction(transaction, connection);
         
