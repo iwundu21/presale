@@ -1,6 +1,6 @@
 'use server';
 
-import { db } from '@/lib/firebase';
+import { getFirebaseInstances } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, orderBy, query, Timestamp } from 'firebase/firestore';
 import type { Transaction } from '@/components/dashboard-client-provider';
 
@@ -15,6 +15,7 @@ const TRANSACTIONS_SUBCOLLECTION = 'transactions';
  */
 export async function saveTransaction(userId: string, transaction: Transaction): Promise<void> {
   try {
+    const { db } = getFirebaseInstances();
     const userDocRef = doc(db, USERS_COLLECTION, userId);
     const transactionsColRef = collection(userDocRef, TRANSACTIONS_SUBCOLLECTION);
     const transactionDocRef = doc(transactionsColRef, transaction.id);
@@ -39,6 +40,7 @@ export async function saveTransaction(userId: string, transaction: Transaction):
  */
 export async function getTransactions(userId: string): Promise<Transaction[]> {
     try {
+        const { db } = getFirebaseInstances();
         const userDocRef = doc(db, USERS_COLLECTION, userId);
         const transactionsColRef = collection(userDocRef, TRANSACTIONS_SUBCOLLECTION);
         // Order by date descending to get the newest transactions first
