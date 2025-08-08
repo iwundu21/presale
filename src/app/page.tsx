@@ -26,3 +26,4 @@ export default function Home() {
     <LandingPage onConnect={handleConnect} isConnecting={false} />
   );
 }
+

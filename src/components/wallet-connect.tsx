@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 
 type WalletConnectProps = {
   isConnected: boolean;
@@ -22,6 +22,7 @@ export function WalletConnect({
   walletAddress,
   onDisconnect,
 }: WalletConnectProps) {
+  const { setVisible } = useWalletModal();
 
   if (isConnected) {
     const formattedAddress = `${walletAddress.substring(0, 5)}...${walletAddress.substring(walletAddress.length - 5)}`;
@@ -46,10 +47,8 @@ export function WalletConnect({
   }
 
   return (
-     <WalletMultiButton style={{ 
-       backgroundColor: 'hsl(var(--primary))', 
-       color: 'hsl(var(--primary-foreground))',
-       borderRadius: 'var(--radius)'
-    }} />
+     <Button onClick={() => setVisible(true)}>
+      Connect Wallet
+    </Button>
   );
 }
