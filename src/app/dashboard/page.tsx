@@ -47,7 +47,6 @@ const calculateTotalBalance = (transactions: Transaction[]) => {
 };
 
 const PRESALE_WALLET_ADDRESS = "CXLV1AX6kY3y7isprh7wYd9g6g1GYkLdAjT25ytE1tE1";
-const MEMO_PROGRAM_ID_STRING = "MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38";
 
 function DashboardLoadingSkeleton() {
   return (
@@ -97,18 +96,22 @@ export default function DashboardPage() {
     }
   }, [connected, connecting, router]);
 
+  // Load transactions from localStorage when wallet is connected
   useEffect(() => {
     if (connected && publicKey) {
       const storageKey = `exn_transactions_${publicKey.toBase58()}`;
       try {
         const storedTransactions = localStorage.getItem(storageKey);
         if (storedTransactions) {
-          setTransactions(JSON.parse(storedTransactions).map((tx: any) => ({
+          const parsed = JSON.parse(storedTransactions);
+          // Ensure dates are parsed correctly
+          const transactionsWithDates = parsed.map((tx: any) => ({
             ...tx,
             date: new Date(tx.date)
-          })));
+          }));
+          setTransactions(transactionsWithDates);
         } else {
-          // If no transactions in storage, start with an empty list for this user.
+          // New user, start with an empty list
           setTransactions([]);
         }
       } catch (error) {
@@ -116,21 +119,18 @@ export default function DashboardPage() {
         setTransactions([]);
       }
     } else {
-        // When disconnected, show initial transactions.
-        setTransactions(initialTransactions)
+      // Not connected, show initial example transactions
+      setTransactions(initialTransactions);
     }
   }, [connected, publicKey]);
 
+  // Save transactions to localStorage whenever they change for a connected wallet
   useEffect(() => {
-      // Only save to localStorage if there is a connected wallet and there are transactions
-      if(publicKey && transactions.length > 0) {
-        const storageKey = `exn_transactions_${publicKey.toBase58()}`;
-        // Prevent saving initial example transactions to a user's storage
-        if (transactions !== initialTransactions) {
-             localStorage.setItem(storageKey, JSON.stringify(transactions));
-        }
-      }
-  }, [transactions, publicKey]);
+    if (connected && publicKey && transactions !== initialTransactions) {
+      const storageKey = `exn_transactions_${publicKey.toBase58()}`;
+      localStorage.setItem(storageKey, JSON.stringify(transactions));
+    }
+  }, [transactions, connected, publicKey]);
 
 
   useEffect(() => {
@@ -165,6 +165,8 @@ export default function DashboardPage() {
 
     try {
         const latestBlockhash = await connection.getLatestBlockhash();
+        
+        const MEMO_PROGRAM_ID_STRING = "MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38";
 
         const transferInstruction = SystemProgram.transfer({
             fromPubkey: publicKey,
@@ -202,6 +204,7 @@ export default function DashboardPage() {
             date: new Date(),
             status: "Completed",
         };
+        // Add new transaction to the start of the list
         setTransactions((prev) => [newTransaction, ...prev]);
 
         toast({
