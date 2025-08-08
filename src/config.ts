@@ -1,0 +1,2 @@
+
+export const PRESALE_WALLET_ADDRESS = "9Kqt28pfMVBsBvXYYnYQCT2BZyorAwzbR6dUmgQfsZYW";

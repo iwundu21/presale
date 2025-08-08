@@ -12,9 +12,9 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
+import { PRESALE_WALLET_ADDRESS } from "@/config";
 
 
-const PRESALE_WALLET_ADDRESS = process.env.NEXT_PUBLIC_PRESALE_WALLET;
 const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // Mainnet
 const USDT_MINT = new PublicKey("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"); // Mainnet
 

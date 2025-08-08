@@ -19,9 +19,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  env: {
-    NEXT_PUBLIC_PRESALE_WALLET: process.env.NEXT_PUBLIC_PRESALE_WALLET,
-  }
 };
 
 export default nextConfig;
