@@ -10,20 +10,25 @@ import { useState, useEffect } from "react";
 const TOTAL_PRESALE_SUPPLY = 50_000_000; // 50 Million EXN
 const PRESALE_END_DATE = new Date("2024-09-30T23:59:59Z");
 const MOCK_SOLD_AMOUNT = 12_500_000; // 12.5 Million EXN
+const EXN_PRICE = 0.09;
 
-const formatNumber = (num: number) => {
+const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
     return new Intl.NumberFormat('en-US', {
       notation: 'compact',
-      compactDisplay: 'short'
+      compactDisplay: 'short',
+      ...options
     }).format(num);
 };
 
 export function PresaleProgressCard() {
     const [progress, setProgress] = useState(0);
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+    const [totalSoldValue, setTotalSoldValue] = useState(0);
 
     useEffect(() => {
         const percentage = (MOCK_SOLD_AMOUNT / TOTAL_PRESALE_SUPPLY) * 100;
+        const soldValue = MOCK_SOLD_AMOUNT * EXN_PRICE;
+        setTotalSoldValue(soldValue);
         
         const animation = setTimeout(() => setProgress(percentage), 300);
 
@@ -65,9 +70,15 @@ export function PresaleProgressCard() {
             <CardContent className="space-y-4">
                 <Progress value={progress} className="w-full h-3" />
                 <div className="flex justify-between items-center text-sm font-medium">
-                    <span className="text-muted-foreground">Sold: <span className="text-white font-bold">{formatNumber(MOCK_SOLD_AMOUNT)}</span></span>
-                    <span className="text-muted-foreground">Target: <span className="text-white font-bold">{formatNumber(TOTAL_PRESALE_SUPPLY)}</span></span>
+                    <span className="text-muted-foreground">Sold: <span className="text-white font-bold">{formatNumber(MOCK_SOLD_AMOUNT)} EXN</span></span>
+                    <span className="text-muted-foreground">Target: <span className="text-white font-bold">{formatNumber(TOTAL_PRESALE_SUPPLY)} EXN</span></span>
                 </div>
+                 <div className="text-center">
+                    <p className="text-lg font-semibold text-white">
+                        ${formatNumber(totalSoldValue, { notation: 'standard', maximumFractionDigits: 0 })}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Total Raised</p>
+                 </div>
                  <div className="text-center bg-muted/50 rounded-lg p-2">
                     <p className="text-sm text-muted-foreground mb-1">Presale Ends In</p>
                     <div className="grid grid-cols-4 gap-1 text-center">
