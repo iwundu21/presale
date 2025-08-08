@@ -6,6 +6,7 @@ import { ArrowRight, Wallet, Bot, BrainCircuit, Rocket } from "lucide-react";
 import Image from "next/image";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { useEffect, useState } from "react";
 
 type LandingPageProps = {
   onConnect: () => void;
@@ -14,6 +15,11 @@ type LandingPageProps = {
 
 export function LandingPage({ onConnect, isConnecting }: LandingPageProps) {
     const { wallet } = useWallet();
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -23,11 +29,11 @@ export function LandingPage({ onConnect, isConnecting }: LandingPageProps) {
             <ExnusLogo className="h-8 w-8 text-primary" />
             <h1 className="text-2xl font-bold text-white">Exnus</h1>
           </div>
-           <WalletMultiButton style={{ 
+          {isClient && <WalletMultiButton style={{ 
                backgroundColor: 'hsl(var(--primary))', 
                color: 'hsl(var(--primary-foreground))',
                borderRadius: 'var(--radius)'
-            }} />
+            }} />}
         </div>
       </header>
 
