@@ -4,34 +4,22 @@
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
-type WalletConnectProps = {
-  isConnected: boolean;
-  walletAddress: string;
-  onDisconnect: () => void;
-};
+export function WalletConnect() {
+  const { wallet, connected } = useWallet();
 
-export function WalletConnect({
-  isConnected,
-  walletAddress,
-  onDisconnect,
-}: WalletConnectProps) {
-  const { wallet } = useWallet();
+  const buttonStyles = {
+    backgroundColor: connected ? 'hsl(var(--secondary))' : 'hsl(var(--primary))',
+    color: connected ? 'hsl(var(--secondary-foreground))' : 'hsl(var(--primary-foreground))',
+    borderRadius: 'var(--radius)',
+    border: connected ? '1px solid hsl(var(--border))' : 'none'
+  };
 
-  if (wallet && isConnected) {
-    return <WalletMultiButton style={{
-      backgroundColor: 'hsl(var(--secondary))',
-      color: 'hsl(var(--secondary-foreground))',
-      borderRadius: 'var(--radius)',
-      border: '1px solid hsl(var(--border))'
-    }} />;
+  if (wallet && connected) {
+    return <WalletMultiButton style={buttonStyles} />;
   }
 
   return (
-     <WalletMultiButton style={{ 
-      backgroundColor: 'hsl(var(--primary))', 
-      color: 'hsl(var(--primary-foreground))',
-      borderRadius: 'var(--radius)'
-    }}>
+     <WalletMultiButton style={buttonStyles}>
       Connect Wallet
     </WalletMultiButton>
   );

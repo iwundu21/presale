@@ -4,49 +4,13 @@
 import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
-import { WalletConnect } from "@/components/wallet-connect";
 import { BuyExnCard } from "@/components/buy-exn-card";
 import { TransactionHistoryTable, type Transaction } from "@/components/transaction-history-table";
 import { BalanceCard } from "@/components/balance-card";
 import { PresaleProgressCard } from "@/components/presale-progress-card";
-import { ExnusLogo } from "@/components/icons";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
-
-
-function DashboardLoadingSkeleton() {
-  return (
-    <div className="flex flex-col min-h-screen">
-       <header className="p-4 border-b border-white/10 sticky top-0 bg-background/80 backdrop-blur-sm z-10">
-        <div className="container mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <ExnusLogo className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold text-white">Exnus</h1>
-          </div>
-          <div className="flex items-center gap-6">
-            <Skeleton className="h-10 w-40" />
-          </div>
-        </div>
-      </header>
-       <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
-          <div className="lg:col-span-2 space-y-8">
-            <Skeleton className="h-44 w-full" />
-            <Skeleton className="h-56 w-full" />
-            <Skeleton className="h-80 w-full" />
-          </div>
-          <div className="lg:col-span-3">
-            <Skeleton className="h-[400px] w-full" />
-          </div>
-        </div>
-      </main>
-      <footer className="text-center p-4 text-sm text-muted-foreground border-t border-white/10">
-        © {new Date().getFullYear()} Exnus. All rights reserved.
-      </footer>
-    </div>
-  )
-}
+import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 
 
 export default function DashboardPage() {
@@ -101,15 +65,6 @@ export default function DashboardPage() {
     setExnBalance(totalBalance);
   }, [transactions]);
 
-
-  const handleDisconnect = async () => {
-    await disconnect();
-    toast({
-      title: "Wallet Disconnected",
-    });
-    router.push('/');
-  };
-
   const handlePurchase = async (exnAmount: number, paidAmount: number, currency: string) => {
     if (!publicKey) {
       toast({ title: "Wallet not connected", variant: "destructive" });
@@ -133,7 +88,7 @@ export default function DashboardPage() {
         let memoProgramPublicKey: PublicKey;
         try {
             presaleWalletPublicKey = new PublicKey(recipientAddress);
-            // Correct Memo Program v1 address.
+            // Memo Program v1 address.
             memoProgramPublicKey = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38");
         } catch (error) {
             toast({ title: "Configuration Error", description: "An invalid public key was found in the configuration.", variant: "destructive" });
@@ -194,44 +149,20 @@ export default function DashboardPage() {
     }
   };
   
-  if (connecting || (!connected && !publicKey)) {
+  if (connecting || !publicKey) {
       return <DashboardLoadingSkeleton />; 
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="p-4 border-b border-white/10 sticky top-0 bg-background/80 backdrop-blur-sm z-10">
-        <div className="container mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <ExnusLogo className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold text-white">Exnus</h1>
-          </div>
-          <div className="flex items-center gap-6">
-            <WalletConnect
-              isConnected={connected}
-              walletAddress={publicKey ? publicKey.toBase58() : ""}
-              onDisconnect={handleDisconnect}
-            />
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
-          <div className="lg:col-span-2 space-y-8">
-            <BalanceCard balance={exnBalance} />
-            <PresaleProgressCard userPurchasedAmount={exnBalance} />
-            <BuyExnCard isConnected={connected} onPurchase={handlePurchase} />
-          </div>
-          <div className="lg:col-span-3">
-            <TransactionHistoryTable transactions={transactions} />
-          </div>
-        </div>
-      </main>
-
-      <footer className="text-center p-4 text-sm text-muted-foreground border-t border-white/10">
-        © {new Date().getFullYear()} Exnus. All rights reserved.
-      </footer>
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+      <div className="lg:col-span-2 space-y-8">
+        <BalanceCard balance={exnBalance} />
+        <PresaleProgressCard userPurchasedAmount={exnBalance} />
+        <BuyExnCard isConnected={connected} onPurchase={handlePurchase} />
+      </div>
+      <div className="lg:col-span-3">
+        <TransactionHistoryTable transactions={transactions} />
+      </div>
     </div>
   );
 }

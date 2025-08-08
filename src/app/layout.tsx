@@ -6,6 +6,8 @@ import { Toaster } from "@/components/ui/toaster"
 import { cn } from '@/lib/utils';
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v13-appRouter';
 import { ClientWalletProvider } from '@/components/client-wallet-provider';
+import { AppHeader } from '@/components/app-header';
+import { AppFooter } from '@/components/app-footer';
 
 export const metadata: Metadata = {
   title: {
@@ -28,10 +30,14 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body className={cn("font-body antialiased", 'min-h-screen')}>
+      <body className={cn("font-body antialiased", 'min-h-screen flex flex-col')}>
         <AppRouterCacheProvider>
           <ClientWalletProvider>
-            {children}
+            <AppHeader />
+            <div className="flex-grow">
+              {children}
+            </div>
+            <AppFooter />
             <Toaster />
           </ClientWalletProvider>
         </AppRouterCacheProvider>
