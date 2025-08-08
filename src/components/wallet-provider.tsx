@@ -9,24 +9,21 @@ import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { clusterApiUrl } from '@solana/web3.js';
 
+// The network can be set to 'devnet', 'testnet', or 'mainnet-beta'.
+const network = WalletAdapterNetwork.Devnet;
+
+// Define wallets outside the component to ensure they are not re-instantiated on every render.
+const wallets = [
+    new PhantomWalletAdapter(),
+    new SolflareWalletAdapter({ network }),
+];
+
 type Props = {
     children?: React.ReactNode
 };
 
 export const WalletProvider: FC<Props> = ({ children }) => {
-    // The network can be set to 'devnet', 'testnet', or 'mainnet-beta'.
-    const network = WalletAdapterNetwork.Devnet;
-
-    // You can also provide a custom RPC endpoint.
-    const endpoint = useMemo(() => clusterApiUrl(network), [network]);
-
-    const wallets = useMemo(
-        () => [
-            new PhantomWalletAdapter(),
-            new SolflareWalletAdapter({ network }),
-        ],
-        [network]
-    );
+    const endpoint = useMemo(() => clusterApiUrl(network), []);
 
     const onError = useCallback(
         (error: any) => {
