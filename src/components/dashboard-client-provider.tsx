@@ -9,7 +9,6 @@ import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, Version
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, EXN_PRICE } from "@/config";
-import { getTransactions, saveTransaction, getUser, updateUserBalance } from "@/services/firestore-service";
 
 export type Transaction = {
   id: string;
@@ -115,28 +114,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const fetchUserData = useCallback(async () => {
     if (connected && publicKey) {
         fetchPresaleProgress();
-        const userAddress = publicKey.toBase58();
-        
-        // Fetch transactions
-        const userTransactions = await getTransactions(userAddress);
-
-        // Check for timed out pending transactions
-        const FIVE_MINUTES = 5 * 60 * 1000;
-        const now = new Date();
-        const updatedTransactions = userTransactions.map((tx: Transaction) => {
-            if (tx.status === 'Pending' && now.getTime() - new Date(tx.date).getTime() > FIVE_MINUTES) {
-                const failedTx = { ...tx, status: 'Failed' as const };
-                saveTransaction(userAddress, failedTx); 
-                return failedTx;
-            }
-            return tx;
-        });
-        setTransactions(updatedTransactions);
-
-        // Fetch user balance
-        const userData = await getUser(userAddress);
-        setExnBalance(userData?.exnBalance || 0);
-
+        // Since there is no database, data is not fetched.
+        // You could re-implement with localStorage if temporary persistence is needed.
     } else {
         setTransactions([]);
         setExnBalance(0);
@@ -147,19 +126,22 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     fetchUserData();
   }, [fetchUserData]);
   
-  const updateTransactionStatus = useCallback(async (signature: string, status: "Completed" | "Failed", userAddress: string) => {
-     const txToUpdate = transactions.find(tx => tx.id === signature);
-     if (txToUpdate) {
-        await saveTransaction(userAddress, { ...txToUpdate, status });
-     }
+  const updateTransactionStatus = useCallback(async (signature: string, status: "Completed" | "Failed") => {
+     setTransactions(prevTxs => prevTxs.map(tx => {
+        if (tx.id === signature) {
+            return { ...tx, status };
+        }
+        return tx;
+     }));
       
-     // After saving, refetch all user data to ensure consistency
-     await fetchUserData();
-
      if (status === 'Completed') {
+        const tx = transactions.find(t => t.id === signature);
+        if (tx) {
+            setExnBalance(prev => prev + tx.amountExn);
+        }
         fetchPresaleProgress();
     }
-  }, [fetchUserData, fetchPresaleProgress, transactions]);
+  }, [fetchPresaleProgress, transactions]);
 
 
   const handlePurchase = useCallback(async (exnAmount: number, paidAmount: number, currency: string) => {
@@ -232,7 +214,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         }).compileToV0Message();
 
         const transaction = new VersionedTransaction(message);
-        const userAddress = publicKey.toBase58();
         signature = await sendTransaction(transaction, connection);
         
         const newTransaction: Transaction = {
@@ -243,7 +224,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             date: new Date(),
             status: "Pending",
         };
-        await saveTransaction(userAddress, newTransaction);
         
         // Optimistically update UI
         setTransactions((prev) => [newTransaction, ...prev]);
@@ -264,19 +244,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         }
 
         // --- Post-confirmation logic ---
-        // 1. Get current balance
-        const currentUserData = await getUser(userAddress);
-        const currentBalance = currentUserData?.exnBalance || 0;
-        
-        // 2. Calculate new balance
-        const newBalance = currentBalance + exnAmount;
-        
-        // 3. Update user balance in Firestore
-        await updateUserBalance(userAddress, newBalance);
-        
-        // 4. Update transaction status to Completed
-        await updateTransactionStatus(signature, "Completed", userAddress);
-        // Note: updateTransactionStatus also calls fetchUserData, so UI will refresh.
+        await updateTransactionStatus(signature, "Completed");
         
         toast({
             title: "Purchase Successful!",
@@ -288,7 +256,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         console.error("Transaction failed:", error);
         
         if (signature) {
-          await updateTransactionStatus(signature, "Failed", publicKey.toBase58());
+          await updateTransactionStatus(signature, "Failed");
         }
 
         let errorMessage = "An unknown error occurred.";

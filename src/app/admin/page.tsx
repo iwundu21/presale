@@ -7,9 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { updatePresaleConfig } from '@/ai/flows/update-presale-config';
-import { exportUserData } from '@/ai/flows/export-user-data';
-import { Loader2, Download } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { getPresaleEndDate } from '@/services/presale-date-service';
 import { useRouter } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -35,7 +33,6 @@ const toDateTimeLocal = (date: Date): string => {
 export default function AdminPage() {
   const [currentEndDate, setCurrentEndDate] = useState<Date>(new Date());
   const [isLoading, setIsLoading] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
   const { publicKey, connected, connecting } = useWallet();
@@ -70,19 +67,15 @@ export default function AdminPage() {
     setIsLoading(true);
 
     try {
-      const result = await updatePresaleConfig({ endDate: endDateInput });
-      if (result.success) {
-        toast({
-          title: 'Success!',
-          description: result.message,
-          variant: 'success',
-        });
-        const newDate = await fetchCurrentDate();
-        setCurrentEndDate(newDate);
-        router.refresh();
-      } else {
-        throw new Error(result.message);
-      }
+        // Since there's no backend, we just show a success message.
+        // The date won't actually be saved.
+      toast({
+        title: 'Configuration Updated (Locally)',
+        description: 'Presale end date has been updated for this session. It will not be persisted.',
+        variant: 'success',
+      });
+      setCurrentEndDate(new Date(endDateInput));
+      
     } catch (error: any) {
       toast({
         title: 'Error updating config',
@@ -93,38 +86,6 @@ export default function AdminPage() {
       setIsLoading(false);
     }
   };
-
-  const handleDownload = async () => {
-    setIsDownloading(true);
-    try {
-      const result = await exportUserData();
-      if (result.success && result.csvData) {
-        const blob = new Blob([result.csvData], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `exnus_user_data_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        toast({
-            title: 'Download Started',
-            description: 'User data CSV file is being downloaded.',
-            variant: 'success'
-        });
-      } else {
-        throw new Error(result.message || 'Failed to generate CSV data.');
-      }
-    } catch (error: any) {
-         toast({
-            title: 'Download Failed',
-            description: error.message || 'An unknown error occurred.',
-            variant: 'destructive'
-        });
-    } finally {
-        setIsDownloading(false);
-    }
-  }
   
   if (!isAuthorized) {
     return (
@@ -143,7 +104,7 @@ export default function AdminPage() {
         <Card className="shadow-lg border-primary/20">
           <CardHeader>
             <CardTitle className="text-2xl font-bold text-white">Presale Configuration</CardTitle>
-            <CardDescription>Configure the presale end date and time.</CardDescription>
+            <CardDescription>Configure the presale end date and time. (Changes will not be saved without a database)</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleDateSubmit} className="space-y-6">
@@ -166,19 +127,6 @@ export default function AdminPage() {
               </Button>
             </form>
           </CardContent>
-        </Card>
-
-        <Card className="shadow-lg border-primary/20">
-            <CardHeader>
-                <CardTitle className="text-2xl font-bold text-white">User Data</CardTitle>
-                <CardDescription>Export user wallet addresses and their EXN balances.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Button onClick={handleDownload} className="w-full" variant="secondary" disabled={isDownloading}>
-                    {isDownloading ? <Loader2 className="animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    {isDownloading ? 'Generating...' : 'Download User Data (CSV)'}
-                </Button>
-            </CardContent>
         </Card>
       </div>
     </main>
