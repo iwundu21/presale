@@ -12,15 +12,12 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { getAssociatedTokenAddress } from "@solana/spl-token";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { USDC_MINT, USDT_MINT, EXN_PRICE } from "@/config";
-
-type BuyExnCardProps = {
-  isConnected: boolean;
-  onPurchase: (exnAmount: number, paidAmount: number, currency: string) => void;
-};
+import { useDashboard } from "./dashboard-client-provider";
 
 const SOL_GAS_BUFFER = 0.005; // Reserve 0.005 SOL for gas fees
 
-export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
+export function BuyExnCard() {
+  const { connected: isConnected, handlePurchase } = useDashboard();
   const { publicKey } = useWallet();
   const { connection } = useConnection();
   const [payAmount, setPayAmount] = useState("100.00");
@@ -167,7 +164,7 @@ export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
     const numericReceiveAmount = parseFloat(receiveAmount);
     const numericPayAmount = parseFloat(payAmount);
     if (numericReceiveAmount > 0 && isConnected) {
-      onPurchase(numericReceiveAmount, numericPayAmount, currency);
+      handlePurchase(numericReceiveAmount, numericPayAmount, currency);
     }
   };
   

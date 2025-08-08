@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
 import { SOFT_CAP, HARD_CAP, EXN_PRICE } from "@/config";
+import { useDashboard } from "./dashboard-client-provider";
 
 const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
     return new Intl.NumberFormat('en-US', {
@@ -15,20 +16,16 @@ const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
     }).format(num);
 };
 
-type PresaleProgressCardProps = {
-    totalSold: number;
-    presaleEndDate: Date;
-}
-
-export function PresaleProgressCard({ totalSold, presaleEndDate }: PresaleProgressCardProps) {
+export function PresaleProgressCard() {
+    const { totalExnSold, presaleEndDate } = useDashboard();
     const [progress, setProgress] = useState(0);
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
     const [totalSoldValue, setTotalSoldValue] = useState(0);
 
     // Effect for updating progress bar and countdown
     useEffect(() => {
-        const percentage = (totalSold / SOFT_CAP) * 100;
-        const soldValue = totalSold * EXN_PRICE;
+        const percentage = (totalExnSold / SOFT_CAP) * 100;
+        const soldValue = totalExnSold * EXN_PRICE;
         setTotalSoldValue(soldValue);
         
         // Clamp progress to a max of 100
@@ -37,7 +34,7 @@ export function PresaleProgressCard({ totalSold, presaleEndDate }: PresaleProgre
         // Countdown timer logic
         const countdownTimer = setInterval(() => {
             const now = new Date();
-            // presaleEndDate is a Date object, passed as prop
+            // presaleEndDate is a Date object, passed from context
             const difference = new Date(presaleEndDate).getTime() - now.getTime();
 
             if (difference > 0) {
@@ -55,7 +52,7 @@ export function PresaleProgressCard({ totalSold, presaleEndDate }: PresaleProgre
         return () => {
             clearInterval(countdownTimer);
         };
-    }, [totalSold, presaleEndDate]);
+    }, [totalExnSold, presaleEndDate]);
 
     return (
         <Card className="w-full shadow-lg border-primary/20 bg-gradient-to-br from-card to-primary/5">
@@ -73,7 +70,7 @@ export function PresaleProgressCard({ totalSold, presaleEndDate }: PresaleProgre
             <CardContent className="space-y-4">
                 <Progress value={progress} className="w-full h-3" />
                 <div className="flex justify-between items-center text-sm font-medium">
-                    <span className="text-muted-foreground">Sold: <span className="text-white font-bold">{formatNumber(totalSold)} EXN</span></span>
+                    <span className="text-muted-foreground">Sold: <span className="text-white font-bold">{formatNumber(totalExnSold)} EXN</span></span>
                     <span className="text-muted-foreground">Target: <span className="text-white font-bold">{formatNumber(SOFT_CAP)} EXN</span></span>
                 </div>
                 <div className="text-center">

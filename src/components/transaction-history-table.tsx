@@ -8,19 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "./ui/button";
 import Link from "next/link";
-
-export type Transaction = {
-  id: string;
-  amountExn: number;
-  paidAmount: number;
-  paidCurrency: string;
-  date: Date;
-  status: "Completed" | "Pending" | "Failed";
-};
-
-type TransactionHistoryTableProps = {
-  transactions: Transaction[];
-};
+import { useDashboard } from "./dashboard-client-provider";
+import type { Transaction } from "./dashboard-client-provider";
 
 const StatusBadge = ({ status }: { status: Transaction["status"] }) => {
   switch (status) {
@@ -51,7 +40,8 @@ const StatusBadge = ({ status }: { status: Transaction["status"] }) => {
 };
 
 
-export function TransactionHistoryTable({ transactions }: TransactionHistoryTableProps) {
+export function TransactionHistoryTable() {
+  const { transactions } = useDashboard();
   return (
     <Card className="shadow-lg border-white/10">
       <CardHeader>

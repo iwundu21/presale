@@ -3,12 +3,10 @@
 
 import { Wallet2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useDashboard } from "./dashboard-client-provider";
 
-type BalanceCardProps = {
-  balance: number;
-};
-
-export function BalanceCard({ balance }: BalanceCardProps) {
+export function BalanceCard() {
+  const { exnBalance } = useDashboard();
   return (
     <Card className="w-full shadow-lg border-primary/20 bg-gradient-to-br from-card to-primary/5">
         <CardHeader>
@@ -21,7 +19,7 @@ export function BalanceCard({ balance }: BalanceCardProps) {
         </CardHeader>
         <CardContent>
             <p className="text-5xl font-bold text-primary tracking-tight">
-                {balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                {exnBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </p>
             <p className="text-muted-foreground mt-1">
                 Total EXN tokens purchased.

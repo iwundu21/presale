@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, createContext, useContext } from "react";
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
@@ -18,19 +18,32 @@ export type Transaction = {
   status: "Completed" | "Pending" | "Failed";
 };
 
+type DashboardContextType = {
+    exnBalance: number;
+    transactions: Transaction[];
+    totalExnSold: number;
+    connected: boolean;
+    handlePurchase: (exnAmount: number, paidAmount: number, currency: string) => Promise<void>;
+    presaleEndDate: Date;
+}
+
+const DashboardContext = createContext<DashboardContextType | null>(null);
+
+export function useDashboard() {
+    const context = useContext(DashboardContext);
+    if (!context) {
+        throw new Error("useDashboard must be used within a DashboardProvider");
+    }
+    return context;
+}
+
 type DashboardClientProviderProps = {
-    children: (props: {
-        exnBalance: number;
-        transactions: Transaction[];
-        totalExnSold: number;
-        connected: boolean;
-        handlePurchase: (exnAmount: number, paidAmount: number, currency: string) => Promise<void>;
-    }) => React.ReactNode;
+    children: React.ReactNode;
     presaleEndDate: Date;
 };
 
 
-export function DashboardClientProvider({ children }: DashboardClientProviderProps) {
+export function DashboardClientProvider({ children, presaleEndDate }: DashboardClientProviderProps) {
   const { connected, publicKey, connecting, sendTransaction } = useWallet();
   const { connection } = useConnection();
   const [exnBalance, setExnBalance] = useState(0);
@@ -293,11 +306,18 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
       return <DashboardLoadingSkeleton />; 
   }
 
-  return children({
+  const contextValue = {
     exnBalance,
     transactions,
     totalExnSold,
     connected,
     handlePurchase,
-  });
+    presaleEndDate
+  };
+
+  return (
+    <DashboardContext.Provider value={contextValue}>
+      {children}
+    </DashboardContext.Provider>
+  );
 }
