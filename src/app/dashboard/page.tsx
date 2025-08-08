@@ -79,22 +79,11 @@ export default function DashboardPage() {
     try {
         const recipientAddress = process.env.NEXT_PUBLIC_PRESALE_WALLET;
         if (!recipientAddress) {
-          toast({ title: "Configuration Error", description: "Presale wallet address is not configured.", variant: "destructive" });
-          console.error("Presale wallet address is not set in .env file");
-          return;
+          throw new Error("Presale wallet address is not configured.");
         }
 
-        let presaleWalletPublicKey: PublicKey;
-        let memoProgramPublicKey: PublicKey;
-        try {
-            presaleWalletPublicKey = new PublicKey(recipientAddress);
-            // Memo Program v1 address.
-            memoProgramPublicKey = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38");
-        } catch (error) {
-            toast({ title: "Configuration Error", description: "An invalid public key was found in the configuration.", variant: "destructive" });
-            console.error("Invalid public key:", error);
-            return;
-        }
+        const presaleWalletPublicKey = new PublicKey(recipientAddress);
+        const memoProgramPublicKey = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38");
 
         const transferInstruction = SystemProgram.transfer({
             fromPubkey: publicKey,
@@ -141,9 +130,17 @@ export default function DashboardPage() {
 
     } catch (error: any) {
         console.error("Transaction failed:", error);
+        
+        let errorMessage = "An unknown error occurred.";
+        if (error.message.includes("Non-base58 character") || error.message.includes("Invalid public key")) {
+            errorMessage = "An invalid public key was found in the configuration. Please contact support.";
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+
         toast({
             title: "Transaction Failed",
-            description: error.message || "An unknown error occurred.",
+            description: errorMessage,
             variant: "destructive",
         });
     }
