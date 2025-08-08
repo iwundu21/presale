@@ -5,7 +5,7 @@ import { Flame } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
-import { TOTAL_PRESALE_SUPPLY, EXN_PRICE } from "@/config";
+import { SOFT_CAP, HARD_CAP, EXN_PRICE } from "@/config";
 
 const PRESALE_END_DATE = new Date("2024-09-30T23:59:59Z");
 
@@ -28,7 +28,7 @@ export function PresaleProgressCard({ totalSold }: PresaleProgressCardProps) {
 
     // Effect for updating progress bar and countdown
     useEffect(() => {
-        const percentage = (totalSold / TOTAL_PRESALE_SUPPLY) * 100;
+        const percentage = (totalSold / SOFT_CAP) * 100;
         const soldValue = totalSold * EXN_PRICE;
         setTotalSoldValue(soldValue);
         
@@ -74,8 +74,11 @@ export function PresaleProgressCard({ totalSold }: PresaleProgressCardProps) {
                 <Progress value={progress} className="w-full h-3" />
                 <div className="flex justify-between items-center text-sm font-medium">
                     <span className="text-muted-foreground">Sold: <span className="text-white font-bold">{formatNumber(totalSold)} EXN</span></span>
-                    <span className="text-muted-foreground">Target: <span className="text-white font-bold">{formatNumber(TOTAL_PRESALE_SUPPLY)} EXN</span></span>
+                    <span className="text-muted-foreground">Target: <span className="text-white font-bold">{formatNumber(SOFT_CAP)} EXN</span></span>
                 </div>
+                <div className="text-center">
+                   <p className="text-xs text-muted-foreground">Hard Cap: {formatNumber(HARD_CAP)} EXN</p>
+                 </div>
                  <div className="text-center">
                     <p className="text-lg font-semibold text-white">
                         ${formatNumber(totalSoldValue, { notation: 'standard', maximumFractionDigits: 0 })}

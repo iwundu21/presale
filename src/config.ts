@@ -8,4 +8,6 @@ export const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyT
 export const USDT_MINT = new PublicKey("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"); // Mainnet
 
 export const EXN_PRICE = 0.09;
-export const TOTAL_PRESALE_SUPPLY = 50_000_000;
+export const SOFT_CAP = 500_000_000;
+export const HARD_CAP = 700_000_000;
+
