@@ -28,18 +28,8 @@ export function PresaleProgressCard({ userPurchasedAmount }: PresaleProgressCard
     const [progress, setProgress] = useState(0);
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
     const [totalSoldValue, setTotalSoldValue] = useState(0);
-    const [liveBaseSold, setLiveBaseSold] = useState(BASE_SOLD_AMOUNT);
 
-    const totalSold = liveBaseSold + userPurchasedAmount;
-
-    // Effect for simulating live sales
-    useEffect(() => {
-        const saleSimulator = setInterval(() => {
-            setLiveBaseSold(prev => prev + (Math.random() * 500)); // Add a small random amount
-        }, 3000); // every 3 seconds
-
-        return () => clearInterval(saleSimulator);
-    }, []);
+    const totalSold = BASE_SOLD_AMOUNT + userPurchasedAmount;
 
     // Effect for updating progress bar and countdown
     useEffect(() => {
