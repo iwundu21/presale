@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback, createContext, useContext } from "react";
@@ -85,7 +86,7 @@ export function DashboardClientProvider({ children, presaleEndDate }: DashboardC
                 usdcValue = usdcBalance;
             }
         } catch(e) {
-            console.log("Could not fetch USDC balance, likely no account exists yet.");
+            console.log("Could not fetch USDC balance for presale wallet, likely no account exists yet.");
         }
         
         // Fetch USDT balance
@@ -98,7 +99,7 @@ export function DashboardClientProvider({ children, presaleEndDate }: DashboardC
                 usdtValue = usdtBalance;
             }
         } catch(e) {
-            console.log("Could not fetch USDT balance, likely no account exists yet.");
+            console.log("Could not fetch USDT balance for presale wallet, likely no account exists yet.");
         }
 
         const totalRaised = solValue + usdcValue + usdtValue;
