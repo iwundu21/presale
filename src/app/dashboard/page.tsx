@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
 
 
-const PRESALE_WALLET_ADDRESS = "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xTrB7V5NndEKrwL";
+const PRESALE_WALLET_ADDRESS = "CXLV1AX6kY3y7isprh7wYd9g6g1GYkLdAjT25ytE1tE1";
 
 function DashboardLoadingSkeleton() {
   return (
