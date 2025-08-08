@@ -141,13 +141,14 @@ export default function DashboardPage() {
             })
         );
         
+        const blockhash = await connection.getLatestBlockhash();
+        transaction.feePayer = publicKey;
+        transaction.recentBlockhash = blockhash.blockhash;
+        
         const {
             context: { slot: minContextSlot },
-            value: { blockhash, lastValidBlockHeight }
         } = await connection.getLatestBlockhashAndContext();
-        
-        transaction.recentBlockhash = blockhash;
-        transaction.feePayer = publicKey;
+
 
         toast({
           title: "Confirm in wallet",
@@ -158,7 +159,11 @@ export default function DashboardPage() {
         
         toast({ title: "Processing transaction...", description: `Transaction sent: ${signature}` });
 
-        await connection.confirmTransaction({ blockhash, lastValidBlockHeight, signature });
+        await connection.confirmTransaction({
+          blockhash: blockhash.blockhash,
+          lastValidBlockHeight: blockhash.lastValidBlockHeight,
+          signature,
+        });
 
         const newTransaction: Transaction = {
             id: signature,
