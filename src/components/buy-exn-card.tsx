@@ -18,7 +18,7 @@ type BuyExnCardProps = {
   onPurchase: (exnAmount: number, paidAmount: number, currency: string) => void;
 };
 
-const SOL_GAS_BUFFER = 0.01; // Reserve 0.01 SOL for gas fees
+const SOL_GAS_BUFFER = 0.005; // Reserve 0.005 SOL for gas fees
 
 export function BuyExnCard({ isConnected, onPurchase }: BuyExnCardProps) {
   const { publicKey } = useWallet();
