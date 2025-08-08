@@ -46,6 +46,9 @@ const calculateTotalBalance = (transactions: Transaction[]) => {
     return transactions.reduce((total, tx) => total + tx.amountExn, 0);
 };
 
+const PRESALE_WALLET_ADDRESS = "CXLV1AX6kY3y7isprh7wYd9g6g1GYkLdAjT25ytE1tE1";
+const MEMO_PROGRAM_ID = new PublicKey("Memo1UhkJRfHyvLMcVucJwxXeuD728Ecl5CJJsVjWgekn");
+
 function DashboardLoadingSkeleton() {
   return (
     <div className="flex flex-col min-h-screen">
@@ -87,10 +90,6 @@ export default function DashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const { toast } = useToast();
   const router = useRouter();
-
-  const PRESALE_WALLET_ADDRESS = "CXLV1AX6kY3y7isprh7wYd9g6g1GYkLdAjT25ytE1tE1";
-  const MEMO_PROGRAM_ID = new PublicKey("Memo1UhkJRfHyvLMcVucJwxXeuD728Ecl5CJJsVjWgekn");
-
 
   useEffect(() => {
     if (!connecting && !connected) {
