@@ -132,7 +132,7 @@ export default function DashboardPage() {
     });
 
     try {
-        const { blockhash } = await connection.getLatestBlockhash();
+        const latestBlockhash = await connection.getLatestBlockhash();
 
         const transferInstruction = SystemProgram.transfer({
             fromPubkey: publicKey,
@@ -142,7 +142,7 @@ export default function DashboardPage() {
 
         const message = new TransactionMessage({
             payerKey: publicKey,
-            recentBlockhash: blockhash,
+            recentBlockhash: latestBlockhash.blockhash,
             instructions: [transferInstruction],
         }).compileToV0Message();
         
@@ -150,6 +150,12 @@ export default function DashboardPage() {
         
         const signature = await sendTransaction(transaction, connection);
         
+        await connection.confirmTransaction({
+            blockhash: latestBlockhash.blockhash,
+            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+            signature,
+        });
+
         const newTransaction: Transaction = {
             id: signature,
             amountExn: exnAmount,
