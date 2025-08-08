@@ -96,7 +96,6 @@ export default function DashboardPage() {
     }
   }, [connected, connecting, router]);
 
-  // Load transactions from localStorage when wallet is connected
   useEffect(() => {
     if (connected && publicKey) {
       const storageKey = `exn_transactions_${publicKey.toBase58()}`;
@@ -104,14 +103,12 @@ export default function DashboardPage() {
         const storedTransactions = localStorage.getItem(storageKey);
         if (storedTransactions) {
           const parsed = JSON.parse(storedTransactions);
-          // Ensure dates are parsed correctly
           const transactionsWithDates = parsed.map((tx: any) => ({
             ...tx,
             date: new Date(tx.date)
           }));
           setTransactions(transactionsWithDates);
         } else {
-          // New user, start with an empty list
           setTransactions([]);
         }
       } catch (error) {
@@ -119,18 +116,15 @@ export default function DashboardPage() {
         setTransactions([]);
       }
     } else {
-      // Not connected, show initial example transactions
       setTransactions(initialTransactions);
     }
   }, [connected, publicKey]);
 
-  // Save transactions to localStorage whenever they change for a connected wallet
   useEffect(() => {
     if (connected && publicKey) {
       const storageKey = `exn_transactions_${publicKey.toBase58()}`;
-      // Do not save the initial example transactions
-      const isInitial = transactions.some(tx => tx.id.startsWith('txn_'));
-      if (!isInitial) {
+      // Do not save the initial example transactions if the user has no real transactions yet.
+      if (transactions.length > 0 && !transactions.some(tx => tx.id.startsWith('txn_'))) {
         localStorage.setItem(storageKey, JSON.stringify(transactions));
       }
     }
@@ -207,7 +201,6 @@ export default function DashboardPage() {
             status: "Completed",
         };
         
-        // Add new transaction to the start of the list
         setTransactions((prev) => {
             const isInitial = prev.some(tx => tx.id.startsWith('txn_'));
             if(isInitial) {
