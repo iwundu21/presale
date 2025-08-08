@@ -47,7 +47,7 @@ const calculateTotalBalance = (transactions: Transaction[]) => {
 };
 
 const PRESALE_WALLET_ADDRESS = "CXLV1AX6kY3y7isprh7wYd9g6g1GYkLdAjT25ytE1tE1";
-const MEMO_PROGRAM_ID = new PublicKey("Memo1UhkJRfHyvLMcVucJwxXeuD728Ecl5CJJsVjWgekn");
+const MEMO_PROGRAM_ID = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcVnuIK2xxavqaHoG38");
 
 function DashboardLoadingSkeleton() {
   return (
