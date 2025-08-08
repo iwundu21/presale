@@ -116,7 +116,7 @@ export default function DashboardPage() {
   };
 
   const handlePurchase = async (exnAmount: number, paidAmount: number, currency: string) => {
-    if (!publicKey || !sendTransaction) {
+    if (!publicKey) {
         toast({ title: "Wallet not connected", variant: "destructive" });
         return;
     }
@@ -132,12 +132,8 @@ export default function DashboardPage() {
     });
 
     try {
-        // 1. Get the latest blockhash and context
-        const {
-            context: { slot: minContextSlot },
-            value: { blockhash, lastValidBlockHeight }
-        } = await connection.getLatestBlockhashAndContext();
-
+        // 1. Get the latest blockhash
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
 
         // 2. Create the instruction
         const transferInstruction = SystemProgram.transfer({
@@ -157,7 +153,7 @@ export default function DashboardPage() {
         const transaction = new VersionedTransaction(message);
         
         // 5. Send the transaction
-        const signature = await sendTransaction(transaction, connection, { minContextSlot });
+        const signature = await sendTransaction(transaction, connection);
         
         toast({ title: "Processing transaction...", description: `Transaction sent: ${signature}` });
 
