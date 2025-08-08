@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { WalletConnect } from "@/components/wallet-connect";
 import { BuyExnCard } from "@/components/buy-exn-card";
 import { TransactionHistoryTable, type Transaction } from "@/components/transaction-history-table";
+import { BalanceCard } from "@/components/balance-card";
 import { ExnusLogo } from "@/components/icons";
 
 const initialTransactions: Transaction[] = [
@@ -119,12 +120,6 @@ export default function DashboardPage() {
             <h1 className="text-2xl font-bold text-white">Exnus</h1>
           </div>
           <div className="flex items-center gap-6">
-            {isConnected && (
-              <div className="text-right hidden sm:block">
-                <p className="text-sm text-muted-foreground">EXN Balance</p>
-                <p className="text-lg font-bold text-primary">{exnBalance.toLocaleString()}</p>
-              </div>
-            )}
             <WalletConnect
               isConnected={isConnected}
               walletAddress={walletAddress}
@@ -137,7 +132,8 @@ export default function DashboardPage() {
 
       <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-8">
+            <BalanceCard balance={exnBalance} />
             <BuyExnCard isConnected={isConnected} onPurchase={handlePurchase} />
           </div>
           <div className="lg:col-span-3">
