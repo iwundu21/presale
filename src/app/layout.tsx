@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { cn } from '@/lib/utils';
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v13-appRouter';
+import { WalletProvider } from '@/components/wallet-provider';
 
 export const metadata: Metadata = {
   title: 'Exnus',
@@ -23,9 +24,11 @@ export default function RootLayout({
       </head>
       <body className={cn("font-body antialiased", 'min-h-screen')}>
         <AppRouterCacheProvider>
-          {children}
+          <WalletProvider>
+            {children}
+            <Toaster />
+          </WalletProvider>
         </AppRouterCacheProvider>
-        <Toaster />
       </body>
     </html>
   );

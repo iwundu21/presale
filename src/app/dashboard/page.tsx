@@ -9,6 +9,7 @@ import { BuyExnCard } from "@/components/buy-exn-card";
 import { TransactionHistoryTable, type Transaction } from "@/components/transaction-history-table";
 import { BalanceCard } from "@/components/balance-card";
 import { ExnusLogo } from "@/components/icons";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 const initialTransactions: Transaction[] = [
   {
@@ -42,32 +43,19 @@ const calculateTotalBalance = (transactions: Transaction[]) => {
 };
 
 export default function DashboardPage() {
-  const [isConnected, setIsConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState("");
+  const { connected, publicKey, disconnect } = useWallet();
   const [exnBalance, setExnBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
-    const connected = localStorage.getItem('walletConnected');
-    if (connected === 'true') {
-      setIsConnected(true);
-    } else {
+    if (!connected) {
       router.push('/');
-    }
-  }, [router]);
-
-  useEffect(() => {
-    if (isConnected) {
-      setTransactions(initialTransactions);
-      setWalletAddress("4f...dE7m");
     } else {
-      setExnBalance(0);
-      setTransactions([]);
-      setWalletAddress("");
+       setTransactions(initialTransactions);
     }
-  }, [isConnected]);
+  }, [connected, router]);
 
   useEffect(() => {
     const totalBalance = calculateTotalBalance(transactions);
@@ -75,9 +63,8 @@ export default function DashboardPage() {
   }, [transactions]);
 
 
-  const handleDisconnect = () => {
-    localStorage.removeItem('walletConnected');
-    setIsConnected(false);
+  const handleDisconnect = async () => {
+    await disconnect();
     toast({
       title: "Wallet Disconnected",
     });
@@ -89,6 +76,10 @@ export default function DashboardPage() {
       title: "Confirm in wallet",
       description: `Please confirm the purchase of ${exnAmount.toLocaleString()} EXN.`,
     });
+
+    // In a real app, you would now construct and send a transaction
+    // to your presale program/contract. The user would sign it in their wallet.
+    // For this step, we will simulate a successful transaction after a delay.
 
     setTimeout(() => {
       const newTransaction: Transaction = {
@@ -107,7 +98,7 @@ export default function DashboardPage() {
     }, 2500);
   };
   
-  if (!isConnected) {
+  if (!connected || !publicKey) {
       return null; // Or a loading spinner
   }
 
@@ -121,9 +112,8 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-6">
             <WalletConnect
-              isConnected={isConnected}
-              walletAddress={walletAddress}
-              onConnect={() => {}}
+              isConnected={connected}
+              walletAddress={publicKey.toBase58()}
               onDisconnect={handleDisconnect}
             />
           </div>
@@ -134,7 +124,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
           <div className="lg:col-span-2 space-y-8">
             <BalanceCard balance={exnBalance} />
-            <BuyExnCard isConnected={isConnected} onPurchase={handlePurchase} />
+            <BuyExnCard isConnected={connected} onPurchase={handlePurchase} />
           </div>
           <div className="lg:col-span-3">
             <TransactionHistoryTable transactions={transactions} />

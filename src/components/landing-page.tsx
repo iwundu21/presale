@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { ExnusLogo } from "@/components/icons";
 import { ArrowRight, Wallet, Bot, BrainCircuit, Rocket } from "lucide-react";
 import Image from "next/image";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 type LandingPageProps = {
   onConnect: () => void;
@@ -11,6 +13,8 @@ type LandingPageProps = {
 };
 
 export function LandingPage({ onConnect, isConnecting }: LandingPageProps) {
+    const { wallet } = useWallet();
+
   return (
     <div className="flex flex-col min-h-screen">
        <header className="p-4 border-b border-white/10 sticky top-0 bg-background/80 backdrop-blur-sm z-10">
@@ -19,10 +23,11 @@ export function LandingPage({ onConnect, isConnecting }: LandingPageProps) {
             <ExnusLogo className="h-8 w-8 text-primary" />
             <h1 className="text-2xl font-bold text-white">Exnus</h1>
           </div>
-          <Button onClick={onConnect} disabled={isConnecting} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Wallet className="mr-2 h-4 w-4" />
-            {isConnecting ? "Connecting..." : "Connect Wallet"}
-          </Button>
+           <WalletMultiButton style={{ 
+               backgroundColor: 'hsl(var(--primary))', 
+               color: 'hsl(var(--primary-foreground))',
+               borderRadius: 'var(--radius)'
+            }} />
         </div>
       </header>
 
@@ -35,7 +40,7 @@ export function LandingPage({ onConnect, isConnecting }: LandingPageProps) {
           <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
             Exnus is not just a token; it's a revolution in decentralized intelligence. We're building a new ecosystem where your ideas have value and your data remains your own.
           </p>
-          <Button size="lg" onClick={onConnect} disabled={isConnecting}>
+          <Button size="lg" onClick={onConnect} disabled={isConnecting || !!wallet}>
              {isConnecting ? "Entering Ecosystem..." : "Enter the Ecosystem"}
             <ArrowRight className="ml-2 h-5 w-5"/>
           </Button>
@@ -95,4 +100,3 @@ export function LandingPage({ onConnect, isConnecting }: LandingPageProps) {
     </div>
   );
 }
-

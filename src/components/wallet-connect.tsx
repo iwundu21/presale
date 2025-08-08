@@ -1,6 +1,7 @@
+
 "use client";
 
-import { Wallet, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,18 +10,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 type WalletConnectProps = {
   isConnected: boolean;
   walletAddress: string;
-  onConnect: () => void;
   onDisconnect: () => void;
 };
 
 export function WalletConnect({
   isConnected,
   walletAddress,
-  onConnect,
   onDisconnect,
 }: WalletConnectProps) {
   if (isConnected) {
@@ -34,7 +34,7 @@ export function WalletConnect({
                 {walletAddress.substring(0, 2)}
               </AvatarFallback>
             </Avatar>
-            <span className="hidden sm:inline">{walletAddress}</span>
+            <span className="hidden sm:inline">{`${walletAddress.substring(0, 4)}...${walletAddress.substring(walletAddress.length - 4)}`}</span>
             <span className="sm:hidden">Wallet</span>
           </Button>
         </DropdownMenuTrigger>
@@ -49,9 +49,10 @@ export function WalletConnect({
   }
 
   return (
-    <Button onClick={onConnect} variant="default" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-      <Wallet className="mr-2 h-4 w-4" />
-      Connect Wallet
-    </Button>
+     <WalletMultiButton style={{ 
+       backgroundColor: 'hsl(var(--primary))', 
+       color: 'hsl(var(--primary-foreground))',
+       borderRadius: 'var(--radius)'
+    }} />
   );
 }

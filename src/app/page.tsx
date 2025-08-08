@@ -1,35 +1,28 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from 'next/navigation';
-import { useToast } from "@/hooks/use-toast";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { LandingPage } from "@/components/landing-page";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 
 export default function Home() {
-  const [isConnecting, setIsConnecting] = useState(false);
-  const { toast } = useToast();
+  const { connected } = useWallet();
+  const { setVisible } = useWalletModal();
   const router = useRouter();
 
-  const handleConnect = () => {
-    setIsConnecting(true);
-    toast({
-      title: "Connecting Wallet...",
-      description: "Please approve the connection in your wallet.",
-    });
-
-    // Simulate wallet connection
-    setTimeout(() => {
-      localStorage.setItem('walletConnected', 'true');
-      toast({
-        title: "Wallet Connected",
-        description: "You have successfully connected your wallet.",
-      });
+  useEffect(() => {
+    if (connected) {
       router.push('/dashboard');
-    }, 1500);
+    }
+  }, [connected, router]);
+
+  const handleConnect = () => {
+    setVisible(true);
   };
 
   return (
-    <LandingPage onConnect={handleConnect} isConnecting={isConnecting} />
+    <LandingPage onConnect={handleConnect} isConnecting={false} />
   );
 }
