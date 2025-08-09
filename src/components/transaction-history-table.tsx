@@ -64,14 +64,14 @@ export function TransactionHistoryTable() {
     }
   };
   
-  const isTransactionRecent = (tx: Transaction) => {
+  const isTransactionRecentAndPending = (tx: Transaction) => {
     if (tx.status !== 'Pending') return false;
     const fiveMinutes = 5 * 60 * 1000;
     return new Date().getTime() - new Date(tx.date).getTime() < fiveMinutes;
   };
 
   const getTooltipContent = (tx: Transaction) => {
-    const canRetry = isTransactionRecent(tx);
+    const canRetry = isTransactionRecentAndPending(tx);
     if (canRetry) {
         return "Retry this pending transaction. A wallet prompt will appear.";
     }
@@ -110,8 +110,8 @@ export function TransactionHistoryTable() {
             <TableBody>
               {currentTransactions.length > 0 ? (
                 currentTransactions.map((tx) => {
-                  const canRetry = isTransactionRecent(tx);
-                  const isRetryingCurrent = isLoadingPurchase && canRetry; // This assumes isLoadingPurchase is specific enough
+                  const canRetry = isTransactionRecentAndPending(tx);
+                  const isRetryingCurrent = isLoadingPurchase && canRetry;
                   const hasValidTxId = tx.id && !tx.id.startsWith('tx_');
 
                   return (
