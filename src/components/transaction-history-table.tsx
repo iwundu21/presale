@@ -10,6 +10,8 @@ import { useDashboard, Transaction } from "./dashboard-client-provider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Separator } from "./ui/separator";
 
 const formatTxId = (txId: string) => {
     if (txId.startsWith('tx_')) return 'Processing...';
@@ -125,8 +127,64 @@ function TransactionRow({ tx }: { tx: Transaction }) {
     )
 }
 
+function TransactionMobileCard({ tx }: { tx: Transaction }) {
+    const { retryTransaction, isLoadingPurchase } = useDashboard();
+
+    const isTxPendingAndRecent = (tx: Transaction) => {
+        if (tx.status !== 'Pending') return false;
+        const txTime = new Date(tx.date).getTime();
+        const fiveMinutesAgo = new Date().getTime() - (5 * 60 * 1000);
+        return txTime > fiveMinutesAgo;
+    }
+    const isLinkDisabled = tx.id.startsWith('tx_');
+
+    return (
+        <div className="p-4 bg-muted/30 rounded-lg space-y-3">
+            <div className="flex justify-between items-start">
+                <div className="font-medium text-white">
+                    <p>{`Purchased ${tx.amountExn.toLocaleString()} EXN`}</p>
+                    <p className="text-xs text-muted-foreground">{`Paid ${tx.paidAmount.toLocaleString()} ${tx.paidCurrency}`}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Badge variant={getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
+                        {getStatusIcon(tx.status)}
+                        {tx.status}
+                    </Badge>
+                </div>
+            </div>
+            <Separator />
+            <div className="flex justify-between items-center text-xs">
+                <p className="text-muted-foreground">{new Date(tx.date).toLocaleString()}</p>
+                 <div className="flex items-center gap-2">
+                    {isTxPendingAndRecent(tx) && (
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-7"
+                            onClick={() => retryTransaction(tx)}
+                            disabled={isLoadingPurchase}
+                        >
+                            <RefreshCw className={`mr-1.5 h-3 w-3 ${isLoadingPurchase ? 'animate-spin' : ''}`} />
+                            Retry
+                        </Button>
+                    )}
+                    <Button variant="outline" size="sm" className="h-7" asChild disabled={isLinkDisabled}>
+                        <a href={`https://solscan.io/tx/${tx.id}`} target="_blank" rel="noopener noreferrer">
+                           <ExternalLink className="mr-1.5 h-3 w-3" /> Solscan
+                        </a>
+                    </Button>
+                 </div>
+            </div>
+             {tx.status === 'Failed' && tx.failureReason && (
+                <p className="text-xs text-red-400 break-words pt-1">Reason: {tx.failureReason}</p>
+            )}
+        </div>
+    )
+}
+
 export function TransactionHistoryTable() {
     const { transactions } = useDashboard();
+    const isMobile = useIsMobile();
     
     return (
         <Card className="shadow-lg border-primary/20 bg-gradient-to-br from-card to-primary/5">
@@ -143,6 +201,17 @@ export function TransactionHistoryTable() {
             </CardHeader>
             <CardContent>
                 <ScrollArea className="h-[350px] w-full">
+                   {transactions.length === 0 ? (
+                        <div className="flex items-center justify-center h-full text-muted-foreground">
+                            You have no transactions yet.
+                        </div>
+                   ) : isMobile ? (
+                       <div className="space-y-4 pr-4">
+                           {transactions.map((tx) => (
+                               <TransactionMobileCard tx={tx} key={tx.id} />
+                           ))}
+                       </div>
+                   ) : (
                     <TooltipProvider>
                         <Table>
                             <TableHeader>
@@ -153,20 +222,13 @@ export function TransactionHistoryTable() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {transactions.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                                            You have no transactions yet.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    transactions.map((tx) => (
-                                       <TransactionRow tx={tx} key={tx.id} />
-                                    ))
-                                )}
+                                {transactions.map((tx) => (
+                                   <TransactionRow tx={tx} key={tx.id} />
+                                ))}
                             </TableBody>
                         </Table>
                     </TooltipProvider>
+                   )}
                 </ScrollArea>
             </CardContent>
         </Card>
