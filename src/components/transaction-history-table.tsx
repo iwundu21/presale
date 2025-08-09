@@ -87,7 +87,7 @@ export function TransactionHistoryTable() {
     }
     switch (tx.status) {
       case 'Pending':
-        return "Transaction is processing. If it persists, it will be marked as failed after 10 minutes.";
+        return "Transaction is processing or waiting for confirmation. This can take up to 10 minutes. If it persists, it will be marked as failed.";
       case 'Failed':
         return tx.failureReason || "Transaction failed. View on Solscan for details if a transaction ID is available.";
       case 'Completed':
