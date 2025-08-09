@@ -70,24 +70,35 @@ export async function updateUserBalanceAndTotals(walletAddress: string, newBalan
 
     try {
         await runTransaction(db, async (transaction) => {
-            const userDoc = await transaction.get(userDocRef);
+            const [userDoc, statsDoc] = await Promise.all([
+                transaction.get(userDocRef),
+                transaction.get(statsDocRef)
+            ]);
+
             if (!userDoc.exists()) {
-                throw new Error("User document does not exist!");
+                throw new Error(`User document for ${walletAddress} does not exist!`);
             }
 
             const oldBalance = userDoc.data().exnBalance || 0;
             const balanceDifference = newBalance - oldBalance;
 
             // Update user's balance
-            transaction.set(userDocRef, { exnBalance: newBalance }, { merge: true });
+            transaction.update(userDocRef, { exnBalance: newBalance });
 
             // Update total EXN sold
-            transaction.set(statsDocRef, {
-                totalExnSold: increment(balanceDifference)
-            }, { merge: true });
+            if (statsDoc.exists()) {
+                 transaction.update(statsDocRef, {
+                    totalExnSold: increment(balanceDifference)
+                });
+            } else {
+                // If the stats doc doesn't exist, create it with the new value.
+                // This handles the case of the very first balance update.
+                const currentTotal = await getPresaleStats().then(s => s.totalExnSold).catch(() => 0);
+                transaction.set(statsDocRef, { totalExnSold: currentTotal + balanceDifference });
+            }
         });
     } catch (error) {
-        console.error("Error updating user balance and totals:", error);
+        console.error("Error in updateUserBalanceAndTotals transaction:", error);
         throw new Error("Could not update user balance and totals.");
     }
 }
