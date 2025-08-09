@@ -50,18 +50,18 @@ export function LandingPage({ onConnect, isConnecting, presaleEndDate, presaleIn
   return (
     <main className="flex-grow">
       {/* Hero Section */}
-      <section className="container mx-auto text-center py-20 lg:py-32 space-y-8">
+      <section className="container mx-auto text-center py-20 lg:py-32 space-y-8 landing-hero">
         <div>
             <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 mb-4">
                <Badge variant="secondary" className="text-sm py-1 px-3 border border-border">
                   <BadgePercent className="h-4 w-4 mr-2 text-primary" />
                   {presaleInfo.seasonName}
                </Badge>
-                <p className="text-md text-muted-foreground">
+                <p className="text-md text-foreground/80">
                     Current Price: <span className="font-bold text-primary">${presaleInfo.tokenPrice.toFixed(2)}</span>
                 </p>
                 {nextSeason && (
-                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                   <div className="flex items-center gap-2 text-sm text-foreground/80">
                        <ChevronsRight className="h-4 w-4 text-primary/70" />
                        Next: <span className="font-semibold text-white/90">{nextSeason.name} at ${nextSeason.price.toFixed(2)}</span>
                    </div>
