@@ -14,6 +14,7 @@ import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { USDC_MINT, USDT_MINT, EXN_PRICE, PRESALE_WALLET_ADDRESS } from "@/config";
 import { useDashboard } from "./dashboard-client-provider";
 import { useToast } from "@/hooks/use-toast";
+import { Separator } from "./ui/separator";
 
 const SOL_GAS_BUFFER = 0.005; // Reserve 0.005 SOL for gas fees
 
@@ -251,7 +252,7 @@ export function BuyExnCard() {
         )}
         
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex-col gap-4">
         <Button 
             size="lg" 
             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg py-6" 
@@ -260,6 +261,16 @@ export function BuyExnCard() {
         >
           {isLoadingPrice && currency === 'SOL' ? 'Loading Price...' : (isConnected ? (balanceError || "Buy EXN") : "Connect Wallet to Buy")}
         </Button>
+        <Separator className="my-2" />
+        <div className="text-center text-xs text-muted-foreground">
+            <p>You can also send funds directly to the address below:</p>
+            <div className="flex items-center justify-center gap-2 mt-2 p-2 rounded-md bg-muted/50 border">
+                 <p className="font-mono text-white break-all">{PRESALE_WALLET_ADDRESS}</p>
+                <Button variant="ghost" size="icon" onClick={handleCopyToClipboard} className="h-7 w-7 shrink-0">
+                    <Copy className="h-4 w-4" />
+                </Button>
+            </div>
+        </div>
       </CardFooter>
     </Card>
   );
