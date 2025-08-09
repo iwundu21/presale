@@ -4,6 +4,7 @@
 import { BuyExnCard } from "@/components/buy-exn-card";
 import { PresaleProgressCard } from "@/components/presale-progress-card";
 import { DashboardClientProvider } from "@/components/dashboard-client-provider";
+import { TransactionHistoryTable } from "@/components/transaction-history-table";
 
 export default function DashboardPage() {
   return (
@@ -14,7 +15,7 @@ export default function DashboardPage() {
                 <BuyExnCard />
             </div>
             <div className="lg:col-span-1">
-               {/* Transaction History Removed */}
+               <TransactionHistoryTable />
             </div>
         </div>
     </DashboardClientProvider>

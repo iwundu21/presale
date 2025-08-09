@@ -8,7 +8,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
-import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, EXN_PRICE, SOFT_CAP } from "@/config";
+import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, SOFT_CAP } from "@/config";
 
 
 export type Transaction = {
@@ -77,9 +77,13 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     setIsLoadingPrice(true);
 
     try {
-       // Mock data since firestore is removed
-       setExnBalance(0);
-       setTransactions([]);
+       // Using local state to simulate backend data
+       setExnBalance(1250.75); // Mock balance
+       setTransactions([ // Mock transactions
+         { id: 'tx_3', amountExn: 500, paidAmount: 45, paidCurrency: 'USDC', date: new Date(Date.now() - 86400000 * 2), status: 'Completed'},
+         { id: 'tx_2', amountExn: 150.75, paidAmount: 0.1, paidCurrency: 'SOL', date: new Date(Date.now() - 86400000), status: 'Completed'},
+         { id: 'tx_1', amountExn: 600, paidAmount: 54, paidCurrency: 'USDT', date: new Date(), status: 'Completed'},
+       ]);
        setTotalExnSold(SOFT_CAP * 0.25); // Mock 25% progress
        
        const solPriceData = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd').then(res => res.json())
@@ -221,8 +225,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
           lastValidBlockHeight
         }, 'confirmed');
         
-        // Removed recordPurchase call
-
+        // This is where a call to a real backend would happen.
+        // We will simulate it here.
         const completedTx: Transaction = { id: signature, ...txDetails, status: 'Completed', date: new Date() };
         
         setExnBalance(prev => prev + exnAmount);
