@@ -23,7 +23,7 @@ export function PresaleProgressCard() {
 
     // Effect for updating progress bar
     useEffect(() => {
-        const percentage = totalExnSold > 0 && SOFT_CAP > 0 ? (totalExnSold / SOFT_CAP) * 100 : 0;
+        const percentage = totalExnSold > 0 && HARD_CAP > 0 ? (totalExnSold / HARD_CAP) * 100 : 0;
         const soldValue = totalExnSold * EXN_PRICE;
         setTotalSoldValue(soldValue);
         
@@ -51,11 +51,8 @@ export function PresaleProgressCard() {
                 </div>
                 <div className="flex justify-between items-center text-sm font-medium">
                     <span className="text-muted-foreground">Sold: <span className="text-white font-bold">{formatNumber(totalExnSold)} EXN</span></span>
-                    <span className="text-muted-foreground">Target: <span className="text-white font-bold">{formatNumber(SOFT_CAP)} EXN</span></span>
+                    <span className="text-muted-foreground">Hard Cap: <span className="text-white font-bold">{formatNumber(HARD_CAP)} EXN</span></span>
                 </div>
-                <div className="text-center">
-                   <p className="text-xs text-muted-foreground">Hard Cap: {formatNumber(HARD_CAP)} EXN</p>
-                 </div>
                  <div className="text-center">
                     <p className="text-lg font-semibold text-white">
                         ${formatNumber(totalSoldValue, { notation: 'standard', maximumFractionDigits: 0 })}
