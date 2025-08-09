@@ -15,6 +15,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogDescription,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import Link from "next/link";
@@ -37,19 +38,16 @@ const StatusBadge = ({ status, onRetry, isRetrying, canRetry }: { status: Transa
               <AlertCircle className="mr-1 h-3 w-3 animate-pulse" />
               {status}
             </Badge>
-            {canRetry && (
-                 <Button size="sm" variant="outline" onClick={onRetry} disabled={isRetrying} className="h-auto py-1 px-2 text-xs">
-                    {isRetrying ? <RefreshCw className="h-3 w-3 animate-spin" /> : 'Retry'}
-                </Button>
-            )}
         </div>
       );
     case "Failed":
-      return (
-        <Badge variant="outline" className="border-red-500/50 text-red-400 bg-red-500/10">
-          <XCircle className="mr-1 h-3 w-3" />
-          {status}
-        </Badge>
+       return (
+        <div className="flex items-center justify-end gap-2">
+            <Badge variant="outline" className="border-red-500/50 text-red-400 bg-red-500/10">
+              <XCircle className="mr-1 h-3 w-3" />
+              {status}
+            </Badge>
+        </div>
       );
     default:
       return <Badge>{status}</Badge>;
@@ -149,56 +147,74 @@ export function TransactionHistoryTable() {
                       <TableCell className="text-right">
                         <StatusBadge 
                             status={tx.status} 
-                            onRetry={() => handlePurchase(tx.amountExn, tx.paidAmount, tx.paidCurrency, tx.id)}
-                            isRetrying={isRetryingCurrent}
-                            canRetry={canRetry}
                         />
                       </TableCell>
                       <TableCell className="text-center">
-                         <Tooltip>
-                          <TooltipTrigger asChild>
-                              <span>
-                                {hasValidTxId ? (
-                                    <Button asChild variant="ghost" size="icon">
-                                        <Link href={`https://solscan.io/tx/${tx.id}?cluster=mainnet`} target="_blank" rel="noopener noreferrer">
-                                            <ExternalLink className="h-4 w-4 text-accent" />
-                                        </Link>
-                                    </Button>
-                                ) : (
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" size="icon">
-                                          <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                         <div className="flex items-center justify-center gap-2">
+                            {hasValidTxId ? (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button asChild variant="ghost" size="icon">
+                                            <Link href={`https://solscan.io/tx/${tx.id}?cluster=mainnet`} target="_blank" rel="noopener noreferrer">
+                                                <ExternalLink className="h-4 w-4 text-accent" />
+                                            </Link>
                                         </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>Transaction Details</AlertDialogTitle>
-                                        </AlertDialogHeader>
-                                        <div className="text-sm">
-                                            {tx.failureReason ? (
-                                              <>
-                                                <div className="mb-2 text-muted-foreground">This transaction failed with the following error:</div>
-                                                <div className="text-red-400 bg-red-500/10 p-2 rounded-md text-xs">{tx.failureReason}</div>
-                                              </>
-                                            ) : (
-                                              <div className="text-muted-foreground">
-                                                This transaction did not generate an on-chain signature. This can happen if it was cancelled, timed out, or failed before being sent to the network.
-                                              </div>
-                                            )}
-                                        </div>
-                                        <AlertDialogFooter>
-                                          <AlertDialogAction>Close</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                )}
-                              </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                             <p className="max-w-xs">{getTooltipContent(tx)}</p>
-                          </TooltipContent>
-                        </Tooltip>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>View on Solscan</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            ) : (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Transaction Details</AlertDialogTitle>
+                                       <AlertDialogDescription>
+                                            This provides details about your transaction.
+                                       </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <div className="text-sm text-muted-foreground">
+                                        {tx.failureReason ? (
+                                          <>
+                                            <div className="mb-2">This transaction failed with the following error:</div>
+                                            <div className="text-red-400 bg-red-500/10 p-2 rounded-md text-xs">{tx.failureReason}</div>
+                                          </>
+                                        ) : (
+                                          <div>
+                                            This transaction did not generate an on-chain signature. This can happen if it was cancelled, timed out, or failed before being sent to the network.
+                                          </div>
+                                        )}
+                                    </div>
+                                    <AlertDialogFooter>
+                                      <AlertDialogAction>Close</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                            )}
+
+                            {canRetry && (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button 
+                                            size="icon" 
+                                            variant="ghost" 
+                                            onClick={() => handlePurchase(tx.amountExn, tx.paidAmount, tx.paidCurrency, tx.id)} 
+                                            disabled={isRetryingCurrent}
+                                        >
+                                            {isRetryingCurrent ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4 text-amber-400" />}
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Retry Transaction</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            )}
+                         </div>
                       </TableCell>
                     </TableRow>
                   )
