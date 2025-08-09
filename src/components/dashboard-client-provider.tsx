@@ -9,6 +9,7 @@ import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, Version
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, EXN_PRICE } from "@/config";
+import { getUser, getTransactions, saveTransaction, updateUser } from "@/services/firestore-service";
 
 export type Transaction = {
   id: string;
@@ -114,10 +115,21 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const fetchUserData = useCallback(async () => {
     if (connected && publicKey) {
         fetchPresaleProgress();
-        // In a real app, you'd fetch data from a backend here.
-        // For this simplified version, we just reset state on wallet change.
-        setExnBalance(0);
-        setTransactions([]);
+        const walletAddress = publicKey.toBase58();
+        
+        // Fetch user data and transactions from Firestore
+        const userData = await getUser(walletAddress);
+        const userTransactions = await getTransactions(walletAddress);
+
+        if (userData) {
+            setExnBalance(userData.exnBalance);
+        } else {
+            // If user does not exist, create them
+            await updateUser(walletAddress, { walletAddress: walletAddress, exnBalance: 0 });
+            setExnBalance(0);
+        }
+        setTransactions(userTransactions);
+
     } else {
         setTransactions([]);
         setExnBalance(0);
@@ -138,9 +150,13 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         status
     };
      
+    // Save to Firestore
+    await saveTransaction(publicKey.toBase58(), finalTransaction);
+     
     if (status === 'Completed') {
         const newBalance = exnBalance + txDetails.amountExn;
         setExnBalance(newBalance);
+        await updateUser(publicKey.toBase58(), { exnBalance: newBalance });
         fetchPresaleProgress();
     }
     
@@ -263,9 +279,11 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     } catch (error: any) {
         console.error("Transaction failed:", error);
         
+        // Remove pending transaction from UI
         setTransactions(prev => prev.filter(tx => tx.id !== pendingTx.id));
 
         if (signature) {
+          // If we have a signature, the tx was sent but failed to confirm or process
           await updateTransactionStatus(signature, "Failed", {amountExn, paidAmount, paidCurrency});
         }
 

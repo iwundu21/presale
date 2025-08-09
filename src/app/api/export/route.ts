@@ -32,9 +32,9 @@ export async function GET(req: NextRequest) {
         // In a real production app, you should use a proper authentication mechanism
         // like JWTs, sessions, or a dedicated API key solution.
         // For this demo, we are proceeding with a simple header check.
-        // if (wallet !== ADMIN_WALLET_ADDRESS) {
-        //     return new NextResponse("Unauthorized", { status: 401 });
-        // }
+        if (wallet !== ADMIN_WALLET_ADDRESS) {
+            return new NextResponse("Unauthorized", { status: 401 });
+        }
         
         const users = await getAllUsers();
         const csvData = convertToCSV(users);

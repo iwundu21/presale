@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Download } from 'lucide-react';
 import { getPresaleEndDate, setPresaleEndDate } from '@/services/presale-date-service';
 import { useRouter } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -29,6 +29,7 @@ const toDateTimeLocal = (date: Date): string => {
 export default function AdminPage() {
   const [currentEndDate, setCurrentEndDate] = useState<Date>(new Date());
   const [isLoading, setIsLoading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
   const { publicKey, connected, connecting } = useWallet();
@@ -80,6 +81,55 @@ export default function AdminPage() {
     }
   };
   
+  const handleDownload = async () => {
+    if (!publicKey) return;
+    setIsDownloading(true);
+    try {
+        const response = await fetch('/api/export', {
+            headers: {
+                'x-admin-wallet': publicKey.toBase58()
+            }
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to download: ${errorText}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const contentDisposition = response.headers.get('content-disposition');
+        let fileName = 'exnus_user_data.csv';
+        if (contentDisposition) {
+            const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
+            if (fileNameMatch && fileNameMatch.length > 1) {
+                fileName = fileNameMatch[1];
+            }
+        }
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        
+        toast({
+            title: 'Download Started',
+            description: 'Your user data CSV is downloading.',
+            variant: 'success'
+        });
+    } catch (error: any) {
+        toast({
+            title: 'Download Failed',
+            description: error.message || "An unknown error occurred.",
+            variant: 'destructive'
+        });
+    } finally {
+        setIsDownloading(false);
+    }
+  };
+
   if (!isAuthorized) {
     return (
       <main className="container mx-auto p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-screen">
@@ -121,6 +171,20 @@ export default function AdminPage() {
             </form>
           </CardContent>
         </Card>
+        
+        <Card className="shadow-lg border-primary/20">
+           <CardHeader>
+            <CardTitle className="text-2xl font-bold text-white">User Data</CardTitle>
+            <CardDescription>Download a CSV of all user wallet addresses and balances.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={handleDownload} className="w-full" variant="secondary" disabled={isDownloading}>
+                {isDownloading ? <Loader2 className="animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                {isDownloading ? 'Exporting...' : 'Download User Data (CSV)'}
+            </Button>
+          </CardContent>
+        </Card>
+
       </div>
     </main>
   );
