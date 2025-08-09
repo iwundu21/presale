@@ -153,8 +153,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   }, [publicKey]);
 
   const handlePurchase = useCallback(async (exnAmount: number, paidAmount: number, currency: string, retryFromId?: string) => {
-    if (!publicKey || !wallet) {
-      toast({ title: "Wallet not connected", variant: "destructive" });
+    if (!publicKey || !wallet?.adapter.connected) {
+      toast({ title: "Wallet not connected", description: "Please connect your wallet and try again.", variant: "destructive" });
       return;
     }
      if (!PRESALE_WALLET_ADDRESS) {
@@ -291,7 +291,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     } finally {
         setIsLoadingPurchase(false);
     }
-  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, exnBalance, totalExnSold, setStoredData]);
+  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, exnBalance, totalExnSold]);
   
   if (!isClient || connecting || !publicKey || isLoadingDashboard) {
       return <DashboardLoadingSkeleton />; 
