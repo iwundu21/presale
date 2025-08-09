@@ -53,15 +53,15 @@ export function LandingPage({ onConnect, isConnecting, presaleEndDate, presaleIn
             <Info className="h-5 w-5" />
             <AlertTitle className="font-bold">Presale Currently Closed</AlertTitle>
             <AlertDescription>
-              Thank you for your interest in Exnus. The presale is not active at this time. Please follow our social channels for announcements on when it will reopen.
+              Thank you for your interest. The presale is not active at this time. Details on when token claiming will begin will be announced here on our official website. Please follow our social channels for further announcements.
             </AlertDescription>
           </Alert>
         )}
         
         {isPresaleActive && <PresaleCountdown presaleEndDate={presaleEndDate} />}
         
-        {isClient && isPresaleActive && (
-            <Button size="lg" onClick={onConnect} disabled={isConnecting || !!wallet}>
+        {isClient && (
+            <Button size="lg" onClick={onConnect} disabled={isConnecting || !!wallet || !isPresaleActive}>
                 {isConnecting ? "Entering Ecosystem..." : "Enter the Ecosystem"}
               <ArrowRight className="ml-2 h-5 w-5"/>
             </Button>
