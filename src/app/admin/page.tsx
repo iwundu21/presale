@@ -34,6 +34,7 @@ export default function AdminPage() {
   const router = useRouter();
   const { publicKey, connected, connecting } = useWallet();
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [authStatus, setAuthStatus] = useState<'pending' | 'authorized' | 'unauthorized'>('pending');
   
   const [endDateInput, setEndDateInput] = useState('');
 
@@ -44,12 +45,22 @@ export default function AdminPage() {
   }, []);
   
   useEffect(() => {
-    if (!connecting) {
-      if (!connected) {
-        router.push('/');
-      } else if (publicKey && publicKey.toBase58() === ADMIN_WALLET_ADDRESS) {
+    if (connecting) {
+      setAuthStatus('pending');
+      return;
+    }
+
+    if (!connected) {
+      router.push('/');
+      return;
+    }
+
+    if (publicKey) {
+      if (publicKey.toBase58() === ADMIN_WALLET_ADDRESS) {
         setIsAuthorized(true);
+        setAuthStatus('authorized');
       } else {
+        setAuthStatus('unauthorized');
         router.push('/dashboard');
       }
     }
@@ -130,7 +141,7 @@ export default function AdminPage() {
     }
   };
 
-  if (!isAuthorized) {
+  if (authStatus !== 'authorized') {
     return (
       <main className="container mx-auto p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-screen">
           <div className="text-center">
