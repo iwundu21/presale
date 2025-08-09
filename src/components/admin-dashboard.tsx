@@ -5,13 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { setPresaleEndDate } from "@/services/presale-date-service";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getPresaleData, setPresaleInfo, setPresaleStatus } from "@/services/presale-info-service";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Download, ChevronLeft, ChevronRight, KeyRound, Edit, ChevronsUpDown, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { Download, ChevronLeft, ChevronRight, KeyRound, Edit, ChevronsUpDown, CheckCircle, AlertCircle, Clock, Search } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Transaction } from "./dashboard-client-provider";
@@ -73,16 +73,24 @@ export function AdminDashboard() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
     const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [openCollapsibles, setOpenCollapsibles] = useState<Record<string, boolean>>({});
 
     // Update Balance State
     const [walletToUpdate, setWalletToUpdate] = useState('');
     const [newBalance, setNewBalance] = useState('');
     const [isUpdatingBalance, setIsUpdatingBalance] = useState(false);
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async (page: number, query: string) => {
         setIsLoadingUsers(true);
         try {
-            const response = await fetch(`/api/admin/all-users?page=${currentPage}&limit=${USERS_PER_PAGE}`);
+            const params = new URLSearchParams({
+                page: page.toString(),
+                limit: USERS_PER_PAGE.toString(),
+                searchQuery: query
+            });
+
+            const response = await fetch(`/api/admin/all-users?${params.toString()}`);
             if (!response.ok) {
                 throw new Error("Failed to fetch user data.");
             }
@@ -99,7 +107,7 @@ export function AdminDashboard() {
         } finally {
             setIsLoadingUsers(false);
         }
-    };
+    }, [toast]);
 
 
     useEffect(() => {
@@ -126,10 +134,17 @@ export function AdminDashboard() {
         fetchInfo();
     }, [toast]);
     
-     useEffect(() => {
-        fetchUsers();
-    }, [currentPage, toast]);
+    useEffect(() => {
+        const handler = setTimeout(() => {
+             fetchUsers(currentPage, searchQuery);
+        }, 300); // Debounce search
+        return () => clearTimeout(handler);
+    }, [currentPage, searchQuery, fetchUsers]);
 
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearchQuery(e.target.value);
+        setCurrentPage(1); // Reset to first page on new search
+    };
 
     const handleUpdateDate = async () => {
         if (!date || !time) {
@@ -328,14 +343,13 @@ export function AdminDashboard() {
             setWalletToUpdate('');
             setNewBalance('');
             // Refresh user list to show the change
-            fetchUsers();
+            fetchUsers(currentPage, searchQuery);
         } catch (error: any) {
             toast({ title: "Update Failed", description: error.message, variant: "destructive" });
         } finally {
             setIsUpdatingBalance(false);
         }
     }
-
 
     return (
         <main className="container mx-auto p-4 sm:p-6 lg:p-8">
@@ -351,6 +365,18 @@ export function AdminDashboard() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
+                        <div className="mb-4">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    type="text"
+                                    placeholder="Search by wallet address..."
+                                    value={searchQuery}
+                                    onChange={handleSearchChange}
+                                    className="pl-10"
+                                />
+                            </div>
+                        </div>
                         <div className="border rounded-md">
                            <Table>
                                 <TableHeader>
@@ -371,7 +397,7 @@ export function AdminDashboard() {
                                        ))
                                     ) : users.length > 0 ? (
                                         users.map(user => (
-                                            <Collapsible asChild key={user.wallet} >
+                                            <Collapsible asChild key={user.wallet} open={openCollapsibles[user.wallet] || false} onOpenChange={(isOpen) => setOpenCollapsibles(prev => ({ ...prev, [user.wallet]: isOpen }))}>
                                                 <>
                                                     <TableRow>
                                                         <TableCell className="font-mono text-xs max-w-xs truncate">{user.wallet}</TableCell>
@@ -643,5 +669,3 @@ export function AdminDashboard() {
     );
 
 }
-
-    
