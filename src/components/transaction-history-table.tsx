@@ -76,8 +76,8 @@ export function TransactionHistoryTable() {
   
   const isTransactionRecentAndPending = (tx: Transaction) => {
     if (tx.status !== 'Pending') return false;
-    const twoMinutes = 2 * 60 * 1000;
-    return new Date().getTime() - new Date(tx.date).getTime() < twoMinutes;
+    const tenMinutes = 10 * 60 * 1000;
+    return new Date().getTime() - new Date(tx.date).getTime() < tenMinutes;
   };
 
   const getTooltipContent = (tx: Transaction) => {
@@ -87,7 +87,7 @@ export function TransactionHistoryTable() {
     }
     switch (tx.status) {
       case 'Pending':
-        return "Transaction is processing. If it persists, it will be marked as failed after 2 minutes.";
+        return "Transaction is processing. If it persists, it will be marked as failed after 10 minutes.";
       case 'Failed':
         return tx.failureReason || "Transaction failed. View on Solscan for details if a transaction ID is available.";
       case 'Completed':
