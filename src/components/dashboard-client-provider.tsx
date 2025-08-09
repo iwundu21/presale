@@ -6,9 +6,9 @@ import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
-import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction, getMint } from "@solana/spl-token";
+import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
-import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, EXN_MINT, EXN_TOKEN_DECIMALS } from "@/config";
+import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, SOFT_CAP } from "@/config";
 
 
 export type Transaction = {
@@ -77,43 +77,25 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     setIsLoadingPrice(true);
 
     try {
-        // Fetch SOL Price
+        // Fetch SOL Price (real)
         const solPriceData = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd').then(res => res.json());
         setSolPrice(solPriceData.solana.usd);
         
-        // Fetch EXN Balance
-        try {
-            const tokenAccount = await getAssociatedTokenAddress(EXN_MINT, publicKey);
-            const balance = await connection.getTokenAccountBalance(tokenAccount);
-            setExnBalance(balance.value.uiAmount || 0);
-        } catch (e) {
-            console.log("Could not fetch EXN balance, user likely has no account yet.");
-            setExnBalance(0);
-        }
+        // Simulate initial state (local backend)
+        setExnBalance(15000); // Give user a simulated starting balance
+        setTotalExnSold(SOFT_CAP * 0.25); // Start progress at 25% of soft cap
 
-        // Fetch Total EXN Sold (from token supply)
-        try {
-            const mintInfo = await getMint(connection, EXN_MINT);
-            const supply = Number(mintInfo.supply) / (10 ** mintInfo.decimals);
-            setTotalExnSold(supply);
-        } catch (error) {
-            console.error("Could not fetch EXN mint info:", error);
-            setTotalExnSold(0); // Fallback
-        }
-        
-        // Fetch Transaction History
+        // Fetch real on-chain transaction history for user's wallet (SOL, USDC, etc.)
+        // This gives a realistic list, but purchase details remain simulated.
         try {
             const signatures = await connection.getSignaturesForAddress(publicKey, { limit: 25 });
             const userTransactions: Transaction[] = [];
-            // Note: This is a simplified history fetch. A real app would need a more robust solution,
-            // likely indexing transactions on a backend, to correctly determine EXN purchase amounts.
-            // For now, we will display recent transactions without purchase details.
             signatures.forEach(sig => {
                 userTransactions.push({
                     id: sig.signature,
-                    amountExn: 0, // Simplified: Real amount requires parsing transaction details
-                    paidAmount: 0, // Simplified
-                    paidCurrency: 'N/A', // Simplified
+                    amountExn: 0, // In a real app, this would be indexed by a backend
+                    paidAmount: 0,
+                    paidCurrency: 'N/A',
                     date: sig.blockTime ? new Date(sig.blockTime * 1000) : new Date(),
                     status: sig.err ? 'Failed' : 'Completed',
                     failureReason: sig.err ? JSON.stringify(sig.err) : undefined,
@@ -121,7 +103,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             });
             setTransactions(userTransactions);
         } catch (error) {
-            console.error("Could not fetch transaction history:", error);
+            console.error("Could not fetch on-chain transaction history:", error);
             setTransactions([]);
         }
 
@@ -129,7 +111,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         console.error("Failed to fetch dashboard data:", error);
         toast({
             title: "Error Loading Data",
-            description: "Could not load real-time dashboard data. Please refresh the page.",
+            description: "Could not load real-time market data. Please refresh.",
             variant: "destructive"
         });
         setSolPrice(150); // Fallback price
@@ -200,18 +182,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
                 lamports: paidAmount * LAMPORTS_PER_SOL,
             }));
         } else {
-            let mintPublicKey: PublicKey;
-            let decimals: number;
-            
-            if (currency === "USDC") {
-                mintPublicKey = USDC_MINT;
-                decimals = 6; 
-            } else if (currency === "USDT") {
-                mintPublicKey = USDT_MINT;
-                decimals = 6;
-            } else {
-                throw new Error("Unsupported currency");
-            }
+            const mintPublicKey = currency === "USDC" ? USDC_MINT : USDT_MINT;
+            const decimals = 6; // Both USDC and USDT use 6 decimals
 
             const fromTokenAccount = await getAssociatedTokenAddress(mintPublicKey, publicKey);
             const toTokenAccount = await getAssociatedTokenAddress(mintPublicKey, presaleWalletPublicKey);
@@ -261,21 +233,19 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
           lastValidBlockHeight
         }, 'confirmed');
         
-        // This is where a call to a real backend would happen to officially record the purchase
-        // and trigger the EXN token transfer to the user.
-        // For now, we simulate the success locally and refetch data.
+        // This is the local backend simulation part
+        // We pretend the purchase was successful and update our local state
+        setExnBalance(prev => prev + exnAmount);
+        setTotalExnSold(prev => prev + exnAmount);
         
         const completedTx: Transaction = { id: signature, ...txDetails, status: 'Completed', date: new Date() };
         updateTransactionInState(completedTx); // Show the new tx immediately
         
         toast({
             title: "Purchase Successful!",
-            description: "Your transaction has been confirmed. Your new balance will be reflected shortly.",
+            description: `You purchased ${exnAmount.toLocaleString()} EXN. Your new balance is reflected.`,
             variant: "success"
         });
-
-        // Refetch data to show real balances
-        setTimeout(fetchDashboardData, 1000); // give RPC a moment to catch up
         
     } catch (error: any) {
         console.error("Transaction failed:", error);
@@ -303,7 +273,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     } finally {
         setIsLoadingPurchase(false);
     }
-  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, fetchDashboardData]);
+  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet]);
   
   if (!isClient || connecting || !publicKey || isLoadingDashboard) {
       return <DashboardLoadingSkeleton />; 
