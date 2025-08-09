@@ -5,9 +5,10 @@ import { useState, useEffect } from "react";
 
 type PresaleCountdownProps = {
     presaleEndDate: Date;
+    seasonName: string;
 }
 
-export function PresaleCountdown({ presaleEndDate }: PresaleCountdownProps) {
+export function PresaleCountdown({ presaleEndDate, seasonName }: PresaleCountdownProps) {
     const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
     useEffect(() => {
@@ -33,8 +34,8 @@ export function PresaleCountdown({ presaleEndDate }: PresaleCountdownProps) {
     }, [presaleEndDate]);
     
     return (
-        <div className="text-center bg-muted/50 rounded-lg p-4">
-            <p className="text-sm text-muted-foreground mb-2">Presale Ends In</p>
+        <div className="text-center bg-muted/50 rounded-lg p-4 max-w-md mx-auto">
+            <p className="text-sm text-muted-foreground mb-2">{seasonName} season ends in</p>
             <div className="grid grid-cols-4 gap-2 text-center max-w-sm mx-auto">
                 <div>
                     <p className="text-3xl lg:text-4xl font-bold text-primary">{String(timeLeft.days).padStart(2, '0')}</p>

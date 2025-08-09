@@ -86,10 +86,10 @@ export function LandingPage({ onConnect, isConnecting, presaleEndDate, presaleIn
               </Alert>
             )}
             
-            {isPresaleActive && <PresaleCountdown presaleEndDate={presaleEndDate} />}
+            {isPresaleActive && <PresaleCountdown presaleEndDate={presaleEndDate} seasonName={presaleInfo.seasonName} />}
             
             {isClient && (
-                <Button size="lg" onClick={onConnect} disabled={isConnecting || !!wallet || !isPresaleActive}>
+                <Button size="lg" onClick={onConnect} disabled={isConnecting || !!wallet || !isPresaleActive} className="mt-8">
                     {isConnecting ? "Entering Ecosystem..." : "Enter the Ecosystem"}
                   <ArrowRight className="ml-2 h-5 w-5"/>
                 </Button>
