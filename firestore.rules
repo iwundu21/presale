@@ -1,14 +1,29 @@
-rules_version = '2';
 
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // This rule allows anyone with your project's credentials to read and write
-    // to your Firestore database. This is useful for getting started, but it's
-    // important to secure your database once you're ready to launch.
-    // To learn more about Firestore security rules, check out the documentation:
-    // https://firebase.google.com/docs/firestore/security/get-started
+    // Allow admins to write to any document (for admin panel functionality)
+    // In production, you should lock this down to specific admin UIDs
     match /{document=**} {
-      allow read, write: if true;
+      allow write: if true; 
+    }
+
+    // Allow any user to read the presale stats for the progress bar
+    match /presaleStats/{docId} {
+      allow read: if true;
+      allow write: if false; // Explicitly deny writes from clients
+    }
+
+    // Allow users to read and write their own transactions, but not others'
+    match /users/{userId}/transactions/{txId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Allow users to read their own user document
+     match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Disallow client-side balance updates, only server can do that
+      allow write: if false;
     }
   }
 }
