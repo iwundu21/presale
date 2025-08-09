@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowDown, Copy, Zap } from "lucide-react";
+import { ArrowDown, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,10 +11,8 @@ import { Skeleton } from "./ui/skeleton";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { getAssociatedTokenAddress } from "@solana/spl-token";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { USDC_MINT, USDT_MINT, EXN_PRICE, PRESALE_WALLET_ADDRESS } from "@/config";
+import { USDC_MINT, USDT_MINT, EXN_PRICE } from "@/config";
 import { useDashboard } from "./dashboard-client-provider";
-import { useToast } from "@/hooks/use-toast";
-import { Separator } from "./ui/separator";
 
 const SOL_GAS_BUFFER = 0.005; // Reserve 0.005 SOL for gas fees
 
@@ -22,7 +20,6 @@ export function BuyExnCard() {
   const { connected: isConnected, handlePurchase, solPrice, isLoadingPrice } = useDashboard();
   const { publicKey } = useWallet();
   const { connection } = useConnection();
-  const { toast } = useToast();
   const [payAmount, setPayAmount] = useState("100.00");
   const [receiveAmount, setReceiveAmount] = useState("");
   const [currency, setCurrency] = useState("USDC");
@@ -151,17 +148,6 @@ export function BuyExnCard() {
       handlePurchase(numericReceiveAmount, numericPayAmount, currency);
     }
   };
-  
-  const handleCopyToClipboard = () => {
-    if (PRESALE_WALLET_ADDRESS) {
-      navigator.clipboard.writeText(PRESALE_WALLET_ADDRESS);
-      toast({
-        title: "Address Copied",
-        description: "The presale wallet address has been copied to your clipboard.",
-        variant: 'success',
-      });
-    }
-  };
 
   const currentBalance = balances[currency as keyof typeof balances];
   const maxSpend = currency === 'SOL' ? currentBalance - SOL_GAS_BUFFER : currentBalance;
@@ -261,16 +247,6 @@ export function BuyExnCard() {
         >
           {isLoadingPrice && currency === 'SOL' ? 'Loading Price...' : (isConnected ? (balanceError || "Buy EXN") : "Connect Wallet to Buy")}
         </Button>
-        <Separator className="my-2" />
-        <div className="text-center text-xs text-muted-foreground">
-            <p>You can also send funds directly to the address below:</p>
-            <div className="flex items-center justify-center gap-2 mt-2 p-2 rounded-md bg-muted/50 border">
-                 <p className="font-mono text-white break-all">{PRESALE_WALLET_ADDRESS}</p>
-                <Button variant="ghost" size="icon" onClick={handleCopyToClipboard} className="h-7 w-7 shrink-0">
-                    <Copy className="h-4 w-4" />
-                </Button>
-            </div>
-        </div>
       </CardFooter>
     </Card>
   );
