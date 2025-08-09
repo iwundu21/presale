@@ -9,7 +9,7 @@ import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, Version
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT } from "@/config";
-import { getTransactions, saveTransaction, getPresaleStats, processPurchaseAndUpdateTotals, deleteTransaction, createUserIfNotExist } from "@/services/firestore-service";
+import { getTransactions, saveTransaction, getPresaleStats, processPurchaseAndUpdateTotals, deleteTransaction, createUserIfNotExist, listenToPresaleStats } from "@/services/firestore-service";
 
 export type Transaction = {
   id: string;
@@ -71,6 +71,18 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
   }, [isClient, connected, connecting, router]);
   
+  // Set up real-time listener for presale stats
+  useEffect(() => {
+    const unsubscribe = listenToPresaleStats((stats) => {
+      if (stats) {
+        setTotalExnSold(stats.totalExnSold);
+      }
+    });
+
+    // Cleanup listener on component unmount
+    return () => unsubscribe();
+  }, []);
+
   const fetchDashboardData = useCallback(async () => {
     if (!connected || !publicKey) return;
 
@@ -84,12 +96,11 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             userData, 
             userTransactions,
             solPriceData,
-            presaleStats
+            // presaleStats are now handled by the real-time listener
         ] = await Promise.all([
             createUserIfNotExist(walletAddress),
             getTransactions(walletAddress),
             fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd').then(res => res.json()),
-            getPresaleStats(),
         ]);
 
         if (userData) {
@@ -97,8 +108,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         }
         
         setTransactions(userTransactions);
-        setTotalExnSold(presaleStats.totalExnSold);
-
+        
         const price = solPriceData.solana.usd;
         setSolPrice(price);
         
@@ -271,9 +281,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         // Atomically update totals and save user transaction
         await processPurchaseAndUpdateTotals(publicKey.toBase58(), completedTx, newBalance);
 
-        // Update local state
+        // Update local state - totalExnSold is now handled by listener
         setExnBalance(newBalance);
-        setTotalExnSold(prev => prev + exnAmount);
         setTransactions(prev => [completedTx, ...prev.filter(tx => tx.id !== tempId)].sort((a,b) => b.date.getTime() - a.date.getTime()));
 
         toast({
