@@ -1,0 +1,12 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow anyone to read/write to the users and transactions collections.
+    // THIS IS INSECURE FOR PRODUCTION but necessary for the current app structure.
+    // In a real app, you would lock this down with authentication.
+    match /users/{userId}/{documents=**} {
+      allow read, write: if true;
+    }
+  }
+}
