@@ -74,7 +74,6 @@ export function AdminDashboard() {
     const [totalPages, setTotalPages] = useState(0);
     const [isLoadingUsers, setIsLoadingUsers] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [openCollapsibles, setOpenCollapsibles] = useState<Record<string, boolean>>({});
 
     // Update Balance State
     const [walletToUpdate, setWalletToUpdate] = useState('');
@@ -234,7 +233,7 @@ export function AdminDashboard() {
     const handleDownloadData = async () => {
         setIsDownloading(true);
         try {
-            const response = await fetch('/api/admin/all-users');
+            const response = await fetch('/api/admin/all-users?limit=0');
             if (!response.ok) {
                 throw new Error("Failed to fetch user data for download.");
             }
@@ -397,8 +396,8 @@ export function AdminDashboard() {
                                        ))
                                     ) : users.length > 0 ? (
                                         users.map(user => (
-                                            <Collapsible asChild key={user.wallet} open={openCollapsibles[user.wallet] || false} onOpenChange={(isOpen) => setOpenCollapsibles(prev => ({ ...prev, [user.wallet]: isOpen }))}>
-                                                <>
+                                            <Collapsible asChild key={user.wallet} tag="tbody">
+                                                 <>
                                                     <TableRow>
                                                         <TableCell className="font-mono text-xs max-w-xs truncate">{user.wallet}</TableCell>
                                                         <TableCell className="text-right font-semibold">{user.balance.toLocaleString()}</TableCell>
@@ -669,3 +668,5 @@ export function AdminDashboard() {
     );
 
 }
+
+    
