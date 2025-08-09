@@ -37,6 +37,22 @@ export async function getUser(walletAddress: string): Promise<UserData | null> {
     }
 }
 
+export async function createUserIfNotExist(walletAddress: string): Promise<UserData> {
+    const userDocRef = doc(db, USERS_COLLECTION, walletAddress);
+    const userDoc = await getDoc(userDocRef);
+    if (userDoc.exists()) {
+        return userDoc.data() as UserData;
+    } else {
+        const newUser: UserData = {
+            walletAddress,
+            exnBalance: 0,
+        };
+        await setDoc(userDocRef, newUser);
+        return newUser;
+    }
+}
+
+
 export async function updateUser(walletAddress: string, data: Partial<UserData>): Promise<void> {
     try {
         const docRef = doc(db, USERS_COLLECTION, walletAddress);

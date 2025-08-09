@@ -9,7 +9,7 @@ import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, Version
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT } from "@/config";
-import { getUser, getTransactions, saveTransaction, getPresaleStats, processPurchaseAndUpdateTotals, deleteTransaction } from "@/services/firestore-service";
+import { getTransactions, saveTransaction, getPresaleStats, processPurchaseAndUpdateTotals, deleteTransaction, createUserIfNotExist } from "@/services/firestore-service";
 
 export type Transaction = {
   id: string;
@@ -86,7 +86,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             solPriceData,
             presaleStats
         ] = await Promise.all([
-            getUser(walletAddress),
+            createUserIfNotExist(walletAddress),
             getTransactions(walletAddress),
             fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd').then(res => res.json()),
             getPresaleStats(),
@@ -94,10 +94,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         if (userData) {
             setExnBalance(userData.exnBalance);
-        } else {
-            await processPurchaseAndUpdateTotals(walletAddress, {id: 'initial', amountExn: 0, paidAmount: 0, paidCurrency: 'NONE', date: new Date(), status: 'Completed'}, 0);
-            setExnBalance(0);
         }
+        
         setTransactions(userTransactions);
         setTotalExnSold(presaleStats.totalExnSold);
 
