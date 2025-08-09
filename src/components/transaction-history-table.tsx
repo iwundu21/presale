@@ -4,12 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge, BadgeProps } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { List, CheckCircle, AlertCircle, Clock, ExternalLink, TrendingUp, HelpCircle, RefreshCw, Heart } from "lucide-react";
+import { List, CheckCircle, AlertCircle, Clock, ExternalLink, TrendingUp, HelpCircle, RefreshCw } from "lucide-react";
 import { useDashboard, Transaction } from "./dashboard-client-provider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { useState } from "react";
 
 const formatTxId = (txId: string) => {
     if (txId.startsWith('tx_')) return 'Processing...';
@@ -35,7 +34,6 @@ const getStatusIcon = (status: Transaction['status']) => {
 
 function TransactionRow({ tx }: { tx: Transaction }) {
     const { retryTransaction, isLoadingPurchase } = useDashboard();
-    const [liked, setLiked] = useState(false);
 
     const isTxPendingAndRecent = (tx: Transaction) => {
         if (tx.status !== 'Pending') return false;
@@ -59,9 +57,6 @@ function TransactionRow({ tx }: { tx: Transaction }) {
                             {`Paid ${tx.paidAmount.toLocaleString()} ${tx.paidCurrency}`}
                         </p>
                     </div>
-                    <button onClick={() => setLiked(!liked)} className="ml-auto p-1 text-muted-foreground hover:text-red-400 transition-colors">
-                        <Heart className={`h-4 w-4 ${liked ? 'text-red-400 fill-current' : ''}`} />
-                    </button>
                 </div>
             </TableCell>
            
