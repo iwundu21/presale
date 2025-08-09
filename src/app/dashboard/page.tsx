@@ -10,16 +10,16 @@ import { BalanceCard } from "@/components/balance-card";
 export default function DashboardPage() {
   return (
     <DashboardClientProvider>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-            <div className="lg:col-span-2 space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="space-y-8">
+            <BalanceCard />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                <div className="lg:col-span-2 space-y-8">
                     <PresaleProgressCard />
-                    <BalanceCard />
+                    <BuyExnCard />
                 </div>
-                <BuyExnCard />
-            </div>
-            <div className="lg:col-span-1">
-               <TransactionHistoryTable />
+                <div className="lg:col-span-1">
+                   <TransactionHistoryTable />
+                </div>
             </div>
         </div>
     </DashboardClientProvider>
