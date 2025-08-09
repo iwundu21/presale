@@ -17,34 +17,15 @@ import { useDashboard } from "./dashboard-client-provider";
 const SOL_GAS_BUFFER = 0.005; // Reserve 0.005 SOL for gas fees
 
 export function BuyExnCard() {
-  const { connected: isConnected, handlePurchase } = useDashboard();
+  const { connected: isConnected, handlePurchase, solPrice, isLoadingPrice } = useDashboard();
   const { publicKey } = useWallet();
   const { connection } = useConnection();
   const [payAmount, setPayAmount] = useState("100.00");
   const [receiveAmount, setReceiveAmount] = useState("");
   const [currency, setCurrency] = useState("USDC");
-  const [solPrice, setSolPrice] = useState<number | null>(null);
-  const [isLoadingPrice, setIsLoadingPrice] = useState(false);
   const [balances, setBalances] = useState({ SOL: 0, USDC: 0, USDT: 0 });
   const [isFetchingBalance, setIsFetchingBalance] = useState(false);
   const [balanceError, setBalanceError] = useState("");
-
-  useEffect(() => {
-    const fetchSolPrice = async () => {
-      setIsLoadingPrice(true);
-      try {
-        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
-        const data = await response.json();
-        setSolPrice(data.solana.usd);
-      } catch (error) {
-        console.error("Failed to fetch SOL price", error);
-        setSolPrice(150); // Setting a fallback price
-      }
-      setIsLoadingPrice(false);
-    };
-
-    fetchSolPrice();
-  }, []);
   
   useEffect(() => {
     const fetchBalances = async () => {

@@ -26,6 +26,8 @@ type DashboardContextType = {
     totalExnSold: number;
     connected: boolean;
     handlePurchase: (exnAmount: number, paidAmount: number, currency: string) => Promise<void>;
+    solPrice: number | null;
+    isLoadingPrice: boolean;
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
@@ -52,6 +54,9 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
   const [totalExnSold, setTotalExnSold] = useState(0);
+  const [solPrice, setSolPrice] = useState<number | null>(null);
+  const [isLoadingPrice, setIsLoadingPrice] = useState(true);
+  const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
 
   useEffect(() => {
     setIsClient(true);
@@ -63,82 +68,88 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
   }, [isClient, connected, connecting, router]);
   
-  const fetchPresaleProgress = useCallback(async () => {
-      if (!PRESALE_WALLET_ADDRESS) return;
-      try {
+  const fetchDashboardData = useCallback(async () => {
+    if (!connected || !publicKey) return;
+
+    setIsLoadingDashboard(true);
+    setIsLoadingPrice(true);
+
+    try {
+        const walletAddress = publicKey.toBase58();
         const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
 
-        // Fetch SOL balance
-        const solBalance = await connection.getBalance(presaleWalletPublicKey);
-        const solPriceResponse = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
-        const solPriceData = await solPriceResponse.json();
-        const solPrice = solPriceData.solana.usd;
-        const solValue = (solBalance / LAMPORTS_PER_SOL) * solPrice;
+        // --- Start fetching all data in parallel ---
+        const [
+            userData, 
+            userTransactions,
+            solPriceData,
+            presaleSolBalance, 
+            presaleUsdcAccountInfo,
+            presaleUsdtAccountInfo
+        ] = await Promise.all([
+            getUser(walletAddress),
+            getTransactions(walletAddress),
+            fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd').then(res => res.json()),
+            connection.getBalance(presaleWalletPublicKey),
+            connection.getParsedAccountInfo(await getAssociatedTokenAddress(USDC_MINT, presaleWalletPublicKey)).catch(() => null),
+            connection.getParsedAccountInfo(await getAssociatedTokenAddress(USDT_MINT, presaleWalletPublicKey)).catch(() => null),
+        ]);
+        // --- All parallel fetching ends ---
 
-        // Fetch USDC balance
-        let usdcValue = 0;
-        try {
-            const usdcTokenAccount = await getAssociatedTokenAddress(USDC_MINT, presaleWalletPublicKey);
-            const usdcTokenAccountInfo = await connection.getParsedAccountInfo(usdcTokenAccount);
-            if (usdcTokenAccountInfo.value) {
-                const usdcBalance = (usdcTokenAccountInfo.value.data as any).parsed.info.tokenAmount.uiAmount;
-                usdcValue = usdcBalance;
-            }
-        } catch(e) {
-            console.log("Could not fetch USDC balance for presale wallet, likely no account exists yet.");
-        }
-        
-        // Fetch USDT balance
-        let usdtValue = 0;
-        try {
-            const usdtTokenAccount = await getAssociatedTokenAddress(USDT_MINT, presaleWalletPublicKey);
-            const usdtTokenAccountInfo = await connection.getParsedAccountInfo(usdtTokenAccount);
-            if (usdtTokenAccountInfo.value) {
-                const usdtBalance = (usdtTokenAccountInfo.value.data as any).parsed.info.tokenAmount.uiAmount;
-                usdtValue = usdtBalance;
-            }
-        } catch(e) {
-            console.log("Could not fetch USDT balance for presale wallet, likely no account exists yet.");
-        }
-
-        const totalRaised = solValue + usdcValue + usdtValue;
-        const totalSold = totalRaised / EXN_PRICE;
-
-        setTotalExnSold(totalSold);
-
-      } catch (error) {
-          console.error("Failed to fetch presale progress:", error);
-      }
-  }, [connection]);
-
-
-  const fetchUserData = useCallback(async () => {
-    if (connected && publicKey) {
-        fetchPresaleProgress();
-        const walletAddress = publicKey.toBase58();
-        
-        // Fetch user data and transactions from Firestore
-        const userData = await getUser(walletAddress);
-        const userTransactions = await getTransactions(walletAddress);
-
+        // Process User Data
         if (userData) {
             setExnBalance(userData.exnBalance);
         } else {
-            // If user does not exist, create them
             await updateUser(walletAddress, { walletAddress: walletAddress, exnBalance: 0 });
             setExnBalance(0);
         }
         setTransactions(userTransactions);
 
+        // Process SOL Price
+        const price = solPriceData.solana.usd;
+        setSolPrice(price);
+        setIsLoadingPrice(false);
+
+        // Process Presale Progress
+        const solValue = (presaleSolBalance / LAMPORTS_PER_SOL) * price;
+        
+        let usdcValue = 0;
+        if (presaleUsdcAccountInfo?.value) {
+            usdcValue = (presaleUsdcAccountInfo.value.data as any).parsed.info.tokenAmount.uiAmount;
+        }
+
+        let usdtValue = 0;
+        if (presaleUsdtAccountInfo?.value) {
+            usdtValue = (presaleUsdtAccountInfo.value.data as any).parsed.info.tokenAmount.uiAmount;
+        }
+
+        const totalRaised = solValue + usdcValue + usdtValue;
+        setTotalExnSold(totalRaised / EXN_PRICE);
+
+    } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+        toast({
+            title: "Error Loading Data",
+            description: "Could not load dashboard data. Please refresh the page.",
+            variant: "destructive"
+        });
+        setSolPrice(150); // Set fallback
+        setIsLoadingPrice(false);
+    } finally {
+        setIsLoadingDashboard(false);
+    }
+  }, [connected, publicKey, connection, toast]);
+
+
+  useEffect(() => {
+    if (connected && publicKey) {
+        fetchDashboardData();
     } else {
         setTransactions([]);
         setExnBalance(0);
+        setTotalExnSold(0);
     }
-  }, [connected, publicKey, fetchPresaleProgress]);
-
-  useEffect(() => {
-    fetchUserData();
-  }, [fetchUserData]);
+  }, [connected, publicKey, fetchDashboardData]);
   
   const updateTransactionStatus = useCallback(async (signature: string, status: "Completed" | "Failed", txDetails: Omit<Transaction, 'status' | 'id' | 'date'>) => {
     if (!publicKey) return;
@@ -157,14 +168,15 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         const newBalance = exnBalance + txDetails.amountExn;
         setExnBalance(newBalance);
         await updateUser(publicKey.toBase58(), { exnBalance: newBalance });
-        fetchPresaleProgress();
+        // Re-fetch presale progress to show latest numbers
+        fetchDashboardData();
     }
     
     // Update local state to reflect change immediately
     const otherTransactions = transactions.filter(tx => tx.id !== signature && !tx.id.startsWith('pending-'));
     setTransactions([finalTransaction, ...otherTransactions].sort((a, b) => b.date.getTime() - a.date.getTime()));
 
-  }, [publicKey, exnBalance, transactions, fetchPresaleProgress]);
+  }, [publicKey, exnBalance, transactions, fetchDashboardData]);
 
 
   const handlePurchase = useCallback(async (exnAmount: number, paidAmount: number, currency: string) => {
@@ -302,7 +314,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
   }, [publicKey, connection, sendTransaction, toast, updateTransactionStatus]);
   
-  if (!isClient || connecting || !publicKey) {
+  if (!isClient || connecting || !publicKey || isLoadingDashboard) {
       return <DashboardLoadingSkeleton />; 
   }
 
@@ -312,6 +324,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     totalExnSold,
     connected,
     handlePurchase,
+    solPrice,
+    isLoadingPrice
   };
 
   return (
