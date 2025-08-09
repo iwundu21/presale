@@ -166,32 +166,38 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
       return;
     }
 
-    const txDetails = { amountExn: exnAmount, paidAmount, paidCurrency: currency, date: new Date() };
+    const tempId = `tx_${Date.now()}`;
+    const txDetails: Omit<Transaction, 'status' | 'id'> = { 
+        amountExn: exnAmount, 
+        paidAmount, 
+        paidCurrency: currency, 
+        date: new Date() 
+    };
 
-    const tempId = `pending-${Date.now()}`;
     const pendingTx: Transaction = {
         id: tempId,
         ...txDetails,
         status: "Pending",
     };
-    updateTransactionInState(pendingTx);
     
-    // Set a timeout for the pending transaction
+    // Save pending transaction immediately to ensure it's not lost
+    await saveTransaction(publicKey.toBase58(), pendingTx);
+    updateTransactionInState(pendingTx);
+
     const timeoutId = setTimeout(async () => {
         const failedTx: Transaction = {
             ...pendingTx,
             status: "Failed",
-            failureReason: "Transaction timed out after 5 minutes.",
+            failureReason: "Transaction timed out after 5 minutes. Please check your wallet.",
         };
-        // We need a stable ID to save to Firestore. Let's use the tempId.
         await saveTransaction(publicKey.toBase58(), failedTx);
         updateTransactionInState(failedTx);
-         toast({
+        toast({
             title: "Transaction Timed Out",
             description: "Your transaction was not confirmed within 5 minutes.",
             variant: "destructive",
         });
-    }, 5 * 60 * 1000); // 5 minutes
+    }, 5 * 60 * 1000);
 
     let signature: string | null = null;
     
@@ -260,21 +266,24 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         });
 
         signature = await sendTransaction(transaction, connection);
-        clearTimeout(timeoutId); // Clear timeout on successful send
+        clearTimeout(timeoutId); 
         
         await connection.confirmTransaction({
           signature,
           blockhash,
           lastValidBlockHeight
         }, 'confirmed');
-
+        
+        // This creates the final, permanent record with the signature as ID
         const completedTx: Transaction = { id: signature, ...txDetails, status: 'Completed' };
         await saveTransaction(publicKey.toBase58(), completedTx);
+        // We can optionally remove the temp record, but saving over it is fine too.
         
         const newBalance = exnBalance + exnAmount;
         await updateUser(publicKey.toBase58(), { exnBalance: newBalance });
         setExnBalance(newBalance);
 
+        // Update local state to replace the pending tx with the completed one
         setTransactions(prev => [completedTx, ...prev.filter(tx => tx.id !== tempId)].sort((a,b) => b.date.getTime() - a.date.getTime()));
 
         toast({
@@ -286,28 +295,28 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         fetchDashboardData();
 
     } catch (error: any) {
-        clearTimeout(timeoutId); // Clear timeout on any error
+        clearTimeout(timeoutId);
         console.error("Transaction failed:", error);
         
         let failureReason = "An unknown error occurred.";
         let toastTitle = "Transaction Failed";
-
-        if (error.message.includes("User rejected the request")) {
+        
+        if (error.name === 'WalletSendTransactionError' && error.message.includes("User rejected the request")) {
             failureReason = "Transaction was rejected in the wallet.";
             toastTitle = "Transaction Cancelled";
-            setTransactions(prev => prev.filter(tx => tx.id !== tempId));
-        } else {
-             if (error.message) {
-                failureReason = error.message;
-            }
-            if (signature) {
-                const failedTx: Transaction = { id: signature, ...txDetails, status: 'Failed', failureReason };
-                await saveTransaction(publicKey.toBase58(), failedTx);
-                setTransactions(prev => [failedTx, ...prev.filter(tx => tx.id !== tempId)].sort((a,b) => b.date.getTime() - a.date.getTime()));
-            } else {
-                setTransactions(prev => prev.filter(tx => tx.id !== tempId));
-            }
+        } else if (error.message) {
+             failureReason = error.message;
         }
+
+        const finalId = signature || tempId;
+        const failedTx: Transaction = { id: finalId, ...txDetails, status: 'Failed', failureReason };
+
+        await saveTransaction(publicKey.toBase58(), failedTx);
+        
+        setTransactions(prev => {
+            const otherTxs = prev.filter(tx => tx.id !== tempId);
+            return [failedTx, ...otherTxs].sort((a,b) => b.date.getTime() - a.date.getTime());
+        });
         
         toast({
             title: toastTitle,
@@ -337,5 +346,3 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
-
-    
