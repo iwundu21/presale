@@ -8,7 +8,6 @@ import type { Transaction } from "@/components/dashboard-client-provider";
 const USERS_COLLECTION = 'users';
 const TRANSACTIONS_COLLECTION = 'transactions';
 const PRESALE_STATS_COLLECTION = 'presaleStats';
-const SETTINGS_DOC = 'settings';
 const TOTALS_DOC = 'totals';
 
 // Type for user data stored in Firestore
@@ -20,11 +19,6 @@ export type UserData = {
 // Type for presale stats
 export type PresaleStats = {
     totalExnSold: number;
-}
-
-// Type for general settings
-export type PresaleSettings = {
-    endDate: Timestamp;
 }
 
 
@@ -182,37 +176,5 @@ export async function processPurchaseAndUpdateTotals(
         // This is a critical error, you might want to add more robust handling
         // For now, we'll throw to let the caller know it failed.
         throw new Error("Failed to finalize purchase in database.");
-    }
-}
-
-
-export async function setPresaleEndDate(newDate: Date): Promise<void> {
-    try {
-        const settingsDocRef = doc(db, PRESALE_STATS_COLLECTION, SETTINGS_DOC);
-        await setDoc(settingsDocRef, { endDate: Timestamp.fromDate(newDate) }, { merge: true });
-    } catch (error) {
-        console.error("Error setting presale end date:", error);
-        throw new Error("Could not update the presale end date in the database.");
-    }
-}
-
-export async function getPresaleEndDate(): Promise<Date> {
-    try {
-        const settingsDocRef = doc(db, PRESALE_STATS_COLLECTION, SETTINGS_DOC);
-        const docSnap = await getDoc(settingsDocRef);
-        if (docSnap.exists()) {
-            const data = docSnap.data() as PresaleSettings;
-            return data.endDate.toDate();
-        }
-        // Return a default if not set
-        const defaultEndDate = new Date();
-        defaultEndDate.setDate(defaultEndDate.getDate() + 30);
-        return defaultEndDate;
-    } catch (error) {
-        console.error("Error getting presale end date:", error);
-         // Return a default on error
-         const defaultEndDate = new Date();
-         defaultEndDate.setDate(defaultEndDate.getDate() + 30);
-         return defaultEndDate;
     }
 }

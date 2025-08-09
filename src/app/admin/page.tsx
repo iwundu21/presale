@@ -2,7 +2,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { UserData, getAllUsers, setPresaleEndDate, getPresaleEndDate as getInitialPresaleEndDate } from "@/services/firestore-service";
+import { UserData, getAllUsers } from "@/services/firestore-service";
+import { setClientPresaleEndDate, getClientPresaleEndDate } from "@/services/presale-date-service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -41,13 +42,10 @@ export default function AdminPage() {
         const fetchAdminData = async () => {
             setIsLoadingUsers(true);
             try {
-                const [userList, initialDate] = await Promise.all([
-                    getAllUsers(),
-                    getInitialPresaleEndDate()
-                ]);
-                
+                const userList = await getAllUsers();
                 setUsers(userList);
 
+                const initialDate = getClientPresaleEndDate();
                 if (initialDate) {
                     const formattedDate = new Date(initialDate.getTime() - (initialDate.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
                     setPresaleEndDateState(formattedDate);
@@ -89,8 +87,8 @@ export default function AdminPage() {
         }
         setIsUpdatingDate(true);
         try {
-            await setPresaleEndDate(new Date(presaleEndDate));
-            toast({ title: "Success", description: "Presale end date has been updated." });
+            setClientPresaleEndDate(new Date(presaleEndDate));
+            toast({ title: "Success", description: "Presale end date has been updated for this session." });
         } catch (error) {
             console.error("Failed to update date:", error);
             toast({ title: "Error", description: "Could not update the presale end date.", variant: "destructive" });
