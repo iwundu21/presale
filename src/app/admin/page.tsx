@@ -44,29 +44,27 @@ export default function AdminPage() {
   }, []);
   
   useEffect(() => {
-    // We should only check for auth status when the connection status is no longer changing.
-    if (!connecting) {
-      if (connected && publicKey) {
-        if (publicKey.toBase58() === ADMIN_WALLET_ADDRESS) {
-          setAuthStatus('authorized');
-        } else {
-          setAuthStatus('unauthorized');
-          toast({
-              title: "Unauthorized Access",
-              description: "You are not authorized to view this page.",
-              variant: "destructive"
-          });
-          router.push('/dashboard');
-        }
-      } else {
-        // If not connected at all, it's unauthorized.
-        // A real app might have a dedicated login page, but for this flow,
-        // we'll guide them to the main page to connect their wallet first.
-        setAuthStatus('unauthorized');
-        router.push('/');
-      }
+    if (connecting) {
+      setAuthStatus('pending');
+      return;
     }
-    // The dependency array ensures this effect runs whenever the connection state settles.
+
+    if (connected && publicKey) {
+      if (publicKey.toBase58() === ADMIN_WALLET_ADDRESS) {
+        setAuthStatus('authorized');
+      } else {
+        setAuthStatus('unauthorized');
+        toast({
+            title: "Unauthorized Access",
+            description: "You are not authorized to view this page.",
+            variant: "destructive"
+        });
+        router.push('/dashboard');
+      }
+    } else {
+      setAuthStatus('unauthorized');
+      router.push('/');
+    }
   }, [publicKey, connected, connecting, router, toast]);
 
 
@@ -76,7 +74,7 @@ export default function AdminPage() {
 
     try {
       const newDate = new Date(endDateInput);
-      setPresaleEndDate(newDate); // This now updates in-memory
+      setPresaleEndDate(newDate); 
       toast({
         title: 'Configuration Updated',
         description: 'Presale end date has been updated for this session.',
@@ -190,7 +188,7 @@ export default function AdminPage() {
            <CardHeader>
             <CardTitle className="text-2xl font-bold text-white">User Data</CardTitle>
             <CardDescription>Download a CSV of all user wallet addresses and balances.</CardDescription>
-          </Header>
+          </CardHeader>
           <CardContent>
             <Button onClick={handleDownload} className="w-full" variant="secondary" disabled={isDownloading}>
                 {isDownloading ? <Loader2 className="animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
