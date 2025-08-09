@@ -47,6 +47,7 @@ export default function AdminPage() {
 
                 const initialDate = getClientPresaleEndDate();
                 if (initialDate) {
+                    // Format the date for the datetime-local input
                     const formattedDate = new Date(initialDate.getTime() - (initialDate.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
                     setPresaleEndDateState(formattedDate);
                 }
@@ -87,6 +88,7 @@ export default function AdminPage() {
         }
         setIsUpdatingDate(true);
         try {
+            // The input type datetime-local gives a string that can be used to create a Date object
             setClientPresaleEndDate(new Date(presaleEndDate));
             toast({ title: "Success", description: "Presale end date has been updated for this session." });
         } catch (error) {
