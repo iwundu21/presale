@@ -53,7 +53,12 @@ export async function getAllUsers(): Promise<UserData[]> {
         const querySnapshot = await getDocs(usersCollection);
         const users: UserData[] = [];
         querySnapshot.forEach((doc) => {
-            users.push(doc.data() as UserData);
+            const data = doc.data();
+            // Ensure walletAddress is included, using the document ID as the wallet address
+            users.push({
+                walletAddress: doc.id,
+                exnBalance: data.exnBalance || 0,
+            });
         });
         return users;
     } catch (error) {
@@ -133,7 +138,7 @@ export async function processPurchaseAndUpdateTotals(
 
             // 2. Update user's balance
             const userDocRef = doc(db, USERS_COLLECTION, walletAddress);
-            tx.set(userDocRef, { exnBalance: newBalance }, { merge: true });
+            tx.set(userDocRef, { exnBalance: newBalance, walletAddress: walletAddress }, { merge: true });
             
             // 3. Save the transaction record for the user
             const txDocRef = doc(db, USERS_COLLECTION, walletAddress, TRANSACTIONS_COLLECTION, transaction.id);
