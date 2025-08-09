@@ -117,7 +117,7 @@ export function TransactionHistoryTable() {
                                                         href={!tx.id.startsWith('tx_') ? `https://solscan.io/tx/${tx.id}` : undefined}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="flex items-center justify-end"
+                                                        className={`flex items-center justify-end ${tx.id.startsWith('tx_') ? 'pointer-events-none' : ''}`}
                                                     >
                                                         <Badge variant={getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
                                                             {getStatusIcon(tx.status)}
