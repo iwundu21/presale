@@ -64,6 +64,17 @@ export function TransactionHistoryTable() {
     }
   };
 
+  const getTooltipContent = (status: Transaction['status']) => {
+    switch (status) {
+      case 'Pending':
+        return "Transaction is being processed. Waiting for wallet confirmation...";
+      case 'Failed':
+        return "Transaction failed or was rejected. View on Solscan for details.";
+      default:
+        return "View transaction details on Solscan.";
+    }
+  }
+
   return (
     <Card className="shadow-lg border-white/10">
       <CardHeader>
@@ -119,7 +130,7 @@ export function TransactionHistoryTable() {
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                           {tx.status === 'Pending' ? <p>Waiting for confirmation...</p> : <p>View on Solscan</p>}
+                           <p>{getTooltipContent(tx.status)}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TableCell>
