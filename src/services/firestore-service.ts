@@ -1,18 +1,25 @@
 
 'use server';
 
-import { collection, doc, getDoc, getDocs, setDoc, Timestamp } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc, Timestamp, runTransaction, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Transaction } from "@/components/dashboard-client-provider";
 
 const USERS_COLLECTION = 'users';
 const TRANSACTIONS_COLLECTION = 'transactions';
+const PRESALE_STATS_COLLECTION = 'presaleStats';
+const TOTALS_DOC = 'totals';
 
 // Type for user data stored in Firestore
 export type UserData = {
     walletAddress: string;
     exnBalance: number;
 };
+
+// Type for presale stats
+export type PresaleStats = {
+    totalExnSold: number;
+}
 
 // --- User Management ---
 
@@ -87,5 +94,55 @@ export async function getTransactions(walletAddress: string): Promise<Transactio
     } catch (error) {
         console.error("Error getting transactions:", error);
         return [];
+    }
+}
+
+
+// --- Presale Stats Management ---
+
+export async function getPresaleStats(): Promise<PresaleStats> {
+    try {
+        const docRef = doc(db, PRESALE_STATS_COLLECTION, TOTALS_DOC);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            return docSnap.data() as PresaleStats;
+        }
+        // If it doesn't exist, initialize it
+        const initialStats: PresaleStats = { totalExnSold: 0 };
+        await setDoc(docRef, initialStats);
+        return initialStats;
+    } catch (error) {
+        console.error("Error getting presale stats:", error);
+        // Return a default object on error
+        return { totalExnSold: 0 };
+    }
+}
+
+export async function processPurchaseAndUpdateTotals(
+    walletAddress: string, 
+    transaction: Transaction,
+    newBalance: number
+): Promise<void> {
+    try {
+        await runTransaction(db, async (tx) => {
+            // 1. Update total EXN sold
+            const statsDocRef = doc(db, PRESALE_STATS_COLLECTION, TOTALS_DOC);
+            tx.set(statsDocRef, { 
+                totalExnSold: increment(transaction.amountExn)
+            }, { merge: true });
+
+            // 2. Update user's balance
+            const userDocRef = doc(db, USERS_COLLECTION, walletAddress);
+            tx.set(userDocRef, { exnBalance: newBalance }, { merge: true });
+            
+            // 3. Save the transaction record for the user
+            const txDocRef = doc(db, USERS_COLLECTION, walletAddress, TRANSACTIONS_COLLECTION, transaction.id);
+            tx.set(txDocRef, transaction);
+        });
+    } catch (error) {
+        console.error("Error processing atomic purchase update:", error);
+        // This is a critical error, you might want to add more robust handling
+        // For now, we'll throw to let the caller know it failed.
+        throw new Error("Failed to finalize purchase in database.");
     }
 }

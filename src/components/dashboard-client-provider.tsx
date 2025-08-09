@@ -8,8 +8,8 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
-import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, EXN_PRICE } from "@/config";
-import { getUser, getTransactions, saveTransaction, updateUser } from "@/services/firestore-service";
+import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT } from "@/config";
+import { getUser, getTransactions, saveTransaction, getPresaleStats, processPurchaseAndUpdateTotals } from "@/services/firestore-service";
 
 export type Transaction = {
   id: string;
@@ -77,50 +77,31 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
     try {
         const walletAddress = publicKey.toBase58();
-        const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
-
+       
         const [
             userData, 
             userTransactions,
             solPriceData,
-            presaleSolBalance, 
-            presaleUsdcAccountInfo,
-            presaleUsdtAccountInfo
+            presaleStats
         ] = await Promise.all([
             getUser(walletAddress),
             getTransactions(walletAddress),
             fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd').then(res => res.json()),
-            connection.getBalance(presaleWalletPublicKey),
-            connection.getParsedAccountInfo(await getAssociatedTokenAddress(USDC_MINT, presaleWalletPublicKey)).catch(() => null),
-            connection.getParsedAccountInfo(await getAssociatedTokenAddress(USDT_MINT, presaleWalletPublicKey)).catch(() => null),
+            getPresaleStats(),
         ]);
 
         if (userData) {
             setExnBalance(userData.exnBalance);
         } else {
-            await updateUser(walletAddress, { walletAddress: walletAddress, exnBalance: 0 });
+            await processPurchaseAndUpdateTotals(walletAddress, {id: 'initial', amountExn: 0, paidAmount: 0, paidCurrency: 'NONE', date: new Date(), status: 'Completed'}, 0);
             setExnBalance(0);
         }
         setTransactions(userTransactions);
+        setTotalExnSold(presaleStats.totalExnSold);
 
         const price = solPriceData.solana.usd;
         setSolPrice(price);
-        setIsLoadingPrice(false);
-
-        const solValue = (presaleSolBalance / LAMPORTS_PER_SOL) * price;
         
-        let usdcValue = 0;
-        if (presaleUsdcAccountInfo?.value) {
-            usdcValue = (presaleUsdcAccountInfo.value.data as any).parsed.info.tokenAmount.uiAmount;
-        }
-
-        let usdtValue = 0;
-        if (presaleUsdtAccountInfo?.value) {
-            usdtValue = (presaleUsdtAccountInfo.value.data as any).parsed.info.tokenAmount.uiAmount;
-        }
-
-        const totalRaised = solValue + usdcValue + usdtValue;
-        setTotalExnSold(totalRaised / EXN_PRICE);
 
     } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
@@ -130,11 +111,11 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             variant: "destructive"
         });
         setSolPrice(150);
-        setIsLoadingPrice(false);
     } finally {
+        setIsLoadingPrice(false);
         setIsLoadingDashboard(false);
     }
-  }, [connected, publicKey, connection, toast]);
+  }, [connected, publicKey, toast]);
 
 
   useEffect(() => {
@@ -274,16 +255,15 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
           lastValidBlockHeight
         }, 'confirmed');
         
-        // This creates the final, permanent record with the signature as ID
         const completedTx: Transaction = { id: signature, ...txDetails, status: 'Completed' };
-        await saveTransaction(publicKey.toBase58(), completedTx);
-        // We can optionally remove the temp record, but saving over it is fine too.
-        
         const newBalance = exnBalance + exnAmount;
-        await updateUser(publicKey.toBase58(), { exnBalance: newBalance });
-        setExnBalance(newBalance);
 
-        // Update local state to replace the pending tx with the completed one
+        // Atomically update totals and save user transaction
+        await processPurchaseAndUpdateTotals(publicKey.toBase58(), completedTx, newBalance);
+
+        // Update local state
+        setExnBalance(newBalance);
+        setTotalExnSold(prev => prev + exnAmount);
         setTransactions(prev => [completedTx, ...prev.filter(tx => tx.id !== tempId)].sort((a,b) => b.date.getTime() - a.date.getTime()));
 
         toast({
@@ -292,8 +272,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             variant: "success"
         });
         
-        fetchDashboardData();
-
     } catch (error: any) {
         clearTimeout(timeoutId);
         console.error("Transaction failed:", error);
@@ -311,7 +289,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         const finalId = signature || tempId;
         const failedTx: Transaction = { id: finalId, ...txDetails, status: 'Failed', failureReason };
 
-        await saveTransaction(publicKey.toBase58(), failedTx);
+        await saveTransaction(publicKey.to_base58(), failedTx);
         
         setTransactions(prev => {
             const otherTxs = prev.filter(tx => tx.id !== tempId);
