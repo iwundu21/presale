@@ -14,7 +14,8 @@ export function WalletConnect() {
   }, []);
 
 
-  const buttonStyles = {
+  const buttonStyles: React.CSSProperties = {
+    '--dapp-name': 'Exnus Protocol Presale',
     backgroundColor: connected ? 'hsl(var(--secondary))' : 'hsl(var(--primary))',
     color: connected ? 'hsl(var(--secondary-foreground))' : 'hsl(var(--primary-foreground))',
     borderRadius: 'var(--radius)',
