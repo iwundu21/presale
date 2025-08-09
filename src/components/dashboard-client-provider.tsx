@@ -8,8 +8,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
-import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, EXN_PRICE } from "@/config";
-import { getUserData, getTransactions, getPresaleStats, recordPurchase } from "@/services/firestore-service";
+import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, EXN_PRICE, SOFT_CAP } from "@/config";
 
 
 export type Transaction = {
@@ -78,17 +77,12 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     setIsLoadingPrice(true);
 
     try {
-        const userPubKey = publicKey.toBase58();
-        const [userData, userTransactions, presaleStats, solPriceData] = await Promise.all([
-           getUserData(userPubKey),
-           getTransactions(userPubKey),
-           getPresaleStats(),
-           fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd').then(res => res.json())
-        ]);
-
-       setExnBalance(userData.exnBalance);
-       setTransactions(userTransactions);
-       setTotalExnSold(presaleStats.totalExnSold);
+       // Mock data since firestore is removed
+       setExnBalance(0);
+       setTransactions([]);
+       setTotalExnSold(SOFT_CAP * 0.25); // Mock 25% progress
+       
+       const solPriceData = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd').then(res => res.json())
        setSolPrice(solPriceData.solana.usd);
 
     } catch (error) {
@@ -227,9 +221,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
           lastValidBlockHeight
         }, 'confirmed');
         
-        await recordPurchase(publicKey.toBase58(), {
-            amountExn, paidAmount, paidCurrency: currency
-        }, signature);
+        // Removed recordPurchase call
 
         const completedTx: Transaction = { id: signature, ...txDetails, status: 'Completed', date: new Date() };
         

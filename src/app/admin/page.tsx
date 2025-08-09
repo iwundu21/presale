@@ -77,17 +77,6 @@ export default function AdminPage() {
                         <Button onClick={handleUpdateDate}>Update Date</Button>
                     </CardContent>
                 </Card>
-
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>User Management</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <CardDescription>
-                            User management functionality is not yet implemented.
-                        </CardDescription>
-                    </CardContent>
-                </Card>
             </div>
         </main>
     );
