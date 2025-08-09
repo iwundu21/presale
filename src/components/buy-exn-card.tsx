@@ -22,7 +22,7 @@ export function BuyExnCard() {
   const { connected: isConnected, handlePurchase, solPrice, isLoadingPrice } = useDashboard();
   const { publicKey } = useWallet();
   const { connection } = useConnection();
-  const [payAmount, setPayAmount] = useState("100.00");
+  const [payAmount, setPayAmount] = useState("1.00");
   const [receiveAmount, setReceiveAmount] = useState("");
   const [currency, setCurrency] = useState("USDC");
   const [balances, setBalances] = useState({ SOL: 0, USDC: 0, USDT: 0 });
