@@ -28,24 +28,34 @@ export default function AdminPage() {
     const [isUpdatingDate, setIsUpdatingDate] = useState(false);
     
     useEffect(() => {
-        if (!connecting) {
-            if (!connected || !publicKey) {
-                router.push('/');
-                return;
-            }
-
-            if (publicKey.toBase58() === ADMIN_WALLET_ADDRESS) {
-                setIsAuthorized(true);
-            } else {
-                router.push('/dashboard');
-            }
-            setIsLoading(false);
+        // Wait until the wallet connection status is fully resolved
+        if (connecting) {
+            return;
         }
+
+        if (!connected || !publicKey) {
+            // If not connected after checking, redirect to home
+            router.push('/');
+            return;
+        }
+
+        // Once connected, check for authorization
+        if (publicKey.toBase58() === ADMIN_WALLET_ADDRESS) {
+            setIsAuthorized(true);
+        } else {
+            // If connected but not the admin, redirect to user dashboard
+            router.push('/dashboard');
+        }
+        
+        // Authorization check is complete
+        setIsLoading(false);
+
     }, [publicKey, connected, connecting, router]);
 
     useEffect(() => {
         if (isAuthorized) {
             const fetchUsers = async () => {
+                setIsLoadingUsers(true);
                 try {
                     const userList = await getAllUsers();
                     setUsers(userList);
@@ -58,10 +68,14 @@ export default function AdminPage() {
             };
 
             const fetchDate = async () => {
-                const date = await getInitialPresaleEndDate();
-                // Format to YYYY-MM-DDTHH:mm for datetime-local input
-                const formattedDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-                setPresaleEndDateState(formattedDate);
+                try {
+                    const date = await getInitialPresaleEndDate();
+                    // Format to YYYY-MM-DDTHH:mm for datetime-local input
+                    const formattedDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+                    setPresaleEndDateState(formattedDate);
+                } catch(e) {
+                    console.error("Failed to fetch presale end date", e);
+                }
             }
 
             fetchUsers();
@@ -77,7 +91,7 @@ export default function AdminPage() {
         setIsUpdatingDate(true);
         try {
             await setPresaleEndDate(new Date(presaleEndDate));
-            toast({ title: "Success", description: "Presale end date has been updated.", variant: "success" });
+            toast({ title: "Success", description: "Presale end date has been updated." });
         } catch (error) {
             console.error("Failed to update date:", error);
             toast({ title: "Error", description: "Could not update the presale end date.", variant: "destructive" });
