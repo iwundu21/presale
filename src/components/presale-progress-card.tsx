@@ -45,7 +45,7 @@ export function PresaleProgressCard() {
                     </div>
                     <CardTitle className="text-2xl font-bold text-white">Presale Progress</CardTitle>
                 </div>
-                <CardDescription>
+                 <CardDescription>
                     The presale is live! Join the revolution.
                 </CardDescription>
             </CardHeader>
@@ -59,20 +59,32 @@ export function PresaleProgressCard() {
                         <div className="absolute top-0" style={{ left: `${softCapPosition}%` }}>
                             <div className="h-3 w-0.5 bg-accent/80"></div>
                             <div className="text-xs text-accent -translate-x-1/2 mt-1 whitespace-nowrap">
-                                Soft Cap
+                                Our Goal
                             </div>
                         </div>
                     )}
                 </div>
-                <div className="flex justify-between items-center text-sm font-medium">
-                    <span className="text-muted-foreground">Sold: <span className="text-white font-bold">{formatNumber(totalExnSold)} EXN</span></span>
-                    <span className="text-muted-foreground">Hard Cap: <span className="text-white font-bold">{formatNumber(HARD_CAP)} EXN</span></span>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                        <p className="text-lg font-bold text-white">{formatNumber(totalExnSold)}</p>
+                        <p className="text-xs text-muted-foreground">Tokens Sold</p>
+                    </div>
+                     <div>
+                        <p className="text-lg font-bold text-white">{formatNumber(SOFT_CAP)}</p>
+                        <p className="text-xs text-muted-foreground">Soft Cap</p>
+                    </div>
+                     <div>
+                        <p className="text-lg font-bold text-white">{formatNumber(HARD_CAP)}</p>
+                        <p className="text-xs text-muted-foreground">Hard Cap</p>
+                    </div>
                 </div>
-                 <div className="text-center">
-                    <p className="text-lg font-semibold text-white">
-                        ${formatNumber(totalSoldValue, { notation: 'standard', maximumFractionDigits: 0 })}
+                 <div className="text-center bg-muted/20 p-3 rounded-lg border border-border">
+                    <p className="text-sm font-semibold text-white">
+                        Total Raised: ${formatNumber(totalSoldValue, { notation: 'standard', maximumFractionDigits: 0 })}
                     </p>
-                    <p className="text-xs text-muted-foreground">Total Raised</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                        Once the Soft Cap is reached, the token launch is guaranteed, regardless of the roadmap progress.
+                    </p>
                  </div>
             </CardContent>
         </Card>
