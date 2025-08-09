@@ -9,7 +9,10 @@ import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, Version
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT } from "@/config";
-import { getTransactions, saveTransaction, getPresaleStats, processPurchaseAndUpdateTotals, deleteTransaction, createUserIfNotExist, listenToPresaleStats } from "@/services/firestore-service";
+import { getTransactions, saveTransaction, processPurchaseAndUpdateTotals, deleteTransaction, createUserIfNotExist, PresaleStats } from "@/services/firestore-service";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
 
 export type Transaction = {
   id: string;
@@ -45,6 +48,30 @@ export function useDashboard() {
 type DashboardClientProviderProps = {
     children: React.ReactNode;
 };
+
+/**
+ * Listens for real-time updates on the presale stats document.
+ * This is a client-side function.
+ * @param callback - A function to be called with the new stats data.
+ * @returns An unsubscribe function to stop listening.
+ */
+function listenToPresaleStats(callback: (stats: PresaleStats | null) => void): () => void {
+  const docRef = doc(db, 'presaleStats', 'totals');
+  
+  const unsubscribe = onSnapshot(docRef, (docSnap) => {
+    if (docSnap.exists()) {
+      callback(docSnap.data() as PresaleStats);
+    } else {
+      const initialStats: PresaleStats = { totalExnSold: 0 };
+      setDoc(docRef, initialStats).then(() => callback(initialStats));
+    }
+  }, (error) => {
+    console.error("Error listening to presale stats:", error);
+    callback(null);
+  });
+
+  return unsubscribe;
+}
 
 
 export function DashboardClientProvider({ children }: DashboardClientProviderProps) {

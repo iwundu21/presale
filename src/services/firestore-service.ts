@@ -1,7 +1,7 @@
 
 'use server';
 
-import { collection, doc, getDoc, getDocs, setDoc, Timestamp, runTransaction, increment, deleteDoc, onSnapshot } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc, Timestamp, runTransaction, increment, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Transaction } from "@/components/dashboard-client-provider";
 
@@ -177,30 +177,6 @@ export async function getPresaleStats(): Promise<PresaleStats> {
         // Return a default object on error
         return { totalExnSold: 0 };
     }
-}
-
-/**
- * Listens for real-time updates on the presale stats document.
- * @param callback - A function to be called with the new stats data.
- * @returns An unsubscribe function to stop listening.
- */
-export function listenToPresaleStats(callback: (stats: PresaleStats | null) => void): () => void {
-  const docRef = doc(db, PRESALE_STATS_COLLECTION, TOTALS_DOC);
-  
-  const unsubscribe = onSnapshot(docRef, (docSnap) => {
-    if (docSnap.exists()) {
-      callback(docSnap.data() as PresaleStats);
-    } else {
-      // Document does not exist, maybe initialize it or handle the case
-      const initialStats: PresaleStats = { totalExnSold: 0 };
-      setDoc(docRef, initialStats).then(() => callback(initialStats));
-    }
-  }, (error) => {
-    console.error("Error listening to presale stats:", error);
-    callback(null);
-  });
-
-  return unsubscribe;
 }
 
 
