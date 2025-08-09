@@ -10,10 +10,6 @@ import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedT
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, HARD_CAP } from "@/config";
 
-// Local storage keys
-const EXN_BALANCE_KEY = "exnus_exn_balance";
-const TOTAL_EXN_SOLD_KEY = "exnus_total_exn_sold";
-const TRANSACTIONS_KEY = "exnus_transactions";
 
 export type Transaction = {
   id: string; // Signature or temp ID
@@ -30,7 +26,7 @@ type DashboardContextType = {
     transactions: Transaction[];
     totalExnSold: number;
     connected: boolean;
-    handlePurchase: (exnAmount: number, paidAmount: number, currency: string, retryFromId?: string) => Promise<void>;
+    handlePurchase: (exnAmount: number, paidAmount: number, currency: string) => Promise<void>;
     solPrice: number | null;
     isLoadingPrice: boolean;
     isLoadingPurchase: boolean;
@@ -73,32 +69,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
       router.push('/');
     }
   }, [isClient, connected, connecting, router]);
-  
-  const getStoredData = useCallback((key: string) => {
-    if (typeof window !== 'undefined') {
-        const item = localStorage.getItem(key);
-        if (item) {
-            try {
-                // The date objects need to be reconstructed
-                const parsed = JSON.parse(item);
-                if(Array.isArray(parsed)) {
-                    return parsed.map(t => ({...t, date: new Date(t.date)}));
-                }
-                return parsed;
-            } catch(e) {
-                return null;
-            }
-        }
-    }
-    return null;
-  }, []);
 
-  const setStoredData = (key: string, data: any) => {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(key, JSON.stringify(data));
-    }
-  }
-  
   const fetchDashboardData = useCallback(async () => {
     if (!connected || !publicKey) return;
 
@@ -106,23 +77,27 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     setIsLoadingPrice(true);
 
     try {
+        const userKey = publicKey.toBase58();
+
+        // Fetch user data (balance)
+        const userDataRes = await fetch(`/api/user-data?userKey=${userKey}`);
+        const userData = await userDataRes.json();
+        setExnBalance(userData.balance || 0);
+
+        // Fetch presale data (total sold)
+        const presaleDataRes = await fetch('/api/presale-data');
+        const presaleData = await presaleDataRes.json();
+        setTotalExnSold(presaleData.totalExnSold || 0);
+
         // Fetch SOL Price
         const solPriceData = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd').then(res => res.json());
         setSolPrice(solPriceData.solana.usd);
         
-        const userKey = publicKey.toBase58();
-        setExnBalance(getStoredData(`${EXN_BALANCE_KEY}_${userKey}`) || 0);
-        setTotalExnSold(getStoredData(TOTAL_EXN_SOLD_KEY) || 0);
-        
-        // Load transactions from local storage for this user
-        const storedTransactions = getStoredData(`${TRANSACTIONS_KEY}_${userKey}`) || [];
-        setTransactions(storedTransactions);
-
     } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
         toast({
             title: "Error Loading Data",
-            description: "Could not load real-time market data. Please refresh.",
+            description: "Could not load dashboard data. Please refresh.",
             variant: "destructive"
         });
         setSolPrice(150); // Fallback price
@@ -130,14 +105,24 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         setIsLoadingPrice(false);
         setIsLoadingDashboard(false);
     }
-  }, [connected, publicKey, toast, getStoredData]);
+  }, [connected, publicKey, toast]);
 
+   const fetchTransactionHistory = useCallback(async () => {
+    if (!publicKey) return;
+    // For now, transaction history is local. A full backend would store this.
+    const stored = localStorage.getItem(`transactions_${publicKey.toBase58()}`);
+    if (stored) {
+      const parsed = JSON.parse(stored).map((tx: any) => ({...tx, date: new Date(tx.date)}));
+      setTransactions(parsed);
+    }
+  }, [publicKey]);
 
   useEffect(() => {
     if (connected && publicKey) {
         fetchDashboardData();
+        fetchTransactionHistory();
     }
-  }, [connected, publicKey, fetchDashboardData]);
+  }, [connected, publicKey, fetchDashboardData, fetchTransactionHistory]);
   
   const updateTransactionInState = useCallback((tx: Transaction) => {
      setTransactions(prev => {
@@ -146,25 +131,25 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         newTxs.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
         if (publicKey) {
-            setStoredData(`${TRANSACTIONS_KEY}_${publicKey.toBase58()}`, newTxs);
+            localStorage.setItem(`transactions_${publicKey.toBase58()}`, JSON.stringify(newTxs));
         }
         return newTxs;
     });
   }, [publicKey]);
 
-  const handlePurchase = useCallback(async (exnAmount: number, paidAmount: number, currency: string, retryFromId?: string) => {
+  const handlePurchase = useCallback(async (exnAmount: number, paidAmount: number, currency: string) => {
     if (!publicKey || !wallet?.adapter.connected) {
       toast({ title: "Wallet not connected", description: "Please connect your wallet and try again.", variant: "destructive" });
       return;
     }
-     if (!PRESALE_WALLET_ADDRESS) {
+    if (!PRESALE_WALLET_ADDRESS) {
       toast({ title: "Presale address is not configured. Please contact support.", variant: "destructive" });
       return;
     }
     
     setIsLoadingPurchase(true);
 
-    const tempId = retryFromId || `tx_${Date.now()}`;
+    const tempId = `tx_${Date.now()}`;
     const txDetails: Omit<Transaction, 'status' | 'id' | 'date'> = { 
         amountExn: exnAmount, 
         paidAmount, 
@@ -194,7 +179,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             }));
         } else {
             const mintPublicKey = currency === "USDC" ? USDC_MINT : USDT_MINT;
-            const decimals = 6; // Both USDC and USDT use 6 decimals
+            const decimals = 6;
 
             const fromTokenAccount = await getAssociatedTokenAddress(mintPublicKey, publicKey);
             const toTokenAccount = await getAssociatedTokenAddress(mintPublicKey, presaleWalletPublicKey);
@@ -244,17 +229,22 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
           lastValidBlockHeight
         }, 'confirmed');
         
-        // --- LOCAL STATE UPDATE ---
+        // --- SERVER STATE UPDATE ---
         const userKey = publicKey.toBase58();
-        const newBalance = (exnBalance || 0) + exnAmount;
-        const newTotalSold = (totalExnSold || 0) + exnAmount;
-        
-        setStoredData(`${EXN_BALANCE_KEY}_${userKey}`, newBalance);
-        setStoredData(TOTAL_EXN_SOLD_KEY, newTotalSold);
+        const purchaseResponse = await fetch('/api/purchase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userKey, exnAmount }),
+        });
 
+        if (!purchaseResponse.ok) {
+            throw new Error('Failed to update server-side balance.');
+        }
+
+        const { newBalance, newTotalSold } = await purchaseResponse.json();
         setExnBalance(newBalance);
         setTotalExnSold(newTotalSold);
-        // --- END LOCAL STATE UPDATE ---
+        // --- END SERVER STATE UPDATE ---
 
         const completedTx: Transaction = { id: signature, ...txDetails, status: 'Completed', date: new Date() };
         updateTransactionInState(completedTx); 
@@ -291,7 +281,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     } finally {
         setIsLoadingPurchase(false);
     }
-  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, exnBalance, totalExnSold]);
+  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet]);
   
   if (!isClient || connecting || !publicKey || isLoadingDashboard) {
       return <DashboardLoadingSkeleton />; 
