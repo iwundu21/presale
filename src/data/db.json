@@ -6,6 +6,7 @@
     "tokenPrice": 0.09
   },
   "isPresaleActive": true,
+  "adminPasscode": "203020",
   "users": {
     "9Kqt28pfMVBsBvXYYnYQCT2BZyorAwzbR6dUmgQfsZYW": {
       "balance": 0,

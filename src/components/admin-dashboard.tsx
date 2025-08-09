@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getPresaleData, setPresaleInfo, setPresaleStatus } from "@/services/presale-info-service";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { Download, ChevronLeft, ChevronRight, KeyRound } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -20,13 +20,6 @@ const SEASON_PRICES: { [key: string]: number } = {
     "Investors": 0.15,
     "Whale": 0.25,
 };
-
-type UserData = {
-    [wallet: string]: {
-        balance: number;
-        transactions: any[];
-    }
-}
 
 type UserBalance = {
     wallet: string;
@@ -46,6 +39,13 @@ export function AdminDashboard() {
     const [isUpdatingDate, setIsUpdatingDate] = useState(false);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
+    
+    // Passcode state
+    const [currentPasscode, setCurrentPasscode] = useState('');
+    const [newPasscode, setNewPasscode] = useState('');
+    const [confirmNewPasscode, setConfirmNewPasscode] = useState('');
+    const [isUpdatingPasscode, setIsUpdatingPasscode] = useState(false);
+
 
     // User table state
     const [users, setUsers] = useState<UserBalance[]>([]);
@@ -193,7 +193,6 @@ export function AdminDashboard() {
     const handleDownloadData = async () => {
         setIsDownloading(true);
         try {
-            // Fetch all users without pagination for the download
             const response = await fetch('/api/admin/all-users');
             if (!response.ok) {
                 throw new Error("Failed to fetch user data for download.");
@@ -204,7 +203,6 @@ export function AdminDashboard() {
             
             let csvContent = "wallet_address,exn_balance\n";
             for(const user of allUsers) {
-                // We include all users, even those with 0 balance, for a complete record
                 csvContent += `${user.wallet},${user.balance}\n`;
             }
             
@@ -237,6 +235,45 @@ export function AdminDashboard() {
             setIsDownloading(false);
         }
     };
+    
+    const handleUpdatePasscode = async () => {
+        if (!currentPasscode || !newPasscode || !confirmNewPasscode) {
+             toast({ title: "Error", description: "All passcode fields are required.", variant: "destructive" });
+             return;
+        }
+        if (newPasscode !== confirmNewPasscode) {
+            toast({ title: "Error", description: "New passcodes do not match.", variant: "destructive" });
+            return;
+        }
+         if (newPasscode.length < 6) {
+            toast({ title: "Error", description: "New passcode must be at least 6 characters.", variant: "destructive" });
+            return;
+        }
+
+        setIsUpdatingPasscode(true);
+        try {
+            const response = await fetch('/api/admin/update-passcode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ currentPasscode, newPasscode })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || "Failed to update passcode.");
+            }
+            
+            toast({ title: "Success", description: "Admin passcode has been updated.", variant: "success" });
+            setCurrentPasscode('');
+            setNewPasscode('');
+            setConfirmNewPasscode('');
+
+        } catch(error: any) {
+            toast({ title: "Update Failed", description: error.message, variant: "destructive" });
+        } finally {
+            setIsUpdatingPasscode(false);
+        }
+    }
 
 
     return (
@@ -348,6 +385,52 @@ export function AdminDashboard() {
                         </div>
                     </CardContent>
                 </Card>
+                 <Card>
+                    <CardHeader>
+                        <div className="flex items-center gap-3">
+                            <KeyRound className="h-6 w-6 text-primary" />
+                            <CardTitle>Change Admin Passcode</CardTitle>
+                        </div>
+                        <CardDescription>
+                           Update the passcode used to access this dashboard.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4 max-w-sm">
+                        <div className="space-y-2">
+                            <Label htmlFor="current-passcode">Current Passcode</Label>
+                            <Input
+                                id="current-passcode"
+                                type="password"
+                                value={currentPasscode}
+                                onChange={(e) => setCurrentPasscode(e.target.value)}
+                                disabled={isUpdatingPasscode}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="new-passcode">New Passcode</Label>
+                            <Input
+                                id="new-passcode"
+                                type="password"
+                                value={newPasscode}
+                                onChange={(e) => setNewPasscode(e.target.value)}
+                                disabled={isUpdatingPasscode}
+                            />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="confirm-new-passcode">Confirm New Passcode</Label>
+                            <Input
+                                id="confirm-new-passcode"
+                                type="password"
+                                value={confirmNewPasscode}
+                                onChange={(e) => setConfirmNewPasscode(e.target.value)}
+                                disabled={isUpdatingPasscode}
+                            />
+                        </div>
+                        <Button onClick={handleUpdatePasscode} disabled={isUpdatingPasscode}>
+                            {isUpdatingPasscode ? "Updating..." : "Update Passcode"}
+                        </Button>
+                    </CardContent>
+                </Card>
                 <Card>
                     <CardHeader>
                         <CardTitle>Manage Presale Season</CardTitle>
@@ -357,7 +440,7 @@ export function AdminDashboard() {
                     </CardHeader>
                     <CardContent className="flex flex-col sm:flex-row items-end gap-4">
                        <div className="grid w-full max-w-sm items-center gap-1.5">
-                            <label htmlFor="season">Season</label>
+                            <Label htmlFor="season">Season</Label>
                             <Select value={season} onValueChange={handleSeasonChange} disabled={isLoading}>
                                 <SelectTrigger id="season">
                                     <SelectValue placeholder="Select a season" />
@@ -370,7 +453,7 @@ export function AdminDashboard() {
                             </Select>
                        </div>
                        <div className="grid w-full max-w-xs items-center gap-1.5">
-                           <label htmlFor="price">Token Price ($)</label>
+                           <Label htmlFor="price">Token Price ($)</Label>
                            <Input id="price" type="number" value={price} readOnly disabled/>
                        </div>
                         <Button onClick={handleUpdateSeason} disabled={isLoading}>
