@@ -88,6 +88,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         if (userDataRes.status === 'fulfilled' && userDataRes.value.ok) {
             const userData = await userDataRes.value.json();
             setExnBalance(userData.balance || 0);
+            if(userData.transactions) {
+                const parsedTxs = userData.transactions.map((tx: any) => ({...tx, date: new Date(tx.date)}));
+                setTransactions(parsedTxs);
+            }
         } else {
              console.error('Failed to fetch user data:', userDataRes.status === 'rejected' ? userDataRes.reason : await userDataRes.value.text());
              throw new Error('Could not load your balance.');
@@ -106,7 +110,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             setSolPrice(solPriceData.solana.usd);
         } else {
             console.error('Failed to fetch SOL price:', solPriceRes.status === 'rejected' ? solPriceRes.reason : 'API request failed');
-            // Provide a fallback price to not block the UI
             setSolPrice(150); 
             toast({
               title: "Could not fetch SOL price",
@@ -128,42 +131,51 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
   }, [connected, publicKey, toast]);
 
-   const fetchTransactionHistory = useCallback(async () => {
-    if (!publicKey) return;
-    // For now, transaction history is local. A full backend would store this.
-    // A more robust solution would be to query the blockchain for past transactions.
-    const stored = localStorage.getItem(`transactions_${publicKey.toBase58()}`);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored).map((tx: any) => ({...tx, date: new Date(tx.date)}));
-        setTransactions(parsed);
-      } catch (e) {
-        console.error("Failed to parse transactions from localStorage", e);
-        // If parsing fails, clear the corrupted data
-        localStorage.removeItem(`transactions_${publicKey.toBase58()}`);
-      }
-    }
-  }, [publicKey]);
 
   useEffect(() => {
     if (connected && publicKey) {
         fetchDashboardData();
-        fetchTransactionHistory();
     }
-  }, [connected, publicKey, fetchDashboardData, fetchTransactionHistory]);
+  }, [connected, publicKey, fetchDashboardData]);
   
   const updateTransactionInState = useCallback((tx: Transaction) => {
      setTransactions(prev => {
         const newTxs = prev.filter(t => t.id !== tx.id);
-        newTxs.unshift(tx); // Add new/updated transaction to the top
+        newTxs.unshift(tx);
         newTxs.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        
-        if (publicKey) {
-            localStorage.setItem(`transactions_${publicKey.toBase58()}`, JSON.stringify(newTxs));
-        }
         return newTxs;
     });
-  }, [publicKey]);
+  }, []);
+
+  const persistTransaction = useCallback(async (transaction: Transaction) => {
+    if (!publicKey) return;
+    try {
+        const userKey = publicKey.toBase58();
+        const response = await fetch('/api/purchase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userKey, exnAmount: transaction.amountExn, transaction }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server-side transaction update failed: ${await response.text()}`);
+        }
+        const { newBalance, newTotalSold, transactions } = await response.json();
+
+        setExnBalance(newBalance);
+        setTotalExnSold(newTotalSold);
+        const parsedTxs = transactions.map((tx: any) => ({...tx, date: new Date(tx.date)}));
+        setTransactions(parsedTxs);
+
+    } catch (error) {
+        console.error("Failed to persist transaction:", error);
+        toast({
+            title: "Sync Error",
+            description: "Your transaction was successful, but we failed to update your permanent record. Please contact support if your balance seems incorrect.",
+            variant: "destructive"
+        });
+    }
+  }, [publicKey, toast]);
 
   const handlePurchase = useCallback(async (exnAmount: number, paidAmount: number, currency: string) => {
     if (!publicKey || !wallet?.adapter.connected) {
@@ -178,20 +190,16 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     setIsLoadingPurchase(true);
 
     const tempId = `tx_${Date.now()}`;
-    const txDetails: Omit<Transaction, 'status' | 'id' | 'date'> = { 
+    const newTx: Transaction = { 
+        id: tempId,
         amountExn: exnAmount, 
         paidAmount, 
         paidCurrency: currency, 
-    };
-
-    const pendingTx: Transaction = {
-        id: tempId,
-        ...txDetails,
         date: new Date(),
         status: "Pending",
     };
     
-    updateTransactionInState(pendingTx);
+    updateTransactionInState(newTx);
 
     let signature: string | null = null;
     
@@ -261,26 +269,9 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             throw new Error(`Transaction failed to confirm: ${JSON.stringify(confirmation.value.err)}`);
         }
 
-        // --- SERVER STATE UPDATE ---
-        const userKey = publicKey.toBase58();
-        const purchaseResponse = await fetch('/api/purchase', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userKey, exnAmount }),
-        });
-
-        if (!purchaseResponse.ok) {
-            const errorData = await purchaseResponse.text();
-            throw new Error(`Server-side balance update failed: ${errorData}`);
-        }
-
-        const { newBalance, newTotalSold } = await purchaseResponse.json();
-        setExnBalance(newBalance);
-        setTotalExnSold(newTotalSold);
-        // --- END SERVER STATE UPDATE ---
-
-        const completedTx: Transaction = { id: signature, ...txDetails, status: 'Completed', date: new Date() };
-        updateTransactionInState(completedTx); 
+        const completedTx: Transaction = { ...newTx, id: signature, status: 'Completed' };
+        updateTransactionInState(completedTx);
+        await persistTransaction(completedTx);
 
         toast({
             title: "Purchase Successful!",
@@ -302,9 +293,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         }
 
         const finalId = signature || tempId;
-        const failedTx: Transaction = { id: finalId, ...txDetails, status: 'Failed', failureReason, date: new Date() };
+        const failedTx: Transaction = { ...newTx, id: finalId, status: 'Failed', failureReason };
         
         updateTransactionInState(failedTx);
+        await persistTransaction(failedTx);
         
         toast({
             title: toastTitle,
@@ -314,7 +306,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     } finally {
         setIsLoadingPurchase(false);
     }
-  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet]);
+  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, persistTransaction]);
   
   if (!isClient || connecting || !publicKey || isLoadingDashboard) {
       return <DashboardLoadingSkeleton />; 
@@ -337,6 +329,3 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
-
-    
-    

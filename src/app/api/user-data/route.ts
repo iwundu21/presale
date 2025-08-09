@@ -11,7 +11,7 @@ async function readDb() {
         const data = await fs.readFile(dbPath, 'utf-8');
         return JSON.parse(data);
     } catch (error) {
-         if (error.code === 'ENOENT') {
+         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
             return { totalExnSold: 0, users: {} };
         }
         throw error;
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         }
 
         const db = await readDb();
-        const userData = db.users[userKey] || { balance: 0 };
+        const userData = db.users[userKey] || { balance: 0, transactions: [] };
         
         return NextResponse.json(userData, { status: 200 });
 

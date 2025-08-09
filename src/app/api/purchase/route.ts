@@ -11,41 +11,56 @@ async function readDb() {
         return JSON.parse(data);
     } catch (error) {
         // If the file doesn't exist, start with a default structure
-        if (error.code === 'ENOENT') {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
             return { totalExnSold: 0, users: {} };
         }
         throw error;
     }
 }
 
-async function writeDb(data) {
+async function writeDb(data: any) {
     await fs.writeFile(dbPath, JSON.stringify(data, null, 2), 'utf-8');
 }
 
 export async function POST(request: Request) {
     try {
-        const { userKey, exnAmount } = await request.json();
+        const { userKey, exnAmount, transaction } = await request.json();
 
-        if (!userKey || typeof exnAmount !== 'number' || exnAmount <= 0) {
+        if (!userKey || typeof exnAmount !== 'number' || exnAmount <= 0 || !transaction) {
             return NextResponse.json({ message: 'Invalid input' }, { status: 400 });
         }
 
         const db = await readDb();
 
-        // Update user balance
-        db.users[userKey] = {
-            balance: (db.users[userKey]?.balance || 0) + exnAmount
-        };
+        if (!db.users[userKey]) {
+             db.users[userKey] = {
+                balance: 0,
+                transactions: []
+            };
+        }
 
-        // Update total sold
-        db.totalExnSold = (db.totalExnSold || 0) + exnAmount;
+        // Add or update transaction
+        const existingTxIndex = db.users[userKey].transactions.findIndex((t: any) => t.id === transaction.id);
+        if (existingTxIndex > -1) {
+            db.users[userKey].transactions[existingTxIndex] = transaction;
+        } else {
+            db.users[userKey].transactions.unshift(transaction);
+        }
+
+        // Only add to balance and total sold for new, completed transactions
+        if (existingTxIndex === -1 && transaction.status === 'Completed') {
+            db.users[userKey].balance = (db.users[userKey].balance || 0) + exnAmount;
+            db.totalExnSold = (db.totalExnSold || 0) + exnAmount;
+        }
+
 
         await writeDb(db);
         
         return NextResponse.json({ 
             message: 'Purchase successful',
             newBalance: db.users[userKey].balance,
-            newTotalSold: db.totalExnSold 
+            newTotalSold: db.totalExnSold,
+            transactions: db.users[userKey].transactions,
         }, { status: 200 });
 
     } catch (error) {
