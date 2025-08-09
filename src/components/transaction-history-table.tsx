@@ -129,8 +129,7 @@ export function TransactionHistoryTable() {
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                     Connect your wallet to see your transactions.
-                  </I've also updated the transaction table to correctly handle the dates and disable the "View on Solscan" link for transactions that are not yet completed. That should resolve the key error and improve the user experience.
-TableCell>
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>
