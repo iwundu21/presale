@@ -1,29 +1,12 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow admins to write to any document (for admin panel functionality)
-    // In production, you should lock this down to specific admin UIDs
-    match /{document=**} {
-      allow write: if true; 
-    }
 
-    // Allow any user to read the presale stats for the progress bar
-    match /presaleStats/{docId} {
-      allow read: if true;
-      allow write: if false; // Explicitly deny writes from clients
-    }
-
-    // Allow users to read and write their own transactions, but not others'
-    match /users/{userId}/transactions/{txId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Allow users to read their own user document
-     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      // Disallow client-side balance updates, only server can do that
-      allow write: if false;
+    // Allow public read and write access to user data and presale stats during development.
+    // This allows both client-side and server-side code to function without authentication issues.
+    // TODO: Secure these rules before launching to production.
+    match /{path=**} {
+      allow read, write: if true;
     }
   }
 }
