@@ -9,7 +9,6 @@ import { useEffect, useState } from 'react';
 
 
 export function AppHeader() {
-    const { connected } = useWallet();
     const pathname = usePathname();
     const [isClient, setIsClient] = useState(false);
 
