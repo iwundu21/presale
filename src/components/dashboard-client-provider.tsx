@@ -8,8 +8,11 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
-import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, HARD_CAP, EXN_MINT, EXN_TOKEN_DECIMALS } from "@/config";
+import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, HARD_CAP } from "@/config";
 
+// Local storage keys
+const EXN_BALANCE_KEY = "exnus_exn_balance";
+const TOTAL_EXN_SOLD_KEY = "exnus_total_exn_sold";
 
 export type Transaction = {
   id: string; // Signature
@@ -81,45 +84,23 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         const solPriceData = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd').then(res => res.json());
         setSolPrice(solPriceData.solana.usd);
         
-        // Fetch real EXN balance
-        try {
-            const tokenAccount = await getAssociatedTokenAddress(EXN_MINT, publicKey);
-            const tokenAccountInfo = await connection.getParsedAccountInfo(tokenAccount);
-            if (tokenAccountInfo.value) {
-                 const balance = (tokenAccountInfo.value.data as any).parsed.info.tokenAmount.uiAmount;
-                 setExnBalance(balance);
-            } else {
-                setExnBalance(0);
-            }
-        } catch (error) {
-            console.warn("Could not fetch user EXN balance:", error);
-            setExnBalance(0);
-        }
+        // Load EXN balance and total sold from local storage
+        const storedBalance = localStorage.getItem(`${EXN_BALANCE_KEY}_${publicKey.toBase58()}`);
+        setExnBalance(storedBalance ? parseFloat(storedBalance) : 0);
 
-        // Fetch total EXN sold (total supply of the mint)
-        try {
-            const mintInfo = await connection.getParsedAccountInfo(EXN_MINT);
-            if(mintInfo.value) {
-                const supply = (mintInfo.value.data as any).parsed.info.supply;
-                const decimals = (mintInfo.value.data as any).parsed.info.decimals;
-                setTotalExnSold(supply / (10 ** decimals));
-            }
-        } catch(error) {
-            console.error("Could not fetch total EXN supply:", error);
-            // In a real scenario, you might have a fallback or an indexed value
-            setTotalExnSold(0);
-        }
+        const storedTotalSold = localStorage.getItem(TOTAL_EXN_SOLD_KEY);
+        setTotalExnSold(storedTotalSold ? parseFloat(storedTotalSold) : 0);
 
         // Fetch real on-chain transaction history for user's wallet
         try {
             const signatures = await connection.getSignaturesForAddress(publicKey, { limit: 25 });
             const userTransactions: Transaction[] = [];
             signatures.forEach(sig => {
-                userTransactions.push({
+                // Here, a backend would parse the transaction to get purchase details.
+                // Since we can't do that client-side securely/reliably, we display the raw transaction.
+                 userTransactions.push({
                     id: sig.signature,
-                    // In a real indexed backend, you'd fetch the parsed transaction to get details
-                    // For now, we are just listing the transactions without purchase details
-                    amountExn: 0, 
+                    amountExn: 0, // Cannot determine this reliably from just the signature
                     paidAmount: 0,
                     paidCurrency: 'N/A',
                     date: sig.blockTime ? new Date(sig.blockTime * 1000) : new Date(),
@@ -259,21 +240,28 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
           lastValidBlockHeight
         }, 'confirmed');
         
-        // After successful on-chain transaction, we refetch data
-        // A backend would typically credit the EXN tokens here.
-        // Since we don't have that, we simulate the balance update and refetch other data.
+        // --- LOCAL STATE UPDATE ---
+        // On successful transaction, update local storage state.
+        const newBalance = exnBalance + exnAmount;
+        const newTotalSold = totalExnSold + exnAmount;
         
+        localStorage.setItem(`${EXN_BALANCE_KEY}_${publicKey.toBase58()}`, newBalance.toString());
+        localStorage.setItem(TOTAL_EXN_SOLD_KEY, newTotalSold.toString());
+
+        setExnBalance(newBalance);
+        setTotalExnSold(newTotalSold);
+        // --- END LOCAL STATE UPDATE ---
+
         const completedTx: Transaction = { id: signature, ...txDetails, status: 'Completed', date: new Date() };
         updateTransactionInState(completedTx); 
 
         toast({
             title: "Purchase Successful!",
-            description: `Your transaction ${signature.substring(0,10)}... was confirmed. Your balances will update shortly.`,
+            description: `Your transaction was confirmed. Your balance has been updated.`,
             variant: "success"
         });
         
-        // Refetch all data to get latest balances and total supply
-        // Adding a small delay to allow blockchain to settle
+        // Refetch transaction history
         setTimeout(() => {
              fetchDashboardData();
         }, 3000);
@@ -304,7 +292,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     } finally {
         setIsLoadingPurchase(false);
     }
-  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, fetchDashboardData]);
+  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, fetchDashboardData, exnBalance, totalExnSold]);
   
   if (!isClient || connecting || !publicKey || isLoadingDashboard) {
       return <DashboardLoadingSkeleton />; 
@@ -327,3 +315,5 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
+
+    
