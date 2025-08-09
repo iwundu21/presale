@@ -28,29 +28,37 @@ export default function AdminPage() {
     const [isUpdatingDate, setIsUpdatingDate] = useState(false);
     
     useEffect(() => {
-        // Wait until the wallet connection status is fully resolved
+        // This effect runs whenever the wallet state changes.
+        // We will only make a final decision once `connecting` is false.
         if (connecting) {
+            // If the wallet is in the process of connecting, we are in a loading state.
+            // We don't want to make any decisions yet.
+            setIsLoading(true);
             return;
         }
 
-        if (!connected || !publicKey) {
-            // If not connected after checking, redirect to home
-            router.push('/');
-            return;
-        }
-
-        // Once connected, check for authorization
-        if (publicKey.toBase58() === ADMIN_WALLET_ADDRESS) {
-            setIsAuthorized(true);
+        // At this point, `connecting` is false, so the connection attempt is over.
+        // Now we can check the `connected` status.
+        if (connected && publicKey) {
+            // A wallet is connected. Check if it's the admin wallet.
+            if (publicKey.toBase58() === ADMIN_WALLET_ADDRESS) {
+                // It is the admin wallet. Grant access.
+                setIsAuthorized(true);
+            } else {
+                // It's a different wallet. Redirect to the user dashboard.
+                toast({ title: "Unauthorized", description: "This wallet is not authorized for the admin dashboard.", variant: "destructive" });
+                router.push('/dashboard');
+            }
         } else {
-            // If connected but not the admin, redirect to user dashboard
-            router.push('/dashboard');
+            // No wallet is connected. Redirect to the landing page.
+            toast({ title: "Admin Access Required", description: "Please connect your wallet to access the admin dashboard.", variant: "destructive" });
+            router.push('/');
         }
-        
-        // Authorization check is complete
+
+        // All checks are complete, so we are no longer in a loading state.
         setIsLoading(false);
 
-    }, [publicKey, connected, connecting, router]);
+    }, [publicKey, connected, connecting, router, toast]);
 
     useEffect(() => {
         if (isAuthorized) {
