@@ -9,6 +9,7 @@ import { List, CheckCircle, AlertCircle, Clock, ExternalLink, TrendingUp, HelpCi
 import { useDashboard, Transaction } from "./dashboard-client-provider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Button } from "./ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 
 const formatTxId = (txId: string) => {
     if (txId.startsWith('tx_')) return 'Processing...';
@@ -124,23 +125,25 @@ export function TransactionHistoryTable() {
                                                             {!tx.id.startsWith('tx_') && <ExternalLink className="h-3 w-3" />}
                                                         </Badge>
                                                     </a>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
+                                                     <Popover>
+                                                        <PopoverTrigger asChild>
                                                             <button className="text-muted-foreground hover:text-white">
                                                                 <HelpCircle className="h-4 w-4"/>
                                                             </button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent side="top" align="end">
-                                                            <p className="font-bold">{new Date(tx.date).toLocaleString()}</p>
-                                                            <p>Tx: {formatTxId(tx.id)}</p>
-                                                            {tx.status === 'Failed' && tx.failureReason && (
-                                                                <p className="text-red-400 max-w-xs break-words">Reason: {tx.failureReason}</p>
-                                                            )}
-                                                            {tx.status === 'Completed' && <p>Click status to view on Solscan</p>}
-                                                            {tx.status === 'Pending' && <p>Transaction is being processed...</p>}
-                                                            {isTxPendingAndRecent(tx) && <p>Click the refresh icon to retry confirmation.</p>}
-                                                        </TooltipContent>
-                                                    </Tooltip>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent side="top" align="end" className="w-auto max-w-sm text-sm">
+                                                             <div className="space-y-2">
+                                                                <p className="font-bold">{new Date(tx.date).toLocaleString()}</p>
+                                                                <p>Tx: {formatTxId(tx.id)}</p>
+                                                                {tx.status === 'Failed' && tx.failureReason && (
+                                                                    <p className="text-red-400 max-w-xs break-words">Reason: {tx.failureReason}</p>
+                                                                )}
+                                                                {tx.status === 'Completed' && <p>Click status to view on Solscan</p>}
+                                                                {tx.status === 'Pending' && <p>Transaction is being processed...</p>}
+                                                                {isTxPendingAndRecent(tx) && <p>Click the refresh icon to retry confirmation.</p>}
+                                                            </div>
+                                                        </PopoverContent>
+                                                    </Popover>
                                                 </div>
                                             </TableCell>
                                         </TableRow>
@@ -154,4 +157,3 @@ export function TransactionHistoryTable() {
         </Card>
     );
 }
-
