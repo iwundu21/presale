@@ -6,15 +6,16 @@ import Image from "next/image";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useState } from "react";
 import { PresaleCountdown } from "./presale-countdown";
-import type { getPresaleEndDate } from "@/services/presale-date-service";
+import { Skeleton } from "./ui/skeleton";
 
 type LandingPageProps = {
   onConnect: () => void;
   isConnecting: boolean;
   presaleEndDate: Date;
+  isLoadingDate: boolean;
 };
 
-export function LandingPage({ onConnect, isConnecting, presaleEndDate }: LandingPageProps) {
+export function LandingPage({ onConnect, isConnecting, presaleEndDate, isLoadingDate }: LandingPageProps) {
     const { wallet } = useWallet();
     const [isClient, setIsClient] = useState(false);
 
@@ -34,8 +35,20 @@ export function LandingPage({ onConnect, isConnecting, presaleEndDate }: Landing
               Exnus is not just a token; it's a revolution in decentralized intelligence. We're building a new ecosystem where your ideas have value and your data remains your own.
             </p>
         </div>
-
-        <PresaleCountdown presaleEndDate={presaleEndDate} />
+        
+        {isLoadingDate ? (
+           <div className="text-center bg-muted/50 rounded-lg p-4 max-w-sm mx-auto">
+             <Skeleton className="h-5 w-24 mx-auto mb-2" />
+             <div className="grid grid-cols-4 gap-2">
+                <div><Skeleton className="h-10 w-full" /><Skeleton className="h-3 w-1/2 mx-auto mt-1" /></div>
+                <div><Skeleton className="h-10 w-full" /><Skeleton className="h-3 w-1/2 mx-auto mt-1" /></div>
+                <div><Skeleton className="h-10 w-full" /><Skeleton className="h-3 w-1/2 mx-auto mt-1" /></div>
+                <div><Skeleton className="h-10 w-full" /><Skeleton className="h-3 w-1/2 mx-auto mt-1" /></div>
+             </div>
+           </div>
+        ) : (
+            <PresaleCountdown presaleEndDate={presaleEndDate} />
+        )}
         
         {isClient && (
             <Button size="lg" onClick={onConnect} disabled={isConnecting || !!wallet}>

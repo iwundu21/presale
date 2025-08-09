@@ -6,17 +6,30 @@ import { useRouter } from 'next/navigation';
 import { useWallet } from "@solana/wallet-adapter-react";
 import { LandingPage } from "@/components/landing-page";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { getPresaleEndDate } from "@/services/presale-date-service";
+import { getPresaleEndDate as getClientPresaleEndDate, setClientPresaleEndDate } from "@/services/presale-date-service";
+import { getPresaleEndDate as getServerPresaleEndDate } from "@/services/firestore-service";
 
 export default function Home() {
   const { connected, connecting } = useWallet();
   const { setVisible } = useWalletModal();
   const router = useRouter();
-  const [presaleEndDate, setPresaleEndDate] = useState(new Date());
+  const [presaleEndDate, setPresaleEndDate] = useState(getClientPresaleEndDate());
+  const [isLoadingDate, setIsLoadingDate] = useState(true);
 
   useEffect(() => {
     document.title = "Exnus Presale";
-    setPresaleEndDate(getPresaleEndDate());
+    const fetchEndDate = async () => {
+      try {
+        const serverDate = await getServerPresaleEndDate();
+        setPresaleEndDate(serverDate);
+        setClientPresaleEndDate(serverDate);
+      } catch (error) {
+        console.error("Could not fetch end date from server, using client fallback.");
+      } finally {
+        setIsLoadingDate(false);
+      }
+    };
+    fetchEndDate();
   }, []);
 
   useEffect(() => {
@@ -33,7 +46,8 @@ export default function Home() {
     <LandingPage 
       onConnect={handleConnect} 
       isConnecting={connecting} 
-      presaleEndDate={presaleEndDate} 
+      presaleEndDate={presaleEndDate}
+      isLoadingDate={isLoadingDate}
     />
   );
 }
