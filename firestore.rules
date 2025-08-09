@@ -1,11 +1,10 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Allow public read and write access to user data and presale stats during development.
-    // This allows both client-side and server-side code to function without authentication issues.
-    // TODO: Secure these rules before launching to production.
-    match /{path=**} {
+    // Allow all reads and writes to all collections for development.
+    // This should be secured before launching to production.
+    match /{document=**} {
       allow read, write: if true;
     }
   }
