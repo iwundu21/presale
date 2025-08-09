@@ -28,7 +28,7 @@ export function PresaleProgressCard({ presaleEndDate }: PresaleProgressCardProps
 
     // Effect for updating progress bar and countdown
     useEffect(() => {
-        const percentage = (totalExnSold / SOFT_CAP) * 100;
+        const percentage = totalExnSold > 0 && SOFT_CAP > 0 ? (totalExnSold / SOFT_CAP) * 100 : 0;
         const soldValue = totalExnSold * EXN_PRICE;
         setTotalSoldValue(soldValue);
         
@@ -71,7 +71,10 @@ export function PresaleProgressCard({ presaleEndDate }: PresaleProgressCardProps
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <Progress value={progress} className="w-full h-3" />
+                <div className="flex items-center gap-3">
+                    <Progress value={progress} className="w-full h-3" />
+                    <span className="text-sm font-bold text-primary">{progress.toFixed(2)}%</span>
+                </div>
                 <div className="flex justify-between items-center text-sm font-medium">
                     <span className="text-muted-foreground">Sold: <span className="text-white font-bold">{formatNumber(totalExnSold)} EXN</span></span>
                     <span className="text-muted-foreground">Target: <span className="text-white font-bold">{formatNumber(SOFT_CAP)} EXN</span></span>
