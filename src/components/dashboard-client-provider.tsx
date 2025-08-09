@@ -9,9 +9,6 @@ import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, Version
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT } from "@/config";
-import { getTransactions, saveTransaction, processPurchaseAndUpdateTotals, deleteTransaction, createUserIfNotExist, PresaleStats } from "@/services/firestore-service";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 
 
 export type Transaction = {
@@ -49,31 +46,6 @@ type DashboardClientProviderProps = {
     children: React.ReactNode;
 };
 
-/**
- * Listens for real-time updates on the presale stats document.
- * This is a client-side function.
- * @param callback - A function to be called with the new stats data.
- * @returns An unsubscribe function to stop listening.
- */
-function listenToPresaleStats(callback: (stats: PresaleStats | null) => void): () => void {
-  const docRef = doc(db, 'presaleStats', 'totals');
-  
-  const unsubscribe = onSnapshot(docRef, (docSnap) => {
-    if (docSnap.exists()) {
-      callback(docSnap.data() as PresaleStats);
-    } else {
-      const initialStats: PresaleStats = { totalExnSold: 0 };
-      setDoc(docRef, initialStats).then(() => callback(initialStats));
-    }
-  }, (error) => {
-    console.error("Error listening to presale stats:", error);
-    callback(null);
-  });
-
-  return unsubscribe;
-}
-
-
 export function DashboardClientProvider({ children }: DashboardClientProviderProps) {
   const { connected, publicKey, connecting, sendTransaction } = useWallet();
   const { connection } = useConnection();
@@ -98,18 +70,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
   }, [isClient, connected, connecting, router]);
   
-  // Set up real-time listener for presale stats
-  useEffect(() => {
-    const unsubscribe = listenToPresaleStats((stats) => {
-      if (stats) {
-        setTotalExnSold(stats.totalExnSold);
-      }
-    });
-
-    // Cleanup listener on component unmount
-    return () => unsubscribe();
-  }, []);
-
   const fetchDashboardData = useCallback(async () => {
     if (!connected || !publicKey) return;
 
@@ -117,28 +77,14 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     setIsLoadingPrice(true);
 
     try {
-        const walletAddress = publicKey.toBase58();
-       
-        const [
-            userData, 
-            userTransactions,
-            solPriceData,
-            // presaleStats are now handled by the real-time listener
-        ] = await Promise.all([
-            createUserIfNotExist(walletAddress),
-            getTransactions(walletAddress),
-            fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd').then(res => res.json()),
-        ]);
+       // Mock data since firebase is removed
+       setExnBalance(0);
+       setTransactions([]);
+       setTotalExnSold(0);
 
-        if (userData) {
-            setExnBalance(userData.exnBalance);
-        }
-        
-        setTransactions(userTransactions);
-        
-        const price = solPriceData.solana.usd;
-        setSolPrice(price);
-        
+       const solPriceData = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd').then(res => res.json());
+       const price = solPriceData.solana.usd;
+       setSolPrice(price);
 
     } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
@@ -200,27 +146,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         status: "Pending",
     };
     
-    // If this is a new transaction (not a retry), save it as pending
-    if (!retryFromId) {
-        await saveTransaction(publicKey.toBase58(), pendingTx);
-        updateTransactionInState(pendingTx);
-    }
-
-    const timeoutId = setTimeout(async () => {
-        const failedTx: Transaction = {
-            ...pendingTx,
-            status: "Failed",
-            failureReason: "Transaction timed out after 5 minutes. Please check your wallet.",
-        };
-        await saveTransaction(publicKey.toBase58(), failedTx);
-        updateTransactionInState(failedTx);
-        setIsLoadingPurchase(false);
-        toast({
-            title: "Transaction Timed Out",
-            description: "Your transaction was not confirmed within 5 minutes.",
-            variant: "destructive",
-        });
-    }, 5 * 60 * 1000);
+    updateTransactionInState(pendingTx);
 
     let signature: string | null = null;
     
@@ -289,7 +215,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         });
 
         signature = await sendTransaction(transaction, connection);
-        clearTimeout(timeoutId); 
         
         await connection.confirmTransaction({
           signature,
@@ -297,20 +222,12 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
           lastValidBlockHeight
         }, 'confirmed');
         
-        // If this was a retry, delete the old temporary transaction record
-        if (retryFromId) {
-            await deleteTransaction(publicKey.toBase58(), retryFromId);
-        }
-
         const completedTx: Transaction = { id: signature, ...txDetails, status: 'Completed' };
-        const newBalance = exnBalance + exnAmount;
-
-        // Atomically update totals and save user transaction
-        await processPurchaseAndUpdateTotals(publicKey.toBase58(), completedTx, newBalance);
-
-        // Update local state - totalExnSold is now handled by listener
-        setExnBalance(newBalance);
-        setTransactions(prev => [completedTx, ...prev.filter(tx => tx.id !== tempId)].sort((a,b) => b.date.getTime() - a.date.getTime()));
+        
+        // With Firebase removed, we just update local state
+        setExnBalance(prev => prev + exnAmount);
+        setTotalExnSold(prev => prev + exnAmount);
+        updateTransactionInState(completedTx);
 
         toast({
             title: "Purchase Successful!",
@@ -319,7 +236,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         });
         
     } catch (error: any) {
-        clearTimeout(timeoutId);
         console.error("Transaction failed:", error);
         
         let failureReason = "An unknown error occurred.";
@@ -334,13 +250,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         const finalId = signature || tempId;
         const failedTx: Transaction = { id: finalId, ...txDetails, status: 'Failed', failureReason };
-
-        await saveTransaction(publicKey.toBase58(), failedTx);
         
-        setTransactions(prev => {
-            const otherTxs = prev.filter(tx => tx.id !== tempId || tx.id !== signature);
-            return [failedTx, ...otherTxs].sort((a,b) => b.date.getTime() - a.date.getTime());
-        });
+        updateTransactionInState(failedTx);
         
         toast({
             title: toastTitle,
@@ -350,7 +261,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     } finally {
         setIsLoadingPurchase(false);
     }
-  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, exnBalance, fetchDashboardData]);
+  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState]);
   
   if (!isClient || connecting || !publicKey || isLoadingDashboard) {
       return <DashboardLoadingSkeleton />; 
