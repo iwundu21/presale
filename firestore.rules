@@ -2,21 +2,22 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow all reads and writes to all collections
-    // This is for development purposes and should be secured before production.
-    match /{document=**} {
-      allow read, write: if true;
-    }
-  }
-}
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{walletAddress} {
-      allow read, write: if true;
 
+    // Presale stats should be publicly readable
+    match /presale/stats {
+      allow get: if true;
+      allow list, create, update, delete: if false; // Only backend can update
+    }
+
+    // Users can only read and write their own data.
+    match /users/{userId} {
+      allow read, update, create: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false; // Disallow users from deleting their accounts directly
+      
+      // Users can only read their own transactions
       match /transactions/{transactionId} {
-        allow read, write: if true;
+        allow read, list, create: if request.auth != null && request.auth.uid == userId;
+        allow update, delete: if false; // Transactions are immutable
       }
     }
   }

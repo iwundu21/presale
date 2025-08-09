@@ -8,7 +8,8 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
-import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT } from "@/config";
+import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, EXN_PRICE } from "@/config";
+import { getUserData, getTransactions, getPresaleStats, recordPurchase } from "@/services/firestore-service";
 
 
 export type Transaction = {
@@ -77,14 +78,18 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     setIsLoadingPrice(true);
 
     try {
-       // Mock data since firebase is removed
-       setExnBalance(0);
-       setTransactions([]);
-       setTotalExnSold(0);
+        const userPubKey = publicKey.toBase58();
+        const [userData, userTransactions, presaleStats, solPriceData] = await Promise.all([
+           getUserData(userPubKey),
+           getTransactions(userPubKey),
+           getPresaleStats(),
+           fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd').then(res => res.json())
+        ]);
 
-       const solPriceData = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd').then(res => res.json());
-       const price = solPriceData.solana.usd;
-       setSolPrice(price);
+       setExnBalance(userData.exnBalance);
+       setTransactions(userTransactions);
+       setTotalExnSold(presaleStats.totalExnSold);
+       setSolPrice(solPriceData.solana.usd);
 
     } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
@@ -93,7 +98,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             description: "Could not load dashboard data. Please refresh the page.",
             variant: "destructive"
         });
-        setSolPrice(150);
+        setSolPrice(150); // Fallback price
     } finally {
         setIsLoadingPrice(false);
         setIsLoadingDashboard(false);
@@ -133,16 +138,16 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     setIsLoadingPurchase(true);
 
     const tempId = retryFromId || `tx_${Date.now()}`;
-    const txDetails: Omit<Transaction, 'status' | 'id'> = { 
+    const txDetails: Omit<Transaction, 'status' | 'id' | 'date'> = { 
         amountExn: exnAmount, 
         paidAmount, 
         paidCurrency: currency, 
-        date: new Date() 
     };
 
     const pendingTx: Transaction = {
         id: tempId,
         ...txDetails,
+        date: new Date(),
         status: "Pending",
     };
     
@@ -222,9 +227,12 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
           lastValidBlockHeight
         }, 'confirmed');
         
-        const completedTx: Transaction = { id: signature, ...txDetails, status: 'Completed' };
+        await recordPurchase(publicKey.toBase58(), {
+            amountExn, paidAmount, paidCurrency: currency
+        }, signature);
+
+        const completedTx: Transaction = { id: signature, ...txDetails, status: 'Completed', date: new Date() };
         
-        // With Firebase removed, we just update local state
         setExnBalance(prev => prev + exnAmount);
         setTotalExnSold(prev => prev + exnAmount);
         updateTransactionInState(completedTx);
@@ -249,7 +257,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         }
 
         const finalId = signature || tempId;
-        const failedTx: Transaction = { id: finalId, ...txDetails, status: 'Failed', failureReason };
+        const failedTx: Transaction = { id: finalId, ...txDetails, status: 'Failed', failureReason, date: new Date() };
         
         updateTransactionInState(failedTx);
         
