@@ -28,63 +28,56 @@ export default function AdminPage() {
     const [isUpdatingDate, setIsUpdatingDate] = useState(false);
     
     useEffect(() => {
-        // This effect is responsible for authorization.
-        // It waits until the connection status is no longer 'connecting'.
+        // This effect handles both authorization and data fetching.
         if (connecting) {
-            return; // Wait until connection attempt is resolved
+            return; // Wait until the wallet connection attempt is finished.
         }
 
-        if (connected && publicKey) {
-            // A wallet is connected, check if it's the admin wallet
-            if (publicKey.toBase58() === ADMIN_WALLET_ADDRESS) {
-                setIsAuthorized(true);
-            } else {
-                // Connected with a non-admin wallet
-                toast({ title: "Unauthorized", description: "This wallet is not authorized for the admin dashboard.", variant: "destructive" });
-                router.push('/dashboard');
-            }
-        } else {
-            // No wallet is connected
+        if (!connected || !publicKey) {
+            // If not connected after trying, redirect to home page.
             toast({ title: "Admin Access Required", description: "Please connect your wallet to access the admin dashboard.", variant: "destructive" });
             router.push('/');
+            return;
         }
-        
-        // Authorization check is complete
-        setIsLoading(false);
 
-    }, [publicKey, connected, connecting, router, toast]);
+        // At this point, a wallet is connected. Check for authorization.
+        if (publicKey.toBase58() === ADMIN_WALLET_ADDRESS) {
+            setIsAuthorized(true);
 
-    useEffect(() => {
-        // This effect fetches data only after authorization is successful.
-        if (isAuthorized) {
-            const fetchUsers = async () => {
+            // Fetch data now that we are authorized.
+            const fetchAdminData = async () => {
                 setIsLoadingUsers(true);
                 try {
-                    const userList = await getAllUsers();
+                    const [userList, initialDate] = await Promise.all([
+                        getAllUsers(),
+                        getInitialPresaleEndDate()
+                    ]);
+                    
                     setUsers(userList);
+
+                    // Format to YYYY-MM-DDTHH:mm for datetime-local input
+                    const formattedDate = new Date(initialDate.getTime() - (initialDate.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+                    setPresaleEndDateState(formattedDate);
+
                 } catch (error) {
-                    console.error("Failed to fetch users:", error);
-                    toast({ title: "Error", description: "Could not fetch user list.", variant: "destructive" });
+                    console.error("Failed to fetch admin data:", error);
+                    toast({ title: "Error", description: "Could not fetch admin data.", variant: "destructive" });
                 } finally {
                     setIsLoadingUsers(false);
                 }
             };
-
-            const fetchDate = async () => {
-                try {
-                    const date = await getInitialPresaleEndDate();
-                    // Format to YYYY-MM-DDTHH:mm for datetime-local input
-                    const formattedDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-                    setPresaleEndDateState(formattedDate);
-                } catch(e) {
-                    console.error("Failed to fetch presale end date", e);
-                }
-            }
-
-            fetchUsers();
-            fetchDate();
+            
+            fetchAdminData();
+        } else {
+            // Connected with a non-admin wallet.
+            toast({ title: "Unauthorized", description: "This wallet is not authorized for the admin dashboard.", variant: "destructive" });
+            router.push('/dashboard');
         }
-    }, [isAuthorized, toast]);
+
+        // All checks are done, loading is complete.
+        setIsLoading(false);
+
+    }, [publicKey, connected, connecting, router, toast]);
 
     const handleUpdateDate = async () => {
         if (!presaleEndDate) {
