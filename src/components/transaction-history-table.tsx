@@ -15,7 +15,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogDescription,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import Link from "next/link";
@@ -157,15 +156,12 @@ export function TransactionHistoryTable() {
                                   <AlertDialogContent>
                                     <AlertDialogHeader>
                                       <AlertDialogTitle>Transaction Details</AlertDialogTitle>
-                                       <AlertDialogDescription>
-                                            This provides details about your transaction.
-                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <div className="text-sm text-muted-foreground">
-                                        {tx.failureReason ? (
+                                        {tx.status === 'Failed' ? (
                                           <>
-                                            <div className="mb-2">This transaction failed with the following error:</div>
-                                            <div className="text-red-400 bg-red-500/10 p-2 rounded-md text-xs">{tx.failureReason}</div>
+                                            <div className="font-semibold text-white mb-2">Transaction Not Detected On-Chain</div>
+                                            <div>This can happen if the transaction was cancelled in the wallet, timed out due to network congestion, or failed before being sent to the network.</div>
                                           </>
                                         ) : (
                                           <div>
