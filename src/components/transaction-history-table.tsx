@@ -8,6 +8,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "./ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import Link from "next/link";
 import { useDashboard } from "./dashboard-client-provider";
 import type { Transaction } from "./dashboard-client-provider";
@@ -161,7 +171,31 @@ export function TransactionHistoryTable() {
                                         </Link>
                                     </Button>
                                 ) : (
-                                    <HelpCircle className="h-4 w-4 text-muted-foreground inline-block" />
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon">
+                                          <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Transaction Details</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            {tx.failureReason ? (
+                                              <>
+                                                <p className="mb-2">This transaction failed with the following error:</p>
+                                                <p className="text-red-400 bg-red-500/10 p-2 rounded-md text-xs">{tx.failureReason}</p>
+                                              </>
+                                            ) : (
+                                              "This transaction did not generate an on-chain signature. This can happen if it was cancelled, timed out, or failed before being sent to the network."
+                                            )}
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogAction>Close</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
                                 )}
                               </span>
                           </TooltipTrigger>
