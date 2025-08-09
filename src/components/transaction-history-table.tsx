@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge, BadgeProps } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { List, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { List, CheckCircle, AlertCircle, Clock, ExternalLink } from "lucide-react";
 import { useDashboard, Transaction } from "./dashboard-client-provider";
 
 const formatTxId = (txId: string) => {
@@ -44,7 +44,7 @@ export function TransactionHistoryTable() {
                     <CardTitle className="text-2xl font-bold text-white">Transaction History</CardTitle>
                 </div>
                 <CardDescription>
-                    A log of your recent EXN token purchases.
+                    Your recent on-chain transactions.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -52,8 +52,8 @@ export function TransactionHistoryTable() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Amount (EXN)</TableHead>
-                                <TableHead>Paid</TableHead>
+                                <TableHead>Transaction ID</TableHead>
+                                <TableHead>Date</TableHead>
                                 <TableHead className="text-right">Status</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -68,25 +68,24 @@ export function TransactionHistoryTable() {
                                 transactions.map((tx) => (
                                     <TableRow key={tx.id}>
                                         <TableCell>
-                                            <div className="font-medium text-white">{tx.amountExn.toLocaleString()}</div>
-                                            <div className="text-xs text-muted-foreground">{tx.date.toLocaleDateString()}</div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="font-medium text-white">{tx.paidAmount.toLocaleString(undefined, { maximumFractionDigits: 4 })}</div>
-                                            <div className="text-xs text-muted-foreground">{tx.paidCurrency}</div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                             <a 
+                                            <a 
                                                 href={`https://solscan.io/tx/${tx.id}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="hover:underline"
+                                                className="flex items-center gap-1.5 font-medium text-white hover:underline"
                                             >
-                                                <Badge variant={getStatusBadgeVariant(tx.status)} className="flex items-center gap-1.5 justify-end">
-                                                    {getStatusIcon(tx.status)}
-                                                    {tx.status}
-                                                </Badge>
+                                                {formatTxId(tx.id)}
+                                                <ExternalLink className="h-3 w-3" />
                                              </a>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="text-xs text-muted-foreground">{tx.date.toLocaleString()}</div>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Badge variant={getStatusBadgeVariant(tx.status)} className="flex items-center gap-1.5 justify-end">
+                                                {getStatusIcon(tx.status)}
+                                                {tx.status}
+                                            </Badge>
                                         </TableCell>
                                     </TableRow>
                                 ))

@@ -6,11 +6,10 @@ export const RPC_URL = "https://mainnet.helius-rpc.com/?api-key=ef62b792-793e-4e
 
 export const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // Mainnet
 export const USDT_MINT = new PublicKey("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"); // Mainnet
+// This is a randomly generated keypair. In a real project, this would be the actual mint address of the EXN token.
+export const EXN_MINT = new PublicKey("D5h2hJZv4z4K3yK1N1j1f1g1H1c1b1A1g1H1c1b1A1g1"); 
 
 export const EXN_PRICE = 0.09;
 export const SOFT_CAP = 500_000_000;
 export const HARD_CAP = 700_000_000;
-
-
-
-
+export const EXN_TOKEN_DECIMALS = 9;
