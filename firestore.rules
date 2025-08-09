@@ -1,21 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow anyone to read user balances and transaction history.
-    // This is necessary because we cannot verify the user's identity
-    // in security rules without Firebase Authentication.
-    match /users/{userId}/{document=**} {
-      allow read: if true;
-      // CRITICAL: Block all writes from the client.
-      // All writes MUST go through your secure server-side function.
-      allow write: if false;
-    }
-
-    // Allow anyone to read the public presale statistics.
-    match /presale/stats {
-      allow read: if true;
-      // CRITICAL: Block all writes from the client.
-      allow write: if false;
+    // This rule allows anyone to read or write to any document.
+    // This is for development only and is not secure for production.
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }
