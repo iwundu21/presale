@@ -11,7 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getPresaleData, setPresaleInfo, setPresaleStatus } from "@/services/presale-info-service";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Download } from "lucide-react";
+import { Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const SEASON_PRICES: { [key: string]: number } = {
     "Early Stage": 0.09,
@@ -26,6 +28,13 @@ type UserData = {
     }
 }
 
+type UserBalance = {
+    wallet: string;
+    balance: number;
+}
+
+const USERS_PER_PAGE = 20;
+
 export default function AdminPage() {
     const { toast } = useToast();
     const [date, setDate] = useState('');
@@ -37,6 +46,13 @@ export default function AdminPage() {
     const [isUpdatingDate, setIsUpdatingDate] = useState(false);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
+
+    // User table state
+    const [users, setUsers] = useState<UserBalance[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(0);
+    const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+
 
     useEffect(() => {
         const fetchInfo = async () => {
@@ -62,6 +78,33 @@ export default function AdminPage() {
         fetchInfo();
     }, [toast]);
     
+     useEffect(() => {
+        const fetchUsers = async () => {
+            setIsLoadingUsers(true);
+            try {
+                const response = await fetch(`/api/admin/all-users?page=${currentPage}&limit=${USERS_PER_PAGE}`);
+                if (!response.ok) {
+                    throw new Error("Failed to fetch user data.");
+                }
+                const data = await response.json();
+                setUsers(data.users);
+                setTotalPages(Math.ceil(data.total / USERS_PER_PAGE));
+            } catch (error) {
+                console.error("Failed to fetch users", error);
+                toast({
+                    title: "User Load Failed",
+                    description: "Could not load the user list.",
+                    variant: "destructive"
+                });
+            } finally {
+                setIsLoadingUsers(false);
+            }
+        };
+
+        fetchUsers();
+    }, [currentPage, toast]);
+
+
     const handleUpdateDate = async () => {
         if (!date || !time) {
             toast({
@@ -155,12 +198,13 @@ export default function AdminPage() {
                 throw new Error("Failed to fetch user data.");
             }
 
-            const users: UserData = await response.json();
+            const usersData = await response.json();
+            const allUsers: UserBalance[] = usersData.users || [];
             
             let csvContent = "wallet_address,exn_balance\n";
-            for(const wallet in users) {
-                if (users[wallet].balance > 0) {
-                    csvContent += `${wallet},${users[wallet].balance}\n`;
+            for(const user of allUsers) {
+                if (user.balance > 0) {
+                    csvContent += `${user.wallet},${user.balance}\n`;
                 }
             }
             
@@ -203,6 +247,74 @@ export default function AdminPage() {
             <div className="grid gap-8">
                  <Card>
                     <CardHeader>
+                        <CardTitle>User Balances</CardTitle>
+                        <CardDescription>
+                           A list of all users who have participated in the presale and their EXN token balances.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="border rounded-md">
+                           <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Wallet Address</TableHead>
+                                        <TableHead className="text-right">EXN Balance</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {isLoadingUsers ? (
+                                       Array.from({ length: 5 }).map((_, i) => (
+                                           <TableRow key={i}>
+                                               <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                                               <TableCell><Skeleton className="h-5 w-1/4 ml-auto" /></TableCell>
+                                           </TableRow>
+                                       ))
+                                    ) : users.length > 0 ? (
+                                        users.map(user => (
+                                            <TableRow key={user.wallet}>
+                                                <TableCell className="font-mono text-xs">{user.wallet}</TableCell>
+                                                <TableCell className="text-right font-semibold">{user.balance.toLocaleString()}</TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={2} className="text-center h-24">
+                                                No users found.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                         {totalPages > 0 && (
+                            <div className="flex items-center justify-end space-x-2 pt-4">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                    disabled={currentPage === 1}
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                    Previous
+                                </Button>
+                                <span className="text-sm text-muted-foreground">
+                                    Page {currentPage} of {totalPages}
+                                </span>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                    disabled={currentPage === totalPages}
+                                >
+                                    Next
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader>
                         <CardTitle>Export Presale Data</CardTitle>
                         <CardDescription>
                             Download a CSV file of all user wallets and their corresponding EXN token balances for airdrop or smart contract distribution.
@@ -211,7 +323,7 @@ export default function AdminPage() {
                     <CardContent>
                         <Button onClick={handleDownloadData} disabled={isDownloading}>
                             <Download className="mr-2 h-4 w-4"/>
-                            {isDownloading ? "Downloading..." : "Download User Data (CSV)"}
+                            {isDownloading ? "Downloading..." : "Download All User Data (CSV)"}
                         </Button>
                     </CardContent>
                 </Card>
@@ -296,3 +408,5 @@ export default function AdminPage() {
         </main>
     );
 }
+
+    

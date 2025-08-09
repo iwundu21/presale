@@ -1,9 +1,14 @@
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 
 const dbPath = path.join(process.cwd(), 'src', 'data', 'db.json');
+
+type UserBalance = {
+    wallet: string;
+    balance: number;
+}
 
 async function readDb() {
     try {
@@ -17,13 +22,47 @@ async function readDb() {
     }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
         const db = await readDb();
-        const users = db.users || {};
-        return NextResponse.json(users, { status: 200 });
+        const allUsers = db.users || {};
+
+        const userArray: UserBalance[] = Object.entries(allUsers).map(([wallet, data]: [string, any]) => ({
+            wallet,
+            balance: data.balance || 0
+        }));
+
+        // Sort by balance descending
+        userArray.sort((a, b) => b.balance - a.balance);
+
+        const { searchParams } = new URL(request.url);
+        const page = parseInt(searchParams.get('page') || '1', 10);
+        const limit = parseInt(searchParams.get('limit') || '0', 10);
+        
+        // If limit is not provided (or is 0), return all users
+        if (!limit) {
+            return NextResponse.json({
+                users: userArray,
+                total: userArray.length,
+            }, { status: 200 });
+        }
+
+
+        const startIndex = (page - 1) * limit;
+        const endIndex = page * limit;
+        const paginatedUsers = userArray.slice(startIndex, endIndex);
+
+        return NextResponse.json({
+            users: paginatedUsers,
+            total: userArray.length,
+            page,
+            totalPages: Math.ceil(userArray.length / limit)
+        }, { status: 200 });
+
     } catch (error) {
         console.error('API All-Users Error:', error);
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }
+
+    
