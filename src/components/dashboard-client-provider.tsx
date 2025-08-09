@@ -144,40 +144,23 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   useEffect(() => {
     if (connected && publicKey) {
         fetchDashboardData();
-    } else {
-        setTransactions([]);
-        setExnBalance(0);
-        setTotalExnSold(0);
     }
   }, [connected, publicKey, fetchDashboardData]);
   
-  const updateTransactionStatus = useCallback(async (signature: string, status: "Completed" | "Failed", txDetails: Omit<Transaction, 'status' | 'id' | 'date'>) => {
-    if (!publicKey) return;
-
-    const finalTransaction: Transaction = {
-        id: signature,
-        ...txDetails,
-        date: new Date(),
-        status
-    };
-     
-    // Save to Firestore
-    await saveTransaction(publicKey.toBase58(), finalTransaction);
-     
-    if (status === 'Completed') {
-        const newBalance = exnBalance + txDetails.amountExn;
-        setExnBalance(newBalance);
-        await updateUser(publicKey.toBase58(), { exnBalance: newBalance });
-        // Re-fetch presale progress to show latest numbers
-        fetchDashboardData();
-    }
-    
-    // Update local state to reflect change immediately
-    const otherTransactions = transactions.filter(tx => tx.id !== signature && !tx.id.startsWith('pending-'));
-    setTransactions([finalTransaction, ...otherTransactions].sort((a, b) => b.date.getTime() - a.date.getTime()));
-
-  }, [publicKey, exnBalance, transactions, fetchDashboardData]);
-
+  const updateTransactionInState = useCallback((tx: Transaction) => {
+     setTransactions(prev => {
+        const index = prev.findIndex(t => t.id === tx.id);
+        if (index > -1) {
+            // Update existing transaction
+            const newTxs = [...prev];
+            newTxs[index] = tx;
+            return newTxs;
+        } else {
+            // Add new transaction
+            return [tx, ...prev].sort((a,b) => b.date.getTime() - a.date.getTime());
+        }
+    });
+  }, []);
 
   const handlePurchase = useCallback(async (exnAmount: number, paidAmount: number, currency: string) => {
     if (!publicKey) {
@@ -189,18 +172,18 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
       return;
     }
 
-    let signature: string | null = null;
-    
-    // Optimistically create pending transaction for UI
+    const txDetails = { amountExn, paidAmount, paidCurrency: currency, date: new Date() };
+
+    // Use a unique temporary ID for the optimistic update
+    const tempId = `pending-${Date.now()}`;
     const pendingTx: Transaction = {
-        id: `pending-${Date.now()}-${exnAmount}`, // Use a unique temporary ID
-        amountExn: exnAmount,
-        paidAmount,
-        paidCurrency: currency,
-        date: new Date(),
+        id: tempId,
+        ...txDetails,
         status: "Pending",
     };
-    setTransactions((prev) => [pendingTx, ...prev]);
+    updateTransactionInState(pendingTx);
+    
+    let signature: string | null = null;
     
     try {
         const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
@@ -262,48 +245,58 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         const transaction = new VersionedTransaction(message);
         signature = await sendTransaction(transaction, connection);
         
-        // Remove pending tx
-        setTransactions(prev => prev.filter(tx => tx.id !== pendingTx.id));
-        
         toast({
             title: "Transaction Sent",
             description: "Waiting for confirmation...",
         });
 
-        const confirmation = await connection.confirmTransaction({
+        // The UI already shows "Pending", we wait for confirmation
+        await connection.confirmTransaction({
           signature,
           blockhash,
           lastValidBlockHeight
         }, 'confirmed');
 
-        if (confirmation.value.err) {
-            throw new Error("Transaction failed to confirm.");
-        }
-
-        await updateTransactionStatus(signature, "Completed", {amountExn, paidAmount, paidCurrency});
+        const completedTx: Transaction = { id: signature, ...txDetails, status: 'Completed' };
+        await saveTransaction(publicKey.toBase58(), completedTx);
         
+        const newBalance = exnBalance + exnAmount;
+        await updateUser(publicKey.toBase58(), { exnBalance: newBalance });
+        setExnBalance(newBalance);
+
+        // Replace pending tx with completed one
+        setTransactions(prev => [completedTx, ...prev.filter(tx => tx.id !== tempId)].sort((a,b) => b.date.getTime() - a.date.getTime()));
+
         toast({
             title: "Purchase Successful!",
             description: `You purchased ${exnAmount.toLocaleString()} EXN.`,
             variant: "success"
         });
+        
+        // Re-fetch total presale progress
+        fetchDashboardData();
 
     } catch (error: any) {
         console.error("Transaction failed:", error);
         
-        // Remove pending transaction from UI
-        setTransactions(prev => prev.filter(tx => tx.id !== pendingTx.id));
-
-        if (signature) {
-          // If we have a signature, the tx was sent but failed to confirm or process
-          await updateTransactionStatus(signature, "Failed", {amountExn, paidAmount, paidCurrency});
-        }
-
         let errorMessage = "An unknown error occurred.";
         if (error.message.includes("User rejected the request")) {
             errorMessage = "Transaction rejected in wallet.";
         } else if (error.message) {
             errorMessage = error.message;
+        }
+        
+        // If we have a signature, the transaction was sent but failed to confirm/process.
+        // It's a failed transaction and should be recorded.
+        if (signature) {
+            const failedTx: Transaction = { id: signature, ...txDetails, status: 'Failed' };
+            await saveTransaction(publicKey.toBase58(), failedTx);
+            // Replace pending tx with failed one
+            setTransactions(prev => [failedTx, ...prev.filter(tx => tx.id !== tempId)].sort((a,b) => b.date.getTime() - a.date.getTime()));
+        } else {
+             // If there's no signature, the transaction was never even sent (e.g., user rejected).
+             // We can just remove the pending transaction from the UI.
+            setTransactions(prev => prev.filter(tx => tx.id !== tempId));
         }
 
         toast({
@@ -312,7 +305,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             variant: "destructive",
         });
     }
-  }, [publicKey, connection, sendTransaction, toast, updateTransactionStatus]);
+  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, exnBalance, fetchDashboardData]);
   
   if (!isClient || connecting || !publicKey || isLoadingDashboard) {
       return <DashboardLoadingSkeleton />; 

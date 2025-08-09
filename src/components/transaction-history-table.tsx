@@ -112,14 +112,14 @@ export function TransactionHistoryTable() {
                     <TableCell className="text-right">
                        <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button asChild variant="ghost" size="icon" disabled={tx.status !== 'Completed'}>
-                             <Link href={`https://solscan.io/tx/${tx.id}`} target="_blank" aria-disabled={tx.status !== 'Completed'}>
+                          <Button asChild variant="ghost" size="icon" disabled={tx.status === 'Pending' || tx.id.startsWith('pending-')}>
+                             <Link href={`https://solscan.io/tx/${tx.id}`} target="_blank" aria-disabled={tx.status === 'Pending'}>
                                 <ExternalLink className="h-4 w-4 text-accent" />
                              </Link>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                           {tx.status !== 'Completed' ? <p>Waiting for confirmation...</p> : <p>View on Solscan</p>}
+                           {tx.status === 'Pending' ? <p>Waiting for confirmation...</p> : <p>View on Solscan</p>}
                         </TooltipContent>
                       </Tooltip>
                     </TableCell>
@@ -128,7 +128,7 @@ export function TransactionHistoryTable() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                    Connect your wallet to see your transactions.
+                    No transaction history found.
                   </TableCell>
                 </TableRow>
               )}
