@@ -11,12 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getPresaleData, setPresaleInfo, setPresaleStatus } from "@/services/presale-info-service";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Download, ChevronLeft, ChevronRight, KeyRound, Edit, ChevronsUpDown, CheckCircle, AlertCircle, Clock, Search } from "lucide-react";
+import { Download, ChevronLeft, ChevronRight, KeyRound, Edit, ChevronsUpDown, CheckCircle, AlertCircle, Clock, Search, ExternalLink } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Transaction } from "./dashboard-client-provider";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
 import { Badge } from "./ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
 const SEASON_PRICES: { [key: string]: number } = {
     "Early Stage": 0.09,
@@ -386,7 +387,7 @@ export function AdminDashboard() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {isLoadingUsers ? (
+                                     {isLoadingUsers ? (
                                        Array.from({ length: 5 }).map((_, i) => (
                                            <TableRow key={i}>
                                                <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
@@ -397,6 +398,7 @@ export function AdminDashboard() {
                                     ) : users.length > 0 ? (
                                         users.map(user => (
                                             <Collapsible asChild key={user.wallet} tag="tbody">
+                                                <TooltipProvider>
                                                  <>
                                                     <TableRow>
                                                         <TableCell className="font-mono text-xs max-w-xs truncate">{user.wallet}</TableCell>
@@ -423,6 +425,7 @@ export function AdminDashboard() {
                                                                                     <TableHead>EXN Amount</TableHead>
                                                                                     <TableHead>Paid</TableHead>
                                                                                     <TableHead>Status</TableHead>
+                                                                                    <TableHead>Explorer</TableHead>
                                                                                 </TableRow>
                                                                             </TableHeader>
                                                                             <TableBody>
@@ -437,6 +440,20 @@ export function AdminDashboard() {
                                                                                                 {tx.status}
                                                                                             </Badge>
                                                                                         </TableCell>
+                                                                                        <TableCell>
+                                                                                             <Tooltip>
+                                                                                                <TooltipTrigger asChild>
+                                                                                                    <Button variant="ghost" size="icon" className="h-8 w-8" disabled={tx.id.startsWith('tx_')} asChild>
+                                                                                                        <a href={`https://solscan.io/tx/${tx.id}`} target="_blank" rel="noopener noreferrer" >
+                                                                                                            <ExternalLink className="h-4 w-4" />
+                                                                                                        </a>
+                                                                                                    </Button>
+                                                                                                </TooltipTrigger>
+                                                                                                <TooltipContent>
+                                                                                                    <p>View on Solscan</p>
+                                                                                                </TooltipContent>
+                                                                                            </Tooltip>
+                                                                                        </TableCell>
                                                                                     </TableRow>
                                                                                 ))}
                                                                             </TableBody>
@@ -449,6 +466,7 @@ export function AdminDashboard() {
                                                         </tr>
                                                     </CollapsibleContent>
                                                 </>
+                                                </TooltipProvider>
                                             </Collapsible>
                                         ))
                                     ) : (
@@ -668,5 +686,3 @@ export function AdminDashboard() {
     );
 
 }
-
-    
