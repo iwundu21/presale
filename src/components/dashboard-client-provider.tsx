@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, createContext, useContext } from "rea
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
+import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction, TransactionSignature } from "@solana/web3.js";
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, HARD_CAP } from "@/config";
@@ -19,6 +19,8 @@ export type Transaction = {
   date: Date;
   status: "Completed" | "Pending" | "Failed";
   failureReason?: string;
+  blockhash?: string;
+  lastValidBlockHeight?: number;
 };
 
 type DashboardContextType = {
@@ -27,6 +29,7 @@ type DashboardContextType = {
     totalExnSold: number;
     connected: boolean;
     handlePurchase: (exnAmount: number, paidAmount: number, currency: string) => Promise<void>;
+    retryTransaction: (tx: Transaction) => Promise<void>;
     solPrice: number | null;
     isLoadingPrice: boolean;
     isLoadingPurchase: boolean;
@@ -45,6 +48,8 @@ export function useDashboard() {
 type DashboardClientProviderProps = {
     children: React.ReactNode;
 };
+
+const TRANSACTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 export function DashboardClientProvider({ children }: DashboardClientProviderProps) {
   const { connected, publicKey, connecting, sendTransaction, wallet } = useWallet();
@@ -190,7 +195,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     setIsLoadingPurchase(true);
 
     const tempId = `tx_${Date.now()}`;
-    const newTx: Transaction = { 
+    let newTx: Transaction = { 
         id: tempId,
         amountExn: exnAmount, 
         paidAmount, 
@@ -201,8 +206,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     
     updateTransactionInState(newTx);
 
-    let signature: string | null = null;
-    
+    let signature: TransactionSignature | null = null;
+    let blockhash: string | null = null;
+    let lastValidBlockHeight: number | null = null;
+
     try {
         const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
         const instructions: TransactionInstruction[] = [];
@@ -242,7 +249,9 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             );
         }
         
-        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+        const latestBlockhash = await connection.getLatestBlockhash();
+        blockhash = latestBlockhash.blockhash;
+        lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
 
         const message = new TransactionMessage({
             payerKey: publicKey,
@@ -259,17 +268,25 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         signature = await sendTransaction(transaction, connection);
         
-        const confirmation = await connection.confirmTransaction({
+        // Update the transaction in state with the real signature
+        newTx = {...newTx, id: signature, blockhash, lastValidBlockHeight};
+        updateTransactionInState(newTx);
+
+        const confirmationPromise = connection.confirmTransaction({
           signature,
           blockhash,
           lastValidBlockHeight
         }, 'confirmed');
+
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Transaction confirmation timed out.")), TRANSACTION_TIMEOUT_MS));
+
+        const confirmation = await Promise.race([confirmationPromise, timeoutPromise]);
         
-        if (confirmation.value.err) {
-            throw new Error(`Transaction failed to confirm: ${JSON.stringify(confirmation.value.err)}`);
+        if ((confirmation as any).value.err) {
+            throw new Error(`Transaction failed to confirm: ${JSON.stringify((confirmation as any).value.err)}`);
         }
 
-        const completedTx: Transaction = { ...newTx, id: signature, status: 'Completed' };
+        const completedTx: Transaction = { ...newTx, status: 'Completed' };
         updateTransactionInState(completedTx);
         await persistTransaction(completedTx);
 
@@ -288,19 +305,22 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         if (error.name === 'WalletSendTransactionError' || (error.message && error.message.includes("User rejected the request"))) {
             failureReason = "Transaction was rejected in the wallet.";
             toastTitle = "Transaction Cancelled";
+        } else if (error.message.includes("timed out")) {
+             failureReason = "Confirmation timed out. The transaction might have succeeded or failed. Please check the transaction on Solscan or try retrying.";
+             toastTitle = "Transaction Timed Out";
         } else if (error.message) {
              failureReason = error.message;
         }
 
         const finalId = signature || tempId;
-        const failedTx: Transaction = { ...newTx, id: finalId, status: 'Failed', failureReason };
+        const failedTx: Transaction = { ...newTx, id: finalId, status: 'Failed', failureReason, blockhash: blockhash, lastValidBlockHeight: lastValidBlockHeight };
         
         updateTransactionInState(failedTx);
         await persistTransaction(failedTx);
         
         toast({
             title: toastTitle,
-            description: "Your transaction could not be completed. Your balance has not been charged.",
+            description: "Your transaction could not be completed. Your balance has not been charged for failed transactions.",
             variant: "destructive",
         });
     } finally {
@@ -308,6 +328,54 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
   }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, persistTransaction]);
   
+  const retryTransaction = useCallback(async (tx: Transaction) => {
+    if (!tx.blockhash || !tx.lastValidBlockHeight) {
+        toast({ title: "Retry Failed", description: "Missing transaction details needed to retry.", variant: "destructive" });
+        return;
+    }
+
+    setIsLoadingPurchase(true);
+    const pendingTx: Transaction = { ...tx, status: 'Pending', failureReason: undefined };
+    updateTransactionInState(pendingTx);
+    
+    try {
+        const confirmationPromise = connection.confirmTransaction({
+          signature: tx.id,
+          blockhash: tx.blockhash,
+          lastValidBlockHeight: tx.lastValidBlockHeight
+        }, 'confirmed');
+
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Transaction confirmation timed out.")), TRANSACTION_TIMEOUT_MS));
+
+        const confirmation = await Promise.race([confirmationPromise, timeoutPromise]);
+        
+        if ((confirmation as any).value.err) {
+            throw new Error(`Transaction failed to confirm: ${JSON.stringify((confirmation as any).value.err)}`);
+        }
+
+        const completedTx: Transaction = { ...tx, status: 'Completed' };
+        updateTransactionInState(completedTx);
+        await persistTransaction(completedTx);
+        
+        toast({ title: "Retry Successful!", description: "Your transaction has been confirmed.", variant: "success" });
+
+    } catch (error: any) {
+        console.error("Retry failed:", error);
+        let failureReason = error.message || "Failed to confirm transaction on retry.";
+        if (error.message.includes("timed out")) {
+             failureReason = "Confirmation timed out again. Please check the transaction on Solscan.";
+        }
+        const failedTx: Transaction = { ...tx, status: 'Failed', failureReason: failureReason };
+        updateTransactionInState(failedTx);
+        await persistTransaction(failedTx);
+        toast({ title: "Retry Failed", description: failureReason, variant: "destructive" });
+    } finally {
+        setIsLoadingPurchase(false);
+    }
+
+  }, [connection, toast, updateTransactionInState, persistTransaction]);
+
+
   if (!isClient || connecting || !publicKey || isLoadingDashboard) {
       return <DashboardLoadingSkeleton />; 
   }
@@ -318,6 +386,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     totalExnSold,
     connected,
     handlePurchase,
+    retryTransaction,
     solPrice,
     isLoadingPrice,
     isLoadingPurchase,

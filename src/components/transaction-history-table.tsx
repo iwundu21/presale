@@ -5,9 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge, BadgeProps } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { List, CheckCircle, AlertCircle, Clock, ExternalLink, TrendingUp, HelpCircle } from "lucide-react";
+import { List, CheckCircle, AlertCircle, Clock, ExternalLink, TrendingUp, HelpCircle, RefreshCw } from "lucide-react";
 import { useDashboard, Transaction } from "./dashboard-client-provider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import { Button } from "./ui/button";
 
 const formatTxId = (txId: string) => {
     if (txId.startsWith('tx_')) return 'Processing...';
@@ -33,7 +34,7 @@ const getStatusIcon = (status: Transaction['status']) => {
 
 
 export function TransactionHistoryTable() {
-    const { transactions } = useDashboard();
+    const { transactions, retryTransaction, isLoadingPurchase } = useDashboard();
 
     return (
         <Card className="shadow-lg border-primary/20 bg-gradient-to-br from-card to-primary/5">
@@ -86,6 +87,17 @@ export function TransactionHistoryTable() {
                                            
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-2">
+                                                    {tx.status === 'Failed' && tx.failureReason?.includes('timed out') && (
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-6 w-6" 
+                                                            onClick={() => retryTransaction(tx)}
+                                                            disabled={isLoadingPurchase}
+                                                        >
+                                                            <RefreshCw className={`h-4 w-4 ${isLoadingPurchase ? 'animate-spin' : ''}`} />
+                                                        </Button>
+                                                    )}
                                                     <a 
                                                         href={!tx.id.startsWith('tx_') ? `https://solscan.io/tx/${tx.id}` : undefined}
                                                         target="_blank"
@@ -112,6 +124,7 @@ export function TransactionHistoryTable() {
                                                             )}
                                                             {tx.status === 'Completed' && <p>Click status to view on Solscan</p>}
                                                             {tx.status === 'Pending' && <p>Transaction is being processed...</p>}
+                                                            {tx.status === 'Failed' && tx.failureReason?.includes('timed out') && <p>Click the refresh icon to retry confirmation.</p>}
                                                         </TooltipContent>
                                                     </Tooltip>
                                                 </div>
