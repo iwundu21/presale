@@ -11,12 +11,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getPresaleData, setPresaleInfo, setPresaleStatus } from "@/services/presale-info-service";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Download } from "lucide-react";
 
 const SEASON_PRICES: { [key: string]: number } = {
     "Early Stage": 0.09,
     "Investors": 0.15,
     "Whale": 0.25,
 };
+
+type UserData = {
+    [wallet: string]: {
+        balance: number;
+        transactions: any[];
+    }
+}
 
 export default function AdminPage() {
     const { toast } = useToast();
@@ -28,6 +36,7 @@ export default function AdminPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isUpdatingDate, setIsUpdatingDate] = useState(false);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     useEffect(() => {
         const fetchInfo = async () => {
@@ -138,12 +147,74 @@ export default function AdminPage() {
         }
     }
 
+    const handleDownloadData = async () => {
+        setIsDownloading(true);
+        try {
+            const response = await fetch('/api/admin/all-users');
+            if (!response.ok) {
+                throw new Error("Failed to fetch user data.");
+            }
+
+            const users: UserData = await response.json();
+            
+            let csvContent = "wallet_address,exn_balance\n";
+            for(const wallet in users) {
+                if (users[wallet].balance > 0) {
+                    csvContent += `${wallet},${users[wallet].balance}\n`;
+                }
+            }
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", "presale_balances.csv");
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            toast({
+                title: "Download Started",
+                description: "The presale user data CSV is being downloaded.",
+                variant: "success"
+            });
+
+        } catch (error: any) {
+             console.error("Failed to download data", error);
+            toast({
+                title: "Download Failed",
+                description: error.message || "Could not download the user data.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
+
     return (
         <main className="container mx-auto p-4 sm:p-6 lg:p-8">
              <div className="flex items-center justify-between gap-3 mb-8">
                 <h1 className="text-3xl font-bold">Admin Dashboard</h1>
             </div>
             <div className="grid gap-8">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Export Presale Data</CardTitle>
+                        <CardDescription>
+                            Download a CSV file of all user wallets and their corresponding EXN token balances for airdrop or smart contract distribution.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button onClick={handleDownloadData} disabled={isDownloading}>
+                            <Download className="mr-2 h-4 w-4"/>
+                            {isDownloading ? "Downloading..." : "Download User Data (CSV)"}
+                        </Button>
+                    </CardContent>
+                </Card>
                 <Card>
                     <CardHeader>
                         <CardTitle>Presale Control</CardTitle>
