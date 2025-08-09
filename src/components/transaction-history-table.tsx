@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge, BadgeProps } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { List, CheckCircle, AlertCircle, Clock, ExternalLink, ArrowDown, ArrowRight, TrendingUp } from "lucide-react";
+import { List, CheckCircle, AlertCircle, Clock, ExternalLink, TrendingUp, HelpCircle } from "lucide-react";
 import { useDashboard, Transaction } from "./dashboard-client-provider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
@@ -85,30 +85,36 @@ export function TransactionHistoryTable() {
                                             </TableCell>
                                            
                                             <TableCell className="text-right">
-                                                <Tooltip delayDuration={100}>
-                                                    <TooltipTrigger asChild>
-                                                        <a 
-                                                            href={!tx.id.startsWith('tx_') ? `https://solscan.io/tx/${tx.id}` : undefined}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="flex items-center justify-end"
-                                                        >
-                                                            <Badge variant={getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
-                                                                {getStatusIcon(tx.status)}
-                                                                {tx.status}
-                                                                {!tx.id.startsWith('tx_') && <ExternalLink className="h-3 w-3" />}
-                                                            </Badge>
-                                                        </a>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent side="top" align="end">
-                                                        <p className="font-bold">{new Date(tx.date).toLocaleString()}</p>
-                                                        <p>Tx: {formatTxId(tx.id)}</p>
-                                                        {tx.status === 'Failed' && tx.failureReason && (
-                                                            <p className="text-red-400 max-w-xs break-words">Reason: {tx.failureReason}</p>
-                                                        )}
-                                                         {tx.status === 'Completed' && <p>Click to view on Solscan</p>}
-                                                    </TooltipContent>
-                                                </Tooltip>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <a 
+                                                        href={!tx.id.startsWith('tx_') ? `https://solscan.io/tx/${tx.id}` : undefined}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center justify-end"
+                                                    >
+                                                        <Badge variant={getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
+                                                            {getStatusIcon(tx.status)}
+                                                            {tx.status}
+                                                            {!tx.id.startsWith('tx_') && <ExternalLink className="h-3 w-3" />}
+                                                        </Badge>
+                                                    </a>
+                                                    <Tooltip delayDuration={100}>
+                                                        <TooltipTrigger asChild>
+                                                            <button className="text-muted-foreground hover:text-white">
+                                                                <HelpCircle className="h-4 w-4"/>
+                                                            </button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top" align="end">
+                                                            <p className="font-bold">{new Date(tx.date).toLocaleString()}</p>
+                                                            <p>Tx: {formatTxId(tx.id)}</p>
+                                                            {tx.status === 'Failed' && tx.failureReason && (
+                                                                <p className="text-red-400 max-w-xs break-words">Reason: {tx.failureReason}</p>
+                                                            )}
+                                                            {tx.status === 'Completed' && <p>Click status to view on Solscan</p>}
+                                                            {tx.status === 'Pending' && <p>Transaction is being processed...</p>}
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))
