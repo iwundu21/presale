@@ -11,9 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getPresaleData, setPresaleInfo, setPresaleStatus } from "@/services/presale-info-service";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Download, ChevronLeft, ChevronRight, KeyRound, Edit } from "lucide-react";
+import { Download, ChevronLeft, ChevronRight, KeyRound, Edit, ChevronsUpDown, CheckCircle, AlertCircle, Clock } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { Transaction } from "./dashboard-client-provider";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
+import { Badge } from "./ui/badge";
 
 const SEASON_PRICES: { [key: string]: number } = {
     "Early Stage": 0.09,
@@ -21,12 +24,30 @@ const SEASON_PRICES: { [key: string]: number } = {
     "Whale": 0.25,
 };
 
-type UserBalance = {
+type UserAdminView = {
     wallet: string;
     balance: number;
+    transactions: Transaction[];
 }
 
 const USERS_PER_PAGE = 20;
+
+const getStatusBadgeVariant = (status: Transaction['status']) => {
+    switch (status) {
+        case 'Completed': return 'success';
+        case 'Pending': return 'secondary';
+        case 'Failed': return 'destructive';
+        default: return 'outline';
+    }
+}
+
+const getStatusIcon = (status: Transaction['status']) => {
+    switch (status) {
+        case 'Completed': return <CheckCircle className="h-4 w-4 text-green-400" />;
+        case 'Failed': return <AlertCircle className="h-4 w-4 text-red-400" />;
+        case 'Pending': return <Clock className="h-4 w-4 text-yellow-400" />;
+    }
+}
 
 export function AdminDashboard() {
     const { toast } = useToast();
@@ -48,7 +69,7 @@ export function AdminDashboard() {
 
 
     // User table state
-    const [users, setUsers] = useState<UserBalance[]>([]);
+    const [users, setUsers] = useState<UserAdminView[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
     const [isLoadingUsers, setIsLoadingUsers] = useState(true);
@@ -204,7 +225,7 @@ export function AdminDashboard() {
             }
 
             const usersData = await response.json();
-            const allUsers: UserBalance[] = usersData.users || [];
+            const allUsers: UserAdminView[] = usersData.users || [];
             
             let csvContent = "wallet_address,exn_balance\n";
             for(const user of allUsers) {
@@ -326,7 +347,7 @@ export function AdminDashboard() {
                     <CardHeader>
                         <CardTitle>User Balances</CardTitle>
                         <CardDescription>
-                           A list of all users who have participated in the presale and their EXN token balances.
+                           A list of all users who have participated in the presale. Click to expand and see transaction history.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -334,8 +355,9 @@ export function AdminDashboard() {
                            <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Wallet Address</TableHead>
+                                        <TableHead>User</TableHead>
                                         <TableHead className="text-right">EXN Balance</TableHead>
+                                        <TableHead className="w-[100px] text-center">History</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -344,18 +366,69 @@ export function AdminDashboard() {
                                            <TableRow key={i}>
                                                <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
                                                <TableCell><Skeleton className="h-5 w-1/4 ml-auto" /></TableCell>
+                                               <TableCell><Skeleton className="h-5 w-3/4 mx-auto" /></TableCell>
                                            </TableRow>
                                        ))
                                     ) : users.length > 0 ? (
                                         users.map(user => (
-                                            <TableRow key={user.wallet}>
-                                                <TableCell className="font-mono text-xs">{user.wallet}</TableCell>
-                                                <TableCell className="text-right font-semibold">{user.balance.toLocaleString()}</TableCell>
-                                            </TableRow>
+                                            <Collapsible asChild key={user.wallet} >
+                                                <>
+                                                    <TableRow>
+                                                        <TableCell className="font-mono text-xs max-w-xs truncate">{user.wallet}</TableCell>
+                                                        <TableCell className="text-right font-semibold">{user.balance.toLocaleString()}</TableCell>
+                                                        <TableCell className="text-center">
+                                                            <CollapsibleTrigger asChild>
+                                                                <Button variant="ghost" size="sm" disabled={user.transactions.length === 0}>
+                                                                    <ChevronsUpDown className="h-4 w-4" />
+                                                                    <span className="sr-only">Toggle history</span>
+                                                                </Button>
+                                                            </CollapsibleTrigger>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                    <CollapsibleContent asChild>
+                                                        <tr className="bg-muted/50">
+                                                            <TableCell colSpan={3} className="p-0">
+                                                                <div className="p-4">
+                                                                    <h4 className="font-semibold mb-2">Transaction History ({user.transactions.length})</h4>
+                                                                    {user.transactions.length > 0 ? (
+                                                                        <Table>
+                                                                            <TableHeader>
+                                                                                <TableRow>
+                                                                                    <TableHead>Date</TableHead>
+                                                                                    <TableHead>EXN Amount</TableHead>
+                                                                                    <TableHead>Paid</TableHead>
+                                                                                    <TableHead>Status</TableHead>
+                                                                                </TableRow>
+                                                                            </TableHeader>
+                                                                            <TableBody>
+                                                                                {user.transactions.map(tx => (
+                                                                                    <TableRow key={tx.id}>
+                                                                                        <TableCell className="text-xs">{new Date(tx.date).toLocaleString()}</TableCell>
+                                                                                        <TableCell>{tx.amountExn.toLocaleString()}</TableCell>
+                                                                                        <TableCell>{tx.paidAmount.toLocaleString()} {tx.paidCurrency}</TableCell>
+                                                                                        <TableCell>
+                                                                                             <Badge variant={getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
+                                                                                                {getStatusIcon(tx.status)}
+                                                                                                {tx.status}
+                                                                                            </Badge>
+                                                                                        </TableCell>
+                                                                                    </TableRow>
+                                                                                ))}
+                                                                            </TableBody>
+                                                                        </Table>
+                                                                    ) : (
+                                                                        <p className="text-sm text-muted-foreground text-center p-4">No transactions recorded for this user.</p>
+                                                                    )}
+                                                                </div>
+                                                            </TableCell>
+                                                        </tr>
+                                                    </CollapsibleContent>
+                                                </>
+                                            </Collapsible>
                                         ))
                                     ) : (
                                         <TableRow>
-                                            <TableCell colSpan={2} className="text-center h-24">
+                                            <TableCell colSpan={3} className="text-center h-24">
                                                 No users found.
                                             </TableCell>
                                         </TableRow>
@@ -569,4 +642,4 @@ export function AdminDashboard() {
         </main>
     );
 
-  
+}

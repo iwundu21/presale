@@ -2,12 +2,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+import { Transaction } from '@/components/dashboard-client-provider';
 
 const dbPath = path.join(process.cwd(), 'src', 'data', 'db.json');
 
-type UserBalance = {
+type UserAdminView = {
     wallet: string;
     balance: number;
+    transactions: Transaction[];
 }
 
 async function readDb() {
@@ -27,9 +29,10 @@ export async function GET(request: NextRequest) {
         const db = await readDb();
         const allUsers = db.users || {};
 
-        const userArray: UserBalance[] = Object.entries(allUsers).map(([wallet, data]: [string, any]) => ({
+        const userArray: UserAdminView[] = Object.entries(allUsers).map(([wallet, data]: [string, any]) => ({
             wallet,
-            balance: data.balance || 0
+            balance: data.balance || 0,
+            transactions: (data.transactions || []).map((tx: any) => ({...tx, date: new Date(tx.date)}))
         }));
 
         // Sort by balance descending
