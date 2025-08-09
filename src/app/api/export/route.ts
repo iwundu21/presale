@@ -3,7 +3,7 @@ import { getAllUsers } from "@/services/firestore-service";
 import { headers } from 'next/headers';
 import { NextRequest, NextResponse } from "next/server";
 
-const ADMIN_WALLET_ADDRESS = "9Kqt28pfMVBsBvXYYnYQCT2BZyorAwzbR6dUmgQfsZYW";
+const ADMIN_WALLET_ADDRESS = "5Gy5qYXhYs7aPfEztAG6vTPVow5snudPksBvF5DAYLpX";
 
 // Function to convert array of objects to CSV
 function convertToCSV(data: any[]) {

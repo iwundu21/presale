@@ -12,7 +12,7 @@ import { getPresaleEndDate, setPresaleEndDate } from '@/services/presale-date-se
 import { useRouter } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 
-const ADMIN_WALLET_ADDRESS = "9Kqt28pfMVBsBvXYYnYQCT2BZyorAwzbR6dUmgQfsZYW";
+const ADMIN_WALLET_ADDRESS = "5Gy5qYXhYs7aPfEztAG6vTPVow5snudPksBvF5DAYLpX";
 
 // Helper to format date for datetime-local input
 const toDateTimeLocal = (date: Date): string => {
