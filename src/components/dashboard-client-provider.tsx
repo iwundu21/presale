@@ -172,7 +172,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
       return;
     }
 
-    const txDetails = { amountExn, paidAmount, paidCurrency: currency, date: new Date() };
+    const txDetails = { amountExn: exnAmount, paidAmount, paidCurrency: currency, date: new Date() };
 
     // Use a unique temporary ID for the optimistic update
     const tempId = `pending-${Date.now()}`;
@@ -286,7 +286,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             errorMessage = error.message;
         }
         
-        // If we have a signature, the transaction was sent but failed to confirm/process.
+        // If we have a signature, the transaction was sent but failed to process.
         // It's a failed transaction and should be recorded.
         if (signature) {
             const failedTx: Transaction = { id: signature, ...txDetails, status: 'Failed' };
