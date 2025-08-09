@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowDown, Zap } from "lucide-react";
+import { ArrowDown, Copy, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,8 +11,9 @@ import { Skeleton } from "./ui/skeleton";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { getAssociatedTokenAddress } from "@solana/spl-token";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { USDC_MINT, USDT_MINT, EXN_PRICE } from "@/config";
+import { USDC_MINT, USDT_MINT, EXN_PRICE, PRESALE_WALLET_ADDRESS } from "@/config";
 import { useDashboard } from "./dashboard-client-provider";
+import { useToast } from "@/hooks/use-toast";
 
 const SOL_GAS_BUFFER = 0.005; // Reserve 0.005 SOL for gas fees
 
@@ -20,6 +21,7 @@ export function BuyExnCard() {
   const { connected: isConnected, handlePurchase, solPrice, isLoadingPrice } = useDashboard();
   const { publicKey } = useWallet();
   const { connection } = useConnection();
+  const { toast } = useToast();
   const [payAmount, setPayAmount] = useState("100.00");
   const [receiveAmount, setReceiveAmount] = useState("");
   const [currency, setCurrency] = useState("USDC");
@@ -149,6 +151,17 @@ export function BuyExnCard() {
     }
   };
   
+  const handleCopyToClipboard = () => {
+    if (PRESALE_WALLET_ADDRESS) {
+      navigator.clipboard.writeText(PRESALE_WALLET_ADDRESS);
+      toast({
+        title: "Address Copied",
+        description: "The presale wallet address has been copied to your clipboard.",
+        variant: 'success',
+      });
+    }
+  };
+
   const currentBalance = balances[currency as keyof typeof balances];
   const maxSpend = currency === 'SOL' ? currentBalance - SOL_GAS_BUFFER : currentBalance;
   const isPurchaseDisabled = !isConnected || !parseFloat(payAmount) || parseFloat(payAmount) <= 0 || (currency === 'SOL' && isLoadingPrice) || !!balanceError;
@@ -236,6 +249,17 @@ export function BuyExnCard() {
                 Current SOL Price: ~${solPrice.toFixed(2)}
             </p>
         )}
+        
+        <div className="text-center text-xs text-muted-foreground pt-4">
+          <p>You are sending funds to the official presale address:</p>
+          <div className="flex items-center justify-center gap-2 mt-1 font-mono bg-muted/50 p-2 rounded-md">
+              <span className="truncate">{PRESALE_WALLET_ADDRESS}</span>
+              <Button onClick={handleCopyToClipboard} variant="ghost" size="icon" className="h-6 w-6 shrink-0">
+                  <Copy className="h-4 w-4" />
+              </Button>
+          </div>
+        </div>
+
       </CardContent>
       <CardFooter>
         <Button 
