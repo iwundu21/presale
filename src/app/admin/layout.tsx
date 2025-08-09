@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { AdminHeader } from "@/components/admin-header";
 
 export default function AdminLayout({
     children,
@@ -57,6 +58,16 @@ export default function AdminLayout({
         }
     };
     
+    const handleLogout = () => {
+        sessionStorage.removeItem('isAdminAuthenticated');
+        setIsAuthenticated(false);
+        toast({
+            title: "Logged Out",
+            description: "You have been successfully logged out.",
+            variant: "success"
+        });
+    };
+
     if (!isAuthenticated) {
         return (
              <main className="container mx-auto p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[calc(100vh-200px)]">
@@ -85,5 +96,10 @@ export default function AdminLayout({
         )
     }
 
-    return children;
+    return (
+        <>
+            <AdminHeader onLogout={handleLogout} />
+            {children}
+        </>
+    );
 }

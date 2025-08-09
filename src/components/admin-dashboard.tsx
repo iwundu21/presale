@@ -353,9 +353,6 @@ export function AdminDashboard() {
 
     return (
         <main className="container mx-auto p-4 sm:p-6 lg:p-8">
-             <div className="flex items-center justify-between gap-3 mb-8">
-                <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-            </div>
             <div className="grid gap-8">
                  <Card>
                     <CardHeader>
