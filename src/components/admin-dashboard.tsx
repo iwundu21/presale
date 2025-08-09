@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getPresaleData, setPresaleInfo, setPresaleStatus } from "@/services/presale-info-service";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Download, ChevronLeft, ChevronRight, KeyRound } from "lucide-react";
+import { Download, ChevronLeft, ChevronRight, KeyRound, Edit } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -53,6 +53,33 @@ export function AdminDashboard() {
     const [totalPages, setTotalPages] = useState(0);
     const [isLoadingUsers, setIsLoadingUsers] = useState(true);
 
+    // Update Balance State
+    const [walletToUpdate, setWalletToUpdate] = useState('');
+    const [newBalance, setNewBalance] = useState('');
+    const [isUpdatingBalance, setIsUpdatingBalance] = useState(false);
+
+    const fetchUsers = async () => {
+        setIsLoadingUsers(true);
+        try {
+            const response = await fetch(`/api/admin/all-users?page=${currentPage}&limit=${USERS_PER_PAGE}`);
+            if (!response.ok) {
+                throw new Error("Failed to fetch user data.");
+            }
+            const data = await response.json();
+            setUsers(data.users);
+            setTotalPages(Math.ceil(data.total / USERS_PER_PAGE));
+        } catch (error) {
+            console.error("Failed to fetch users", error);
+            toast({
+                title: "User Load Failed",
+                description: "Could not load the user list.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsLoadingUsers(false);
+        }
+    };
+
 
     useEffect(() => {
         const fetchInfo = async () => {
@@ -79,28 +106,6 @@ export function AdminDashboard() {
     }, [toast]);
     
      useEffect(() => {
-        const fetchUsers = async () => {
-            setIsLoadingUsers(true);
-            try {
-                const response = await fetch(`/api/admin/all-users?page=${currentPage}&limit=${USERS_PER_PAGE}`);
-                if (!response.ok) {
-                    throw new Error("Failed to fetch user data.");
-                }
-                const data = await response.json();
-                setUsers(data.users);
-                setTotalPages(Math.ceil(data.total / USERS_PER_PAGE));
-            } catch (error) {
-                console.error("Failed to fetch users", error);
-                toast({
-                    title: "User Load Failed",
-                    description: "Could not load the user list.",
-                    variant: "destructive"
-                });
-            } finally {
-                setIsLoadingUsers(false);
-            }
-        };
-
         fetchUsers();
     }, [currentPage, toast]);
 
@@ -275,6 +280,41 @@ export function AdminDashboard() {
         }
     }
 
+    const handleUpdateBalance = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!walletToUpdate || !newBalance) {
+            toast({ title: "Error", description: "Wallet address and new balance are required.", variant: "destructive" });
+            return;
+        }
+        const balanceNum = parseFloat(newBalance);
+         if (isNaN(balanceNum) || balanceNum < 0) {
+            toast({ title: "Error", description: "Please enter a valid, non-negative number for the balance.", variant: "destructive" });
+            return;
+        }
+
+        setIsUpdatingBalance(true);
+        try {
+            const response = await fetch('/api/admin/update-balance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wallet: walletToUpdate, newBalance: balanceNum })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to update balance.');
+            }
+            toast({ title: "Success", description: data.message, variant: "success" });
+            setWalletToUpdate('');
+            setNewBalance('');
+            // Refresh user list to show the change
+            fetchUsers();
+        } catch (error: any) {
+            toast({ title: "Update Failed", description: error.message, variant: "destructive" });
+        } finally {
+            setIsUpdatingBalance(false);
+        }
+    }
+
 
     return (
         <main className="container mx-auto p-4 sm:p-6 lg:p-8">
@@ -348,6 +388,44 @@ export function AdminDashboard() {
                                 </Button>
                             </div>
                         )}
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Update User Balance</CardTitle>
+                        <CardDescription>
+                            Manually set the EXN balance for a specific user wallet. Use with caution.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={handleUpdateBalance} className="flex flex-col sm:flex-row items-end gap-4">
+                            <div className="grid w-full max-w-md items-center gap-1.5">
+                                <Label htmlFor="wallet-address">Wallet Address</Label>
+                                <Input
+                                    id="wallet-address"
+                                    type="text"
+                                    placeholder="Enter user's wallet address"
+                                    value={walletToUpdate}
+                                    onChange={(e) => setWalletToUpdate(e.target.value)}
+                                    disabled={isUpdatingBalance}
+                                />
+                            </div>
+                             <div className="grid w-full max-w-xs items-center gap-1.5">
+                                <Label htmlFor="new-balance">New EXN Balance</Label>
+                                <Input
+                                    id="new-balance"
+                                    type="number"
+                                    placeholder="e.g., 50000"
+                                    value={newBalance}
+                                    onChange={(e) => setNewBalance(e.target.value)}
+                                    disabled={isUpdatingBalance}
+                                />
+                            </div>
+                            <Button type="submit" disabled={isUpdatingBalance}>
+                                <Edit className="mr-2 h-4 w-4"/>
+                                {isUpdatingBalance ? "Updating..." : "Update Balance"}
+                            </Button>
+                        </form>
                     </CardContent>
                 </Card>
                  <Card>
@@ -490,4 +568,5 @@ export function AdminDashboard() {
             </div>
         </main>
     );
-}
+
+  
