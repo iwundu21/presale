@@ -8,7 +8,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { setPresaleEndDate } from "@/services/presale-date-service";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getPresaleInfo, setPresaleInfo, PresaleInfo } from "@/services/presale-info-service";
+import { getPresaleData, setPresaleInfo, setPresaleStatus } from "@/services/presale-info-service";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 const SEASON_PRICES: { [key: string]: number } = {
     "Early Stage": 0.09,
@@ -22,23 +24,26 @@ export default function AdminPage() {
     const [time, setTime] = useState('');
     const [season, setSeason] = useState("Early Stage");
     const [price, setPrice] = useState(SEASON_PRICES[season]);
+    const [isPresaleActive, setIsPresaleActive] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
     const [isUpdatingDate, setIsUpdatingDate] = useState(false);
+    const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
     useEffect(() => {
         const fetchInfo = async () => {
             setIsLoading(true);
             try {
-                const info = await getPresaleInfo();
-                if (info) {
-                    setSeason(info.seasonName);
-                    setPrice(info.tokenPrice);
+                const data = await getPresaleData();
+                if (data) {
+                    setSeason(data.presaleInfo.seasonName);
+                    setPrice(data.presaleInfo.tokenPrice);
+                    setIsPresaleActive(data.isPresaleActive);
                 }
             } catch (error) {
                 console.error("Failed to fetch presale info", error);
                 toast({
                     title: "Load Failed",
-                    description: "Could not load current presale season info.",
+                    description: "Could not load current presale data.",
                     variant: "destructive"
                 });
             } finally {
@@ -111,12 +116,55 @@ export default function AdminPage() {
         }
     };
 
+    const handleStatusChange = async (checked: boolean) => {
+        setIsUpdatingStatus(true);
+        try {
+            await setPresaleStatus(checked);
+            setIsPresaleActive(checked);
+            toast({
+                title: "Success",
+                description: `Presale has been ${checked ? 'enabled' : 'disabled'}.`,
+                variant: "success",
+            });
+        } catch (error) {
+            console.error("Failed to update presale status", error);
+            toast({
+                title: "Update Failed",
+                description: "Could not update the presale status.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsUpdatingStatus(false);
+        }
+    }
+
     return (
         <main className="container mx-auto p-4 sm:p-6 lg:p-8">
              <div className="flex items-center justify-between gap-3 mb-8">
                 <h1 className="text-3xl font-bold">Admin Dashboard</h1>
             </div>
             <div className="grid gap-8">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Presale Control</CardTitle>
+                        <CardDescription>
+                            Enable or disable the token presale for all users.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex items-center space-x-2">
+                           <Switch 
+                             id="presale-status" 
+                             checked={isPresaleActive}
+                             onCheckedChange={handleStatusChange}
+                             disabled={isUpdatingStatus || isLoading}
+                           />
+                           <Label htmlFor="presale-status" className="text-base">
+                             {isPresaleActive ? "Presale is Active" : "Presale is Inactive"}
+                           </Label>
+                        </div>
+                    </CardContent>
+                </Card>
                 <Card>
                     <CardHeader>
                         <CardTitle>Manage Presale Season</CardTitle>

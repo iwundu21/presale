@@ -34,6 +34,7 @@ type DashboardContextType = {
     isLoadingPrice: boolean;
     isLoadingPurchase: boolean;
     presaleInfo: PresaleInfo | null;
+    isPresaleActive: boolean;
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
@@ -66,6 +67,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
   const [isLoadingPurchase, setIsLoadingPurchase] = useState(false);
   const [presaleInfo, setPresaleInfo] = useState<PresaleInfo | null>(null);
+  const [isPresaleActive, setIsPresaleActive] = useState(true);
 
   useEffect(() => {
     setIsClient(true);
@@ -108,6 +110,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             const presaleData = await presaleDataRes.value.json();
             setTotalExnSold(presaleData.totalExnSold || 0);
             setPresaleInfo(presaleData.presaleInfo || null);
+            setIsPresaleActive(presaleData.isPresaleActive === undefined ? true : presaleData.isPresaleActive);
         } else {
             console.error('Failed to fetch presale data:', presaleDataRes.status === 'rejected' ? presaleDataRes.reason : await presaleDataRes.value.text());
             throw new Error('Could not load presale progress.');
@@ -444,6 +447,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     isLoadingPrice,
     isLoadingPurchase,
     presaleInfo,
+    isPresaleActive,
   };
 
   return (

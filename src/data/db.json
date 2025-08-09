@@ -1,10 +1,11 @@
 {
   "totalExnSold": 0,
-  "presaleEndDate": "2024-09-08T12:00:00.000Z",
+  "presaleEndDate": "2026-08-09T16:19:00.000Z",
   "presaleInfo": {
-    "seasonName": "Early Stage",
-    "tokenPrice": 0.09
+    "seasonName": "Investors",
+    "tokenPrice": 0.15
   },
+  "isPresaleActive": true,
   "users": {
     "9Kqt28pfMVBsBvXYYnYQCT2BZyorAwzbR6dUmgQfsZYW": {
       "balance": 0,

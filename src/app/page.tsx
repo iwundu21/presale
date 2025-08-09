@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useWallet } from "@solana/wallet-adapter-react";
 import { LandingPage } from "@/components/landing-page";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { getPresaleInfo, PresaleInfo } from "@/services/presale-info-service";
+import { getPresaleData, PresaleInfo } from "@/services/presale-info-service";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPresaleEndDate } from "@/services/presale-date-service";
 
@@ -24,12 +24,12 @@ export default function Home() {
     
     const fetchInitialData = async () => {
         try {
-            const [date, info] = await Promise.all([
+            const [date, data] = await Promise.all([
               getPresaleEndDate(),
-              getPresaleInfo()
+              getPresaleData()
             ]);
             setPresaleEndDate(date);
-            setPresaleInfo(info);
+            setPresaleInfo(data.presaleInfo);
         } catch (error) {
             console.error("Failed to load presale data", error);
             // Set defaults on error

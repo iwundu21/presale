@@ -19,7 +19,7 @@ const MIN_PURCHASE_USD = 1;
 const MAX_PURCHASE_USD = 10000;
 
 export function BuyExnCard() {
-  const { connected: isConnected, handlePurchase, solPrice, isLoadingPrice, presaleInfo } = useDashboard();
+  const { connected: isConnected, handlePurchase, solPrice, isLoadingPrice, presaleInfo, isPresaleActive, isLoadingPurchase } = useDashboard();
   const { publicKey } = useWallet();
   const { connection } = useConnection();
   const [payAmount, setPayAmount] = useState("1.00");
@@ -176,7 +176,17 @@ export function BuyExnCard() {
 
   const currentBalance = balances[currency as keyof typeof balances];
   const maxSpend = currency === 'SOL' ? currentBalance - SOL_GAS_BUFFER : currentBalance;
-  const isPurchaseDisabled = !isConnected || !parseFloat(payAmount) || parseFloat(payAmount) <= 0 || (currency === 'SOL' && isLoadingPrice) || !!balanceError || !!limitError;
+  const isPurchaseDisabled = !isConnected || !parseFloat(payAmount) || parseFloat(payAmount) <= 0 || (currency === 'SOL' && isLoadingPrice) || !!balanceError || !!limitError || !isPresaleActive || isLoadingPurchase;
+
+  const getButtonText = () => {
+    if (!isPresaleActive) return "Presale is currently closed";
+    if (isLoadingPrice && currency === 'SOL') return 'Loading Price...';
+    if (!isConnected) return "Connect Wallet to Buy";
+    if (limitError) return limitError;
+    if (balanceError) return balanceError;
+    if (isLoadingPurchase) return "Processing...";
+    return "Buy EXN";
+  }
 
   return (
     <Card className="w-full shadow-lg border-primary/20 bg-gradient-to-br from-card to-primary/5">
@@ -213,9 +223,9 @@ export function BuyExnCard() {
                   onChange={handlePayChange} 
                   placeholder="0.00" 
                   className="text-2xl font-bold bg-transparent border-none h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0 flex-grow"
-                  disabled={currency === 'SOL' && isLoadingPrice}
+                  disabled={currency === 'SOL' && isLoadingPrice || !isPresaleActive || isLoadingPurchase}
               />
-               <Select value={currency} onValueChange={setCurrency}>
+               <Select value={currency} onValueChange={setCurrency} disabled={!isPresaleActive || isLoadingPurchase}>
                   <SelectTrigger className="w-[120px] h-auto bg-secondary border-secondary text-white font-medium focus:ring-0">
                     <SelectValue placeholder="Coin" />
                   </SelectTrigger>
@@ -254,7 +264,7 @@ export function BuyExnCard() {
                     onChange={handleReceiveChange} 
                     placeholder="0.00" 
                     className="text-2xl font-bold bg-transparent border-none h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                    disabled={currency === 'SOL' && isLoadingPrice}
+                    disabled={currency === 'SOL' && isLoadingPrice || !isPresaleActive || isLoadingPurchase}
                 />
             )}
           </div>
@@ -274,7 +284,7 @@ export function BuyExnCard() {
             disabled={isPurchaseDisabled}
             onClick={handleBuyNow}
         >
-          {isLoadingPrice && currency === 'SOL' ? 'Loading Price...' : (isConnected ? (limitError || balanceError || "Buy EXN") : "Connect Wallet to Buy")}
+          {getButtonText()}
         </Button>
       </CardFooter>
     </Card>

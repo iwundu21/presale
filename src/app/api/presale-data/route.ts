@@ -18,7 +18,8 @@ async function readDb() {
                 presaleInfo: {
                     seasonName: "Early Stage",
                     tokenPrice: 0.09
-                } 
+                },
+                isPresaleActive: true
             };
         }
         throw error;
@@ -35,7 +36,8 @@ export async function GET() {
         const db = await readDb();
         return NextResponse.json({ 
             totalExnSold: db.totalExnSold || 0,
-            presaleInfo: db.presaleInfo || { seasonName: "Early Stage", tokenPrice: 0.09 }
+            presaleInfo: db.presaleInfo || { seasonName: "Early Stage", tokenPrice: 0.09 },
+            isPresaleActive: db.isPresaleActive === undefined ? true : db.isPresaleActive,
         }, { status: 200 });
     } catch (error) {
         console.error('API Presale-Data Error:', error);
@@ -45,19 +47,26 @@ export async function GET() {
 
 export async function POST(request: Request) {
      try {
-        const { presaleInfo } = await request.json();
+        const { presaleInfo, isPresaleActive } = await request.json();
+        const db = await readDb();
 
-        if (!presaleInfo || !presaleInfo.seasonName || typeof presaleInfo.tokenPrice !== 'number') {
-            return NextResponse.json({ message: 'Invalid input for presale info' }, { status: 400 });
+        if (presaleInfo) {
+            if (!presaleInfo.seasonName || typeof presaleInfo.tokenPrice !== 'number') {
+                 return NextResponse.json({ message: 'Invalid input for presale info' }, { status: 400 });
+            }
+            db.presaleInfo = presaleInfo;
         }
 
-        const db = await readDb();
-        db.presaleInfo = presaleInfo;
+        if (typeof isPresaleActive === 'boolean') {
+            db.isPresaleActive = isPresaleActive;
+        }
+
         await writeDb(db);
         
         return NextResponse.json({ 
-            message: 'Presale info updated successfully',
+            message: 'Presale data updated successfully',
             presaleInfo: db.presaleInfo,
+            isPresaleActive: db.isPresaleActive,
         }, { status: 200 });
 
     } catch (error) {
