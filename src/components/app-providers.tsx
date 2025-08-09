@@ -16,7 +16,7 @@ export function AppProviders({ children }: AppProvidersProps) {
         <AppRouterCacheProvider>
           <ClientWalletProvider>
             <AppHeader />
-            <div className="flex-grow">
+            <div className="flex-grow flex flex-col">
               {children}
             </div>
             <AppFooter />
