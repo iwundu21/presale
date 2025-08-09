@@ -131,7 +131,7 @@ export function TransactionHistoryTable() {
                                                                 <HelpCircle className="h-4 w-4"/>
                                                             </button>
                                                         </PopoverTrigger>
-                                                        <PopoverContent side="top" align="end" className="w-auto max-w-sm text-sm">
+                                                        <PopoverContent side="top" align="end" className="w-auto max-w-xs text-sm" alignOffset={-30} sideOffset={10}>
                                                              <div className="space-y-2">
                                                                 <p className="font-bold">{new Date(tx.date).toLocaleString()}</p>
                                                                 <p>Tx: {formatTxId(tx.id)}</p>
