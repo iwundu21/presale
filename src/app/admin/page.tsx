@@ -28,39 +28,34 @@ export default function AdminPage() {
     const [isUpdatingDate, setIsUpdatingDate] = useState(false);
     
     useEffect(() => {
-        // This effect runs whenever the wallet state changes.
-        // We will only make a final decision once `connecting` is false.
+        // This effect is responsible for authorization.
+        // It waits until the connection status is no longer 'connecting'.
         if (connecting) {
-            // If the wallet is in the process of connecting, we are in a loading state.
-            // We don't want to make any decisions yet.
-            setIsLoading(true);
-            return;
+            return; // Wait until connection attempt is resolved
         }
 
-        // At this point, `connecting` is false, so the connection attempt is over.
-        // Now we can check the `connected` status.
         if (connected && publicKey) {
-            // A wallet is connected. Check if it's the admin wallet.
+            // A wallet is connected, check if it's the admin wallet
             if (publicKey.toBase58() === ADMIN_WALLET_ADDRESS) {
-                // It is the admin wallet. Grant access.
                 setIsAuthorized(true);
             } else {
-                // It's a different wallet. Redirect to the user dashboard.
+                // Connected with a non-admin wallet
                 toast({ title: "Unauthorized", description: "This wallet is not authorized for the admin dashboard.", variant: "destructive" });
                 router.push('/dashboard');
             }
         } else {
-            // No wallet is connected. Redirect to the landing page.
+            // No wallet is connected
             toast({ title: "Admin Access Required", description: "Please connect your wallet to access the admin dashboard.", variant: "destructive" });
             router.push('/');
         }
-
-        // All checks are complete, so we are no longer in a loading state.
+        
+        // Authorization check is complete
         setIsLoading(false);
 
     }, [publicKey, connected, connecting, router, toast]);
 
     useEffect(() => {
+        // This effect fetches data only after authorization is successful.
         if (isAuthorized) {
             const fetchUsers = async () => {
                 setIsLoadingUsers(true);
