@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { UserData, getAllUsers } from "@/services/firestore-service";
+import { UserData, getAllUsers, updateUser } from "@/services/firestore-service";
 import { setClientPresaleEndDate, getClientPresaleEndDate } from "@/services/presale-date-service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,9 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShieldCheck, Users, CalendarClock, KeyRound } from "lucide-react";
+import { ShieldCheck, Users, CalendarClock, KeyRound, Edit } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 
-// The secret code is now stored in an environment variable for better security.
 const ADMIN_CODE = process.env.NEXT_PUBLIC_ADMIN_CODE;
 
 export default function AdminPage() {
@@ -27,8 +27,14 @@ export default function AdminPage() {
     const [inputCode, setInputCode] = useState("");
     const [isCheckingCode, setIsCheckingCode] = useState(false);
 
+    // State for the update balance dialog
+    const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+    const [newBalance, setNewBalance] = useState<string>("");
+    const [isUpdatingBalance, setIsUpdatingBalance] = useState(false);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+
     useEffect(() => {
-        // Check session storage to see if user is already authenticated
         const sessionAuth = sessionStorage.getItem('adminAuthenticated');
         if (sessionAuth === 'true') {
             setIsAuthenticated(true);
@@ -36,36 +42,33 @@ export default function AdminPage() {
         setIsLoading(false);
     }, []);
     
+    const fetchAdminData = async () => {
+        setIsLoadingUsers(true);
+        try {
+            const userList = await getAllUsers();
+            setUsers(userList);
+
+            const initialDate = getClientPresaleEndDate();
+            if (initialDate) {
+                const formattedDate = new Date(initialDate.getTime() - (initialDate.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+                setPresaleEndDateState(formattedDate);
+            }
+
+        } catch (error) {
+            console.error("Failed to fetch admin data:", error);
+            toast({ title: "Error", description: "Could not fetch admin data.", variant: "destructive" });
+        } finally {
+            setIsLoadingUsers(false);
+        }
+    };
+    
     useEffect(() => {
         if (!isAuthenticated) return;
-
-        const fetchAdminData = async () => {
-            setIsLoadingUsers(true);
-            try {
-                const userList = await getAllUsers();
-                setUsers(userList);
-
-                const initialDate = getClientPresaleEndDate();
-                if (initialDate) {
-                    // Format the date for the datetime-local input
-                    const formattedDate = new Date(initialDate.getTime() - (initialDate.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-                    setPresaleEndDateState(formattedDate);
-                }
-
-            } catch (error) {
-                console.error("Failed to fetch admin data:", error);
-                toast({ title: "Error", description: "Could not fetch admin data.", variant: "destructive" });
-            } finally {
-                setIsLoadingUsers(false);
-            }
-        };
-        
         fetchAdminData();
     }, [isAuthenticated, toast]);
 
     const handleLogin = () => {
         setIsCheckingCode(true);
-        // Fallback to a default code if the env variable is not set
         const adminCode = ADMIN_CODE || "203020";
         if (inputCode === adminCode) {
             sessionStorage.setItem('adminAuthenticated', 'true');
@@ -90,14 +93,43 @@ export default function AdminPage() {
         }
         setIsUpdatingDate(true);
         try {
-            // The input type datetime-local gives a string that can be used to create a Date object
             setClientPresaleEndDate(new Date(presaleEndDate));
-            toast({ title: "Success", description: "Presale end date has been updated for this session." });
+            toast({ title: "Success", description: "Presale end date has been updated." });
         } catch (error) {
             console.error("Failed to update date:", error);
             toast({ title: "Error", description: "Could not update the presale end date.", variant: "destructive" });
         } finally {
             setIsUpdatingDate(false);
+        }
+    };
+
+    const handleOpenUpdateDialog = (user: UserData) => {
+        setSelectedUser(user);
+        setNewBalance(user.exnBalance.toString());
+        setIsDialogOpen(true);
+    };
+
+    const handleUpdateBalance = async () => {
+        if (!selectedUser) return;
+        
+        const balanceValue = parseFloat(newBalance);
+        if (isNaN(balanceValue) || balanceValue < 0) {
+            toast({ title: "Error", description: "Please enter a valid, non-negative balance.", variant: "destructive" });
+            return;
+        }
+
+        setIsUpdatingBalance(true);
+        try {
+            await updateUser(selectedUser.walletAddress, { exnBalance: balanceValue });
+            toast({ title: "Success", description: `Balance for ${selectedUser.walletAddress.substring(0, 8)}... updated.` });
+            // Refresh user list to show new balance
+            await fetchAdminData();
+            setIsDialogOpen(false); // Close dialog on success
+        } catch (error) {
+            console.error("Failed to update balance:", error);
+            toast({ title: "Error", description: "Could not update user balance.", variant: "destructive" });
+        } finally {
+            setIsUpdatingBalance(false);
         }
     };
     
@@ -166,6 +198,7 @@ export default function AdminPage() {
                                         <TableRow>
                                             <TableHead>Wallet Address</TableHead>
                                             <TableHead className="text-right">EXN Balance</TableHead>
+                                            <TableHead className="text-center">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -174,18 +207,24 @@ export default function AdminPage() {
                                                 <TableRow key={i}>
                                                     <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
                                                     <TableCell><Skeleton className="h-5 w-1/4 ml-auto" /></TableCell>
+                                                    <TableCell><Skeleton className="h-8 w-8 mx-auto" /></TableCell>
                                                 </TableRow>
                                             ))
                                         ) : users.length > 0 ? (
                                             users.map((user) => (
                                                 <TableRow key={user.walletAddress}>
-                                                    <TableCell className="font-mono text-xs truncate max-w-[200px] sm:max-w-none">{user.walletAddress}</TableCell>
+                                                    <TableCell className="font-mono text-xs truncate max-w-[150px] sm:max-w-xs">{user.walletAddress}</TableCell>
                                                     <TableCell className="text-right font-medium">{user.exnBalance.toLocaleString()}</TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Button variant="ghost" size="icon" onClick={() => handleOpenUpdateDialog(user)}>
+                                                            <Edit className="h-4 w-4" />
+                                                        </Button>
+                                                    </TableCell>
                                                 </TableRow>
                                             ))
                                         ) : (
                                             <TableRow>
-                                                <TableCell colSpan={2} className="h-24 text-center">No users found.</TableCell>
+                                                <TableCell colSpan={3} className="h-24 text-center">No users found.</TableCell>
                                             </TableRow>
                                         )}
                                     </TableBody>
@@ -220,6 +259,40 @@ export default function AdminPage() {
                     </Card>
                 </div>
             </div>
+
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Update Balance</DialogTitle>
+                    </DialogHeader>
+                    {selectedUser && (
+                        <div className="space-y-4 py-4">
+                            <p className="text-sm text-muted-foreground">
+                                Updating balance for wallet: <br/>
+                                <span className="font-mono text-xs text-foreground">{selectedUser.walletAddress}</span>
+                            </p>
+                            <div>
+                                <label htmlFor="balance" className="text-sm font-medium">New EXN Balance</label>
+                                <Input
+                                    id="balance"
+                                    type="number"
+                                    value={newBalance}
+                                    onChange={(e) => setNewBalance(e.target.value)}
+                                    placeholder="Enter new balance"
+                                />
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button onClick={handleUpdateBalance} disabled={isUpdatingBalance}>
+                            {isUpdatingBalance ? "Updating..." : "Update Balance"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </main>
     );
 }
