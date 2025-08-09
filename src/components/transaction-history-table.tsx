@@ -42,6 +42,8 @@ function TransactionRow({ tx }: { tx: Transaction }) {
         return txTime > fiveMinutesAgo;
     }
 
+    const isLinkDisabled = tx.id.startsWith('tx_');
+
     return (
         <TableRow key={tx.id}>
             <TableCell>
@@ -59,7 +61,20 @@ function TransactionRow({ tx }: { tx: Transaction }) {
                     </div>
                 </div>
             </TableCell>
-           
+            <TableCell className="text-center">
+                 <Tooltip>
+                    <TooltipTrigger asChild>
+                         <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isLinkDisabled} asChild>
+                            <a href={`https://solscan.io/tx/${tx.id}`} target="_blank" rel="noopener noreferrer" >
+                                <ExternalLink className="h-4 w-4" />
+                            </a>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                        <p>View on Solscan</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TableCell>
             <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-2">
                     {isTxPendingAndRecent(tx) && (
@@ -80,18 +95,10 @@ function TransactionRow({ tx }: { tx: Transaction }) {
                             </TooltipContent>
                         </Tooltip>
                     )}
-                    <a 
-                        href={!tx.id.startsWith('tx_') ? `https://solscan.io/tx/${tx.id}` : undefined}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`flex items-center justify-end ${tx.id.startsWith('tx_') ? 'pointer-events-none' : ''}`}
-                    >
-                        <Badge variant={getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
-                            {getStatusIcon(tx.status)}
-                            {tx.status}
-                            {!tx.id.startsWith('tx_') && <ExternalLink className="h-3 w-3" />}
-                        </Badge>
-                    </a>
+                    <Badge variant={getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
+                        {getStatusIcon(tx.status)}
+                        {tx.status}
+                    </Badge>
                      <Popover>
                         <PopoverTrigger asChild>
                             <button className="text-muted-foreground hover:text-white">
@@ -105,7 +112,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
                                 {tx.status === 'Failed' && tx.failureReason && (
                                     <p className="text-red-400 max-w-xs break-words">Reason: {tx.failureReason}</p>
                                 )}
-                                {tx.status === 'Completed' && <p>Click status to view on Solscan</p>}
+                                {tx.status === 'Completed' && <p>Transaction successfully confirmed on-chain.</p>}
                                 {tx.status === 'Pending' && <p>Transaction is being processed...</p>}
                                 {isTxPendingAndRecent(tx) && <p>Click the refresh icon to retry confirmation.</p>}
                             </div>
@@ -140,13 +147,14 @@ export function TransactionHistoryTable() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Details</TableHead>
+                                    <TableHead className="text-center">View on Chain</TableHead>
                                     <TableHead className="text-right">Status</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {transactions.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={2} className="text-center text-muted-foreground py-8">
+                                        <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
                                             You have no transactions yet.
                                         </TableCell>
                                     </TableRow>
