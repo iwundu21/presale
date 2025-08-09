@@ -1,32 +1,41 @@
 
 'use client';
 
-// Default end date, used as an in-memory variable.
-// This is now just a fallback if Firestore is unavailable.
-let presaleEndDate: Date | null = null;
+const PRESALE_END_DATE_KEY = 'presaleEndDate';
 
 /**
- * Gets the presale end date. It's recommended to use the server-side
- * getPresaleEndDate from firestore-service for the most up-to-date value.
- * This client-side function provides a fallback.
+ * Gets the presale end date from sessionStorage.
+ * This client-side function provides a fallback if no date is set.
  * @returns {Date} The current presale end date.
  */
 export function getClientPresaleEndDate(): Date {
-  if (presaleEndDate) {
-    return presaleEndDate;
+  if (typeof window !== 'undefined') {
+    const storedDate = sessionStorage.getItem(PRESALE_END_DATE_KEY);
+    if (storedDate) {
+      const date = new Date(storedDate);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
   }
+  
+  // Fallback if no valid date is in sessionStorage
   const defaultEndDate = new Date();
   defaultEndDate.setDate(defaultEndDate.getDate() + 30);
   return defaultEndDate;
 }
 
 /**
- * (Client-side) Updates the in-memory presale end date.
- * Note: This only affects the current client. The authoritative date is in Firestore.
+ * (Client-side) Updates the presale end date in sessionStorage.
+ * This affects all tabs in the current browser session.
  * @param {Date} newDate The new end date for the presale.
  */
 export function setClientPresaleEndDate(newDate: Date | null): void {
-    if(newDate) {
-      presaleEndDate = newDate;
+    if (typeof window !== 'undefined') {
+        if(newDate && !isNaN(newDate.getTime())) {
+          sessionStorage.setItem(PRESALE_END_DATE_KEY, newDate.toISOString());
+        } else {
+          sessionStorage.removeItem(PRESALE_END_DATE_KEY);
+        }
     }
 }
