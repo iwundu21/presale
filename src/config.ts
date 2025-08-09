@@ -1,7 +1,7 @@
 
 import { PublicKey } from "@solana/web3.js";
 
-export const PRESALE_WALLET_ADDRESS = "5Gy5qYXhYs7aPfEztAG6vTPVow5snudPksBvF5DAYLpX";
+export const PRESALE_WALLET_ADDRESS = "B23Lt4oFVzVYsqnUNkyz1yjzbobZXDik3Cbt8PQgDyYX";
 export const RPC_URL = "https://mainnet.helius-rpc.com/?api-key=ef62b792-793e-4ecd-a102-d7cb7f1c023f";
 
 export const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // Mainnet
