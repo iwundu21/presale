@@ -1,6 +1,7 @@
 
 "use client";
 
+import { usePathname } from 'next/navigation';
 import { useWallet } from "@solana/wallet-adapter-react";
 import { ExnusLogo } from "@/components/icons";
 import { WalletConnect } from "./wallet-connect";
@@ -8,6 +9,8 @@ import { WalletConnect } from "./wallet-connect";
 
 export function AppHeader() {
     const { connected } = useWallet();
+    const pathname = usePathname();
+    const isAdminPage = pathname.startsWith('/admin');
 
     return (
         <header className="p-4 border-b border-white/10 sticky top-0 bg-background/80 backdrop-blur-sm z-10">
@@ -16,9 +19,11 @@ export function AppHeader() {
                     <ExnusLogo className="h-8 w-8 text-primary" />
                     <h1 className="text-2xl font-bold text-white">Exnus</h1>
                 </div>
-                <div className="wallet-adapter-dropdown">
-                    <WalletConnect />
-                </div>
+                {!isAdminPage && (
+                    <div className="wallet-adapter-dropdown">
+                        <WalletConnect />
+                    </div>
+                )}
             </div>
         </header>
     );
