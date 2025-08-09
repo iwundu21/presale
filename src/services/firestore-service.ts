@@ -103,7 +103,7 @@ const convertTimestampsToDates = (tx: any): Transaction => {
 
 export async function saveTransaction(walletAddress: string, transaction: Transaction): Promise<void> {
     try {
-        const docRef = doc(db, USERS_COLlection, walletAddress, TRANSACTIONS_COLLECTION, transaction.id);
+        const docRef = doc(db, USERS_COLLECTION, walletAddress, TRANSACTIONS_COLLECTION, transaction.id);
         await setDoc(docRef, transaction);
     } catch (error) {
         console.error("Error saving transaction:", error);
@@ -205,10 +205,14 @@ export async function getPresaleEndDate(): Promise<Date> {
             return data.endDate.toDate();
         }
         // Return a default if not set
-        return new Date("2024-09-30T23:59:59Z");
+        const defaultEndDate = new Date();
+        defaultEndDate.setDate(defaultEndDate.getDate() + 30);
+        return defaultEndDate;
     } catch (error) {
         console.error("Error getting presale end date:", error);
          // Return a default on error
-        return new Date("2024-09-30T23:59:59Z");
+         const defaultEndDate = new Date();
+         defaultEndDate.setDate(defaultEndDate.getDate() + 30);
+         return defaultEndDate;
     }
 }
