@@ -216,10 +216,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             if (!toTokenAccountInfo) {
                 instructions.push(
                     createAssociatedTokenAccountInstruction(
-                        publicKey,
-                        toTokenAccount,
-                        presaleWalletPublicKey,
-                        mintPublicKey
+                        publicKey, // Payer
+                        toTokenAccount, // Associated Token Account
+                        presaleWalletPublicKey, // Owner
+                        mintPublicKey // Mint
                     )
                 );
             }
