@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -141,7 +142,7 @@ export function TransactionHistoryTable() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <ScrollArea className="h-[350px] pr-4">
+                <ScrollArea className="h-[350px] w-full">
                     <TooltipProvider>
                         <Table>
                             <TableHeader>
