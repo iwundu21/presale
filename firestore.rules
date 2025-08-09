@@ -2,33 +2,29 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Allow public read access to most documents
+    // By default, deny all reads and writes
     match /{document=**} {
-      allow read: if true;
-      allow write: if false; // Deny writes by default
+      allow read, write: if false;
     }
 
-    // Allow server-side write access for the presale settings
+    // Allow unauthenticated writes only to the settings document for presale management
     match /presaleStats/settings {
-      allow write: if true; // Allows server-side actions to update this doc
+      allow write: if true;
+      allow read: if true;
     }
 
-    // Allow users to create their own user document and transactions
-    match /users/{userId} {
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow get: if true;
-      allow update: if request.auth != null && request.auth.uid == userId;
-      
-      match /transactions/{txId} {
-         allow create, update, delete: if request.auth != null && request.auth.uid == userId;
-         allow get: if true;
-      }
+    // Allow any authenticated user to read from presaleStats
+    match /presaleStats/{docId} {
+       allow read: if true;
     }
-    
-    // Disallow writes to the presale stats from the client
-    match /presaleStats/totals {
-        allow write: if false;
+
+    // Allow users to read their own data and transactions if they are authenticated
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId}/transactions/{txId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
