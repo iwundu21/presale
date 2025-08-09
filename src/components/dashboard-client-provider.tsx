@@ -172,7 +172,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
       return;
     }
 
-    const txDetails = { amountExn, paidAmount, paidCurrency: currency, date: new Date() };
+    const txDetails = { amountExn: exnAmount, paidAmount, paidCurrency: currency, date: new Date() };
 
     // Use a unique temporary ID for the optimistic update
     const tempId = `pending-${Date.now()}`;
@@ -243,13 +243,14 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         }).compileToV0Message();
 
         const transaction = new VersionedTransaction(message);
-        signature = await sendTransaction(transaction, connection);
         
         toast({
-            title: "Transaction Sent",
-            description: "Waiting for confirmation in your wallet...",
+            title: "Confirm in Wallet",
+            description: "Please approve the transaction in your wallet.",
         });
 
+        signature = await sendTransaction(transaction, connection);
+        
         // The UI already shows "Pending", we wait for confirmation
         await connection.confirmTransaction({
           signature,
