@@ -79,30 +79,49 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     try {
         const userKey = publicKey.toBase58();
 
-        // Fetch user data (balance)
-        const userDataRes = await fetch(`/api/user-data?userKey=${userKey}`);
-        if (!userDataRes.ok) throw new Error('Failed to fetch user data');
-        const userData = await userDataRes.json();
-        setExnBalance(userData.balance || 0);
+        const [userDataRes, presaleDataRes, solPriceRes] = await Promise.allSettled([
+            fetch(`/api/user-data?userKey=${userKey}`),
+            fetch('/api/presale-data'),
+            fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd')
+        ]);
 
-        // Fetch presale data (total sold)
-        const presaleDataRes = await fetch('/api/presale-data');
-        if (!presaleDataRes.ok) throw new Error('Failed to fetch presale data');
-        const presaleData = await presaleDataRes.json();
-        setTotalExnSold(presaleData.totalExnSold || 0);
+        if (userDataRes.status === 'fulfilled' && userDataRes.value.ok) {
+            const userData = await userDataRes.value.json();
+            setExnBalance(userData.balance || 0);
+        } else {
+             console.error('Failed to fetch user data:', userDataRes.status === 'rejected' ? userDataRes.reason : await userDataRes.value.text());
+             throw new Error('Could not load your balance.');
+        }
 
-        // Fetch SOL Price
-        const solPriceData = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd').then(res => res.json());
-        setSolPrice(solPriceData.solana.usd);
+        if (presaleDataRes.status === 'fulfilled' && presaleDataRes.value.ok) {
+            const presaleData = await presaleDataRes.value.json();
+            setTotalExnSold(presaleData.totalExnSold || 0);
+        } else {
+            console.error('Failed to fetch presale data:', presaleDataRes.status === 'rejected' ? presaleDataRes.reason : await presaleDataRes.value.text());
+            throw new Error('Could not load presale progress.');
+        }
         
-    } catch (error) {
+        if (solPriceRes.status === 'fulfilled' && solPriceRes.value.ok) {
+            const solPriceData = await solPriceRes.value.json();
+            setSolPrice(solPriceData.solana.usd);
+        } else {
+            console.error('Failed to fetch SOL price:', solPriceRes.status === 'rejected' ? solPriceRes.reason : 'API request failed');
+            // Provide a fallback price to not block the UI
+            setSolPrice(150); 
+            toast({
+              title: "Could not fetch SOL price",
+              description: "Using a fallback price. SOL conversions may be approximate.",
+              variant: "destructive"
+            });
+        }
+        
+    } catch (error: any) {
         console.error("Failed to fetch dashboard data:", error);
         toast({
             title: "Error Loading Data",
-            description: "Could not load dashboard data. Please refresh.",
+            description: error.message || "Could not load dashboard data. Please refresh.",
             variant: "destructive"
         });
-        setSolPrice(150); // Fallback price
     } finally {
         setIsLoadingPrice(false);
         setIsLoadingDashboard(false);
@@ -319,4 +338,5 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   );
 }
 
+    
     
