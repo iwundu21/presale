@@ -22,7 +22,7 @@ import Link from "next/link";
 import { useDashboard } from "./dashboard-client-provider";
 import type { Transaction } from "./dashboard-client-provider";
 
-const StatusBadge = ({ status }: { status: Transaction["status"] }) => {
+const StatusBadge = ({ status, onRetry, isRetrying, canRetry }: { status: Transaction["status"], onRetry?: () => void, isRetrying?: boolean, canRetry?: boolean }) => {
   switch (status) {
     case "Completed":
       return (
@@ -33,10 +33,17 @@ const StatusBadge = ({ status }: { status: Transaction["status"] }) => {
       );
     case "Pending":
       return (
-        <Badge variant="outline" className="border-amber-500/50 text-amber-400 bg-amber-500/10">
-          <AlertCircle className="mr-1 h-3 w-3 animate-pulse" />
-          {status}
-        </Badge>
+        <div className="flex items-center justify-end gap-2">
+            <Badge variant="outline" className="border-amber-500/50 text-amber-400 bg-amber-500/10">
+              <AlertCircle className="mr-1 h-3 w-3 animate-pulse" />
+              {status}
+            </Badge>
+            {canRetry && (
+                 <Button size="sm" variant="outline" onClick={onRetry} disabled={isRetrying} className="h-auto py-1 px-2 text-xs">
+                    {isRetrying ? <RefreshCw className="h-3 w-3 animate-spin" /> : 'Retry'}
+                </Button>
+            )}
+        </div>
       );
     case "Failed":
       return (
@@ -81,13 +88,9 @@ export function TransactionHistoryTable() {
   };
 
   const getTooltipContent = (tx: Transaction) => {
-    const canRetry = isTransactionRecentAndPending(tx);
-    if (canRetry) {
-        return "Retry this pending transaction. A wallet prompt will appear.";
-    }
     switch (tx.status) {
       case 'Pending':
-        return "Transaction is processing or waiting for confirmation. This can take up to 10 minutes. If it persists, it will be marked as failed.";
+        return "This transaction is waiting for confirmation on the Solana network. This can take up to 10 minutes. If you accidentally closed the wallet pop-up, you can use the 'Retry' button.";
       case 'Failed':
         return tx.failureReason || "Transaction failed. View on Solscan for details if a transaction ID is available.";
       case 'Completed':
@@ -145,26 +148,18 @@ export function TransactionHistoryTable() {
                         </Tooltip>
                       </TableCell>
                       <TableCell className="text-right">
-                        <StatusBadge status={tx.status} />
+                        <StatusBadge 
+                            status={tx.status} 
+                            onRetry={() => handlePurchase(tx.amountExn, tx.paidAmount, tx.paidCurrency, tx.id)}
+                            isRetrying={isRetryingCurrent}
+                            canRetry={canRetry}
+                        />
                       </TableCell>
                       <TableCell className="text-center">
                          <Tooltip>
                           <TooltipTrigger asChild>
                               <span>
-                                {canRetry ? (
-                                   <Button 
-                                      variant="ghost" 
-                                      size="icon"
-                                      disabled={isRetryingCurrent}
-                                      onClick={() => handlePurchase(tx.amountExn, tx.paidAmount, tx.paidCurrency, tx.id)}
-                                      className="cursor-pointer"
-                                   >
-                                        {isRetryingCurrent 
-                                          ? <RefreshCw className="h-4 w-4 text-accent animate-spin" />
-                                          : <RefreshCw className="h-4 w-4 text-accent" />
-                                        }
-                                    </Button>
-                                ) : hasValidTxId ? (
+                                {hasValidTxId ? (
                                     <Button asChild variant="ghost" size="icon">
                                         <Link href={`https://solscan.io/tx/${tx.id}?cluster=mainnet`} target="_blank" rel="noopener noreferrer">
                                             <ExternalLink className="h-4 w-4 text-accent" />
@@ -181,16 +176,18 @@ export function TransactionHistoryTable() {
                                         <AlertDialogHeader>
                                           <AlertDialogTitle>Transaction Details</AlertDialogTitle>
                                         </AlertDialogHeader>
-                                        {tx.failureReason ? (
-                                          <div className="text-sm">
-                                            <p className="mb-2 text-muted-foreground">This transaction failed with the following error:</p>
-                                            <div className="text-red-400 bg-red-500/10 p-2 rounded-md text-xs">{tx.failureReason}</div>
-                                          </div>
-                                        ) : (
-                                          <AlertDialogDescription>
-                                            This transaction did not generate an on-chain signature. This can happen if it was cancelled, timed out, or failed before being sent to the network.
-                                          </AlertDialogDescription>
-                                        )}
+                                        <div className="text-sm">
+                                            {tx.failureReason ? (
+                                              <>
+                                                <div className="mb-2 text-muted-foreground">This transaction failed with the following error:</div>
+                                                <div className="text-red-400 bg-red-500/10 p-2 rounded-md text-xs">{tx.failureReason}</div>
+                                              </>
+                                            ) : (
+                                              <div className="text-muted-foreground">
+                                                This transaction did not generate an on-chain signature. This can happen if it was cancelled, timed out, or failed before being sent to the network.
+                                              </div>
+                                            )}
+                                        </div>
                                         <AlertDialogFooter>
                                           <AlertDialogAction>Close</AlertDialogAction>
                                         </AlertDialogFooter>
