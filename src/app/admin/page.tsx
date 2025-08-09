@@ -193,9 +193,10 @@ export default function AdminPage() {
     const handleDownloadData = async () => {
         setIsDownloading(true);
         try {
+            // Fetch all users without pagination for the download
             const response = await fetch('/api/admin/all-users');
             if (!response.ok) {
-                throw new Error("Failed to fetch user data.");
+                throw new Error("Failed to fetch user data for download.");
             }
 
             const usersData = await response.json();
@@ -203,9 +204,8 @@ export default function AdminPage() {
             
             let csvContent = "wallet_address,exn_balance\n";
             for(const user of allUsers) {
-                if (user.balance > 0) {
-                    csvContent += `${user.wallet},${user.balance}\n`;
-                }
+                // We include all users, even those with 0 balance, for a complete record
+                csvContent += `${user.wallet},${user.balance}\n`;
             }
             
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
