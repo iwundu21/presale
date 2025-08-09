@@ -33,7 +33,6 @@ export default function AdminPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { publicKey, connected, connecting } = useWallet();
-  const [isAuthorized, setIsAuthorized] = useState(false);
   const [authStatus, setAuthStatus] = useState<'pending' | 'authorized' | 'unauthorized'>('pending');
   
   const [endDateInput, setEndDateInput] = useState('');
@@ -45,26 +44,38 @@ export default function AdminPage() {
   }, []);
   
   useEffect(() => {
+    // While connecting, show pending state and do nothing else.
     if (connecting) {
       setAuthStatus('pending');
       return;
     }
 
+    // Once connection status is resolved
     if (!connected) {
+      // If not connected, redirect to home to connect wallet.
       router.push('/');
-      return;
-    }
-
-    if (publicKey) {
-      if (publicKey.toBase58() === ADMIN_WALLET_ADDRESS) {
-        setIsAuthorized(true);
-        setAuthStatus('authorized');
+    } else {
+      // If connected, check the public key.
+      if (publicKey) {
+        if (publicKey.toBase58() === ADMIN_WALLET_ADDRESS) {
+          setAuthStatus('authorized');
+        } else {
+          // If the key is not the admin's, it's unauthorized.
+          setAuthStatus('unauthorized');
+          toast({
+              title: "Unauthorized Access",
+              description: "You are not authorized to view this page.",
+              variant: "destructive"
+          });
+          router.push('/dashboard');
+        }
       } else {
+        // This case is unlikely if `connected` is true, but as a fallback.
         setAuthStatus('unauthorized');
-        router.push('/dashboard');
+        router.push('/');
       }
     }
-  }, [publicKey, connected, connecting, router]);
+  }, [publicKey, connected, connecting, router, toast]);
 
 
   const handleDateSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
