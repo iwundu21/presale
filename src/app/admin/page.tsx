@@ -65,7 +65,9 @@ export default function AdminPage() {
 
     const handleLogin = () => {
         setIsCheckingCode(true);
-        if (inputCode === ADMIN_CODE) {
+        // Fallback to a default code if the env variable is not set
+        const adminCode = ADMIN_CODE || "203020";
+        if (inputCode === adminCode) {
             sessionStorage.setItem('adminAuthenticated', 'true');
             setIsAuthenticated(true);
             toast({ title: "Success", description: "Welcome, Admin!" });
