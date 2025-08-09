@@ -5,7 +5,7 @@
     "seasonName": "Investors",
     "tokenPrice": 0.15
   },
-  "isPresaleActive": true,
+  "isPresaleActive": false,
   "users": {
     "9Kqt28pfMVBsBvXYYnYQCT2BZyorAwzbR6dUmgQfsZYW": {
       "balance": 0,

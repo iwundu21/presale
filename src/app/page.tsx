@@ -16,6 +16,7 @@ export default function Home() {
   const router = useRouter();
   const [presaleEndDate, setPresaleEndDate] = useState<Date | null>(null);
   const [presaleInfo, setPresaleInfo] = useState<PresaleInfo | null>(null);
+  const [isPresaleActive, setIsPresaleActive] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -30,6 +31,7 @@ export default function Home() {
             ]);
             setPresaleEndDate(date);
             setPresaleInfo(data.presaleInfo);
+            setIsPresaleActive(data.isPresaleActive);
         } catch (error) {
             console.error("Failed to load presale data", error);
             // Set defaults on error
@@ -84,6 +86,7 @@ export default function Home() {
       isConnecting={connecting} 
       presaleEndDate={presaleEndDate}
       presaleInfo={presaleInfo}
+      isPresaleActive={isPresaleActive}
     />
   );
 }

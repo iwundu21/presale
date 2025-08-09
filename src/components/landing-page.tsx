@@ -1,22 +1,24 @@
 
 "use client";
 import { Button } from "@/components/ui/button";
-import { Bot, BrainCircuit, Rocket, ArrowRight, BadgePercent } from "lucide-react";
+import { Bot, BrainCircuit, Rocket, ArrowRight, BadgePercent, Info } from "lucide-react";
 import Image from "next/image";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useState } from "react";
 import { PresaleCountdown } from "./presale-countdown";
 import type { PresaleInfo } from "@/services/presale-info-service";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 
 type LandingPageProps = {
   onConnect: () => void;
   isConnecting: boolean;
   presaleEndDate: Date;
   presaleInfo: PresaleInfo;
+  isPresaleActive: boolean;
 };
 
-export function LandingPage({ onConnect, isConnecting, presaleEndDate, presaleInfo }: LandingPageProps) {
+export function LandingPage({ onConnect, isConnecting, presaleEndDate, presaleInfo, isPresaleActive }: LandingPageProps) {
     const { wallet } = useWallet();
     const [isClient, setIsClient] = useState(false);
 
@@ -45,10 +47,20 @@ export function LandingPage({ onConnect, isConnecting, presaleEndDate, presaleIn
               Exnus is not just a token; it's a revolution in decentralized intelligence. We're building a new ecosystem where your ideas have value and your data remains your own.
             </p>
         </div>
+
+        {!isPresaleActive && (
+          <Alert variant="destructive" className="max-w-xl mx-auto text-left border-destructive/50 bg-destructive/10">
+            <Info className="h-5 w-5" />
+            <AlertTitle className="font-bold">Presale Currently Closed</AlertTitle>
+            <AlertDescription>
+              Thank you for your interest in Exnus. The presale is not active at this time. Please follow our social channels for announcements on when it will reopen.
+            </AlertDescription>
+          </Alert>
+        )}
         
-        <PresaleCountdown presaleEndDate={presaleEndDate} />
+        {isPresaleActive && <PresaleCountdown presaleEndDate={presaleEndDate} />}
         
-        {isClient && (
+        {isClient && isPresaleActive && (
             <Button size="lg" onClick={onConnect} disabled={isConnecting || !!wallet}>
                 {isConnecting ? "Entering Ecosystem..." : "Enter the Ecosystem"}
               <ArrowRight className="ml-2 h-5 w-5"/>
