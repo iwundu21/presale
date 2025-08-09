@@ -15,6 +15,8 @@ import { USDC_MINT, USDT_MINT, EXN_PRICE } from "@/config";
 import { useDashboard } from "./dashboard-client-provider";
 
 const SOL_GAS_BUFFER = 0.005; // Reserve 0.005 SOL for gas fees
+const MIN_PURCHASE_USD = 1;
+const MAX_PURCHASE_USD = 10000;
 
 export function BuyExnCard() {
   const { connected: isConnected, handlePurchase, solPrice, isLoadingPrice } = useDashboard();
@@ -26,6 +28,7 @@ export function BuyExnCard() {
   const [balances, setBalances] = useState({ SOL: 0, USDC: 0, USDT: 0 });
   const [isFetchingBalance, setIsFetchingBalance] = useState(false);
   const [balanceError, setBalanceError] = useState("");
+  const [limitError, setLimitError] = useState("");
   
   useEffect(() => {
     const fetchBalances = async () => {
@@ -73,17 +76,20 @@ export function BuyExnCard() {
     fetchBalances();
   }, [isConnected, publicKey, connection]);
 
-  const calculateReceiveAmount = (pay: string, curr: string, priceOfSol: number | null) => {
-      const numericPayAmount = parseFloat(pay);
-      if (isNaN(numericPayAmount) || numericPayAmount <= 0) {
-        return "";
-      }
+  const getUsdValue = (amount: string, curr: string, priceOfSol: number | null): number | null => {
+    const numericAmount = parseFloat(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) return null;
 
-      let usdValue = numericPayAmount;
-      if (curr === 'SOL') {
-        if (!priceOfSol) return ""; // Wait for price
-        usdValue = numericPayAmount * priceOfSol;
-      }
+    if (curr === 'SOL') {
+      if (!priceOfSol) return null;
+      return numericAmount * priceOfSol;
+    }
+    return numericAmount;
+  }
+
+  const calculateReceiveAmount = (pay: string, curr: string, priceOfSol: number | null) => {
+      const usdValue = getUsdValue(pay, curr, priceOfSol);
+      if (usdValue === null) return "";
 
       const calculatedReceive = usdValue / EXN_PRICE;
       return calculatedReceive.toFixed(2);
@@ -109,6 +115,7 @@ export function BuyExnCard() {
     setReceiveAmount(calculateReceiveAmount(payAmount, currency, solPrice));
   }, [payAmount, currency, solPrice]);
 
+
   useEffect(() => {
     const numericPayAmount = parseFloat(payAmount);
     if (isNaN(numericPayAmount)) {
@@ -124,6 +131,22 @@ export function BuyExnCard() {
       setBalanceError("");
     }
   }, [payAmount, currency, balances]);
+
+  useEffect(() => {
+    const usdValue = getUsdValue(payAmount, currency, solPrice);
+    if (usdValue === null) {
+        setLimitError("");
+        return;
+    }
+
+    if (usdValue < MIN_PURCHASE_USD) {
+        setLimitError(`Minimum purchase is $${MIN_PURCHASE_USD}.`);
+    } else if (usdValue > MAX_PURCHASE_USD) {
+        setLimitError(`Maximum purchase is $${MAX_PURCHASE_USD}.`);
+    } else {
+        setLimitError("");
+    }
+  }, [payAmount, currency, solPrice]);
 
 
   const handlePayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -151,7 +174,7 @@ export function BuyExnCard() {
 
   const currentBalance = balances[currency as keyof typeof balances];
   const maxSpend = currency === 'SOL' ? currentBalance - SOL_GAS_BUFFER : currentBalance;
-  const isPurchaseDisabled = !isConnected || !parseFloat(payAmount) || parseFloat(payAmount) <= 0 || (currency === 'SOL' && isLoadingPrice) || !!balanceError;
+  const isPurchaseDisabled = !isConnected || !parseFloat(payAmount) || parseFloat(payAmount) <= 0 || (currency === 'SOL' && isLoadingPrice) || !!balanceError || !!limitError;
 
   return (
     <Card className="w-full shadow-lg border-primary/20 bg-gradient-to-br from-card to-primary/5">
@@ -202,7 +225,11 @@ export function BuyExnCard() {
                 </Select>
             </div>
           </div>
-          {balanceError && <p className="text-xs text-red-400 mt-1 pl-1">{balanceError} {currency === 'SOL' && `(Requires ~${SOL_GAS_BUFFER} SOL for fees)`}</p>}
+          {limitError ? (
+            <p className="text-xs text-red-400 mt-1 pl-1">{limitError}</p>
+          ) : balanceError ? (
+            <p className="text-xs text-red-400 mt-1 pl-1">{balanceError} {currency === 'SOL' && `(Requires ~${SOL_GAS_BUFFER} SOL for fees)`}</p>
+          ): null}
         </div>
 
         <div className="flex justify-center my-2">
@@ -245,9 +272,11 @@ export function BuyExnCard() {
             disabled={isPurchaseDisabled}
             onClick={handleBuyNow}
         >
-          {isLoadingPrice && currency === 'SOL' ? 'Loading Price...' : (isConnected ? (balanceError || "Buy EXN") : "Connect Wallet to Buy")}
+          {isLoadingPrice && currency === 'SOL' ? 'Loading Price...' : (isConnected ? (limitError || balanceError || "Buy EXN") : "Connect Wallet to Buy")}
         </Button>
       </CardFooter>
     </Card>
   );
 }
+
+    
