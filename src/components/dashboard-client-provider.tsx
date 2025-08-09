@@ -329,14 +329,13 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, persistTransaction]);
   
   const retryTransaction = useCallback(async (tx: Transaction) => {
-    if (!tx.blockhash || !tx.lastValidBlockHeight) {
-        toast({ title: "Retry Failed", description: "Missing transaction details needed to retry.", variant: "destructive" });
+    if (tx.id.startsWith('tx_') || !tx.blockhash || !tx.lastValidBlockHeight) {
+        toast({ title: "Retry Unavailable", description: "This transaction cannot be retried yet.", variant: "destructive" });
         return;
     }
 
     setIsLoadingPurchase(true);
-    const pendingTx: Transaction = { ...tx, status: 'Pending', failureReason: undefined };
-    updateTransactionInState(pendingTx);
+    toast({ title: "Retrying Transaction...", description: "Re-checking confirmation status..."});
     
     try {
         const confirmationPromise = connection.confirmTransaction({
@@ -345,12 +344,13 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
           lastValidBlockHeight: tx.lastValidBlockHeight
         }, 'confirmed');
 
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Transaction confirmation timed out.")), TRANSACTION_TIMEOUT_MS));
+        // Shorter timeout for retry
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Retry confirmation timed out.")), 30000));
 
         const confirmation = await Promise.race([confirmationPromise, timeoutPromise]);
         
         if ((confirmation as any).value.err) {
-            throw new Error(`Transaction failed to confirm: ${JSON.stringify((confirmation as any).value.err)}`);
+            throw new Error(`Transaction failed to confirm on retry: ${JSON.stringify((confirmation as any).value.err)}`);
         }
 
         const completedTx: Transaction = { ...tx, status: 'Completed' };
@@ -361,19 +361,45 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
     } catch (error: any) {
         console.error("Retry failed:", error);
-        let failureReason = error.message || "Failed to confirm transaction on retry.";
+        // Don't immediately fail the transaction on retry timeout, just inform the user
         if (error.message.includes("timed out")) {
-             failureReason = "Confirmation timed out again. Please check the transaction on Solscan.";
+             toast({ title: "Retry Timed Out", description: "Still pending. Please check Solscan or try again in a moment.", variant: "destructive" });
+        } else {
+            const failedTx: Transaction = { ...tx, status: 'Failed', failureReason: error.message };
+            updateTransactionInState(failedTx);
+            await persistTransaction(failedTx);
+            toast({ title: "Transaction Failed", description: error.message, variant: "destructive" });
         }
-        const failedTx: Transaction = { ...tx, status: 'Failed', failureReason: failureReason };
-        updateTransactionInState(failedTx);
-        await persistTransaction(failedTx);
-        toast({ title: "Retry Failed", description: failureReason, variant: "destructive" });
     } finally {
         setIsLoadingPurchase(false);
     }
 
   }, [connection, toast, updateTransactionInState, persistTransaction]);
+  
+   // Effect to auto-fail pending transactions after 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+        const now = new Date().getTime();
+        transactions.forEach(tx => {
+            if (tx.status === 'Pending' && (now - new Date(tx.date).getTime()) > TRANSACTION_TIMEOUT_MS) {
+                const failedTx: Transaction = {
+                    ...tx,
+                    status: 'Failed',
+                    failureReason: 'Transaction timed out after 5 minutes.'
+                };
+                updateTransactionInState(failedTx);
+                persistTransaction(failedTx);
+                 toast({
+                    title: "Transaction Timed Out",
+                    description: `Transaction ${tx.id.substring(0,8)}... has been marked as failed.`,
+                    variant: "destructive",
+                });
+            }
+        });
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [transactions, updateTransactionInState, persistTransaction, toast]);
 
 
   if (!isClient || connecting || !publicKey || isLoadingDashboard) {

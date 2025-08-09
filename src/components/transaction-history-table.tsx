@@ -35,6 +35,13 @@ const getStatusIcon = (status: Transaction['status']) => {
 
 export function TransactionHistoryTable() {
     const { transactions, retryTransaction, isLoadingPurchase } = useDashboard();
+    
+    const isTxPendingAndRecent = (tx: Transaction) => {
+        if (tx.status !== 'Pending') return false;
+        const txTime = new Date(tx.date).getTime();
+        const fiveMinutesAgo = new Date().getTime() - (5 * 60 * 1000);
+        return txTime > fiveMinutesAgo;
+    }
 
     return (
         <Card className="shadow-lg border-primary/20 bg-gradient-to-br from-card to-primary/5">
@@ -87,16 +94,23 @@ export function TransactionHistoryTable() {
                                            
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-2">
-                                                    {tx.status === 'Failed' && tx.failureReason?.includes('timed out') && (
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon" 
-                                                            className="h-6 w-6" 
-                                                            onClick={() => retryTransaction(tx)}
-                                                            disabled={isLoadingPurchase}
-                                                        >
-                                                            <RefreshCw className={`h-4 w-4 ${isLoadingPurchase ? 'animate-spin' : ''}`} />
-                                                        </Button>
+                                                    {isTxPendingAndRecent(tx) && (
+                                                        <Tooltip delayDuration={100}>
+                                                            <TooltipTrigger asChild>
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    className="h-6 w-6" 
+                                                                    onClick={() => retryTransaction(tx)}
+                                                                    disabled={isLoadingPurchase}
+                                                                >
+                                                                    <RefreshCw className={`h-4 w-4 ${isLoadingPurchase ? 'animate-spin' : ''}`} />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent side="top" align="end">
+                                                                <p>Retry Confirmation</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
                                                     )}
                                                     <a 
                                                         href={!tx.id.startsWith('tx_') ? `https://solscan.io/tx/${tx.id}` : undefined}
@@ -124,7 +138,7 @@ export function TransactionHistoryTable() {
                                                             )}
                                                             {tx.status === 'Completed' && <p>Click status to view on Solscan</p>}
                                                             {tx.status === 'Pending' && <p>Transaction is being processed...</p>}
-                                                            {tx.status === 'Failed' && tx.failureReason?.includes('timed out') && <p>Click the refresh icon to retry confirmation.</p>}
+                                                            {isTxPendingAndRecent(tx) && <p>Click the refresh icon to retry confirmation.</p>}
                                                         </TooltipContent>
                                                     </Tooltip>
                                                 </div>
