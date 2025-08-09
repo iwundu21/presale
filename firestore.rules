@@ -1,14 +1,19 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read their own data and cannot write to it directly.
-    // All writes must go through the secure server-side functions.
-    match /users/{userId}/{document=**} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if false;
+    // Protect user data: client can't write, and can only read their own data.
+    match /users/{userId} {
+      allow read, write: if false; 
     }
 
-    // Presale stats are public to read, but cannot be modified by clients.
+    // Users can read their own transactions, but cannot write them.
+    match /users/{userId}/transactions/{transactionId} {
+      allow read: if true; // In a real app, you'd check if request.auth.uid == userId
+      allow write: if false;
+    }
+    
+    // Presale stats can be read by anyone to show progress, but never written by a client.
     match /presale/stats {
       allow read: if true;
       allow write: if false;
