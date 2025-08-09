@@ -250,16 +250,6 @@ export function BuyExnCard() {
             </p>
         )}
         
-        <div className="text-center text-xs text-muted-foreground pt-4">
-          <p>You are sending funds to the official presale address:</p>
-          <div className="flex items-center justify-center gap-2 mt-1 font-mono bg-muted/50 p-2 rounded-md">
-              <span className="truncate">{PRESALE_WALLET_ADDRESS}</span>
-              <Button onClick={handleCopyToClipboard} variant="ghost" size="icon" className="h-6 w-6 shrink-0">
-                  <Copy className="h-4 w-4" />
-              </Button>
-          </div>
-        </div>
-
       </CardContent>
       <CardFooter>
         <Button 
