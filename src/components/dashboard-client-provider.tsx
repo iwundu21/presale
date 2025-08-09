@@ -175,17 +175,17 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         const failedTx: Transaction = {
             ...pendingTx,
             status: "Failed",
-            failureReason: "Transaction timed out after 10 minutes. Please check your wallet.",
+            failureReason: "Transaction timed out after 5 minutes. Please check your wallet.",
         };
         await saveTransaction(publicKey.toBase58(), failedTx);
         updateTransactionInState(failedTx);
         setIsLoadingPurchase(false);
         toast({
             title: "Transaction Timed Out",
-            description: "Your transaction was not confirmed within 10 minutes.",
+            description: "Your transaction was not confirmed within 5 minutes.",
             variant: "destructive",
         });
-    }, 10 * 60 * 1000);
+    }, 5 * 60 * 1000);
 
     let signature: string | null = null;
     

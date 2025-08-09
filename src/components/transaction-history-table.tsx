@@ -22,7 +22,7 @@ import Link from "next/link";
 import { useDashboard } from "./dashboard-client-provider";
 import type { Transaction } from "./dashboard-client-provider";
 
-const StatusBadge = ({ status, onRetry, isRetrying, canRetry }: { status: Transaction["status"], onRetry?: () => void, isRetrying?: boolean, canRetry?: boolean }) => {
+const StatusBadge = ({ status }: { status: Transaction["status"] }) => {
   switch (status) {
     case "Completed":
       return (
@@ -33,21 +33,17 @@ const StatusBadge = ({ status, onRetry, isRetrying, canRetry }: { status: Transa
       );
     case "Pending":
       return (
-        <div className="flex items-center justify-end gap-2">
-            <Badge variant="outline" className="border-amber-500/50 text-amber-400 bg-amber-500/10">
-              <AlertCircle className="mr-1 h-3 w-3 animate-pulse" />
-              {status}
-            </Badge>
-        </div>
+        <Badge variant="outline" className="border-amber-500/50 text-amber-400 bg-amber-500/10">
+          <AlertCircle className="mr-1 h-3 w-3 animate-pulse" />
+          Pending
+        </Badge>
       );
     case "Failed":
        return (
-        <div className="flex items-center justify-end gap-2">
-            <Badge variant="outline" className="border-red-500/50 text-red-400 bg-red-500/10">
-              <XCircle className="mr-1 h-3 w-3" />
-              {status}
-            </Badge>
-        </div>
+        <Badge variant="outline" className="border-red-500/50 text-red-400 bg-red-500/10">
+          <XCircle className="mr-1 h-3 w-3" />
+          {status}
+        </Badge>
       );
     default:
       return <Badge>{status}</Badge>;
@@ -80,22 +76,9 @@ export function TransactionHistoryTable() {
   
   const isTransactionRecentAndPending = (tx: Transaction) => {
     if (tx.status !== 'Pending') return false;
-    const tenMinutes = 10 * 60 * 1000;
-    return new Date().getTime() - new Date(tx.date).getTime() < tenMinutes;
+    const fiveMinutes = 5 * 60 * 1000;
+    return new Date().getTime() - new Date(tx.date).getTime() < fiveMinutes;
   };
-
-  const getTooltipContent = (tx: Transaction) => {
-    switch (tx.status) {
-      case 'Pending':
-        return "This transaction is waiting for confirmation on the Solana network, which can take up to 10 minutes. If you accidentally closed the wallet pop-up, you can use the 'Retry' button.";
-      case 'Failed':
-        return tx.failureReason || "Transaction failed. View on Solscan for details if a transaction ID is available.";
-      case 'Completed':
-        return "View completed transaction details on Solscan.";
-       default:
-        return "View transaction details on Solscan.";
-    }
-  }
 
   return (
     <Card className="shadow-lg border-white/10">
@@ -196,21 +179,20 @@ export function TransactionHistoryTable() {
                                   </AlertDialogContent>
                                 </AlertDialog>
                             )}
-
-                            {canRetry && (
+                             {tx.status === 'Pending' && (
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <Button 
                                             size="icon" 
                                             variant="ghost" 
                                             onClick={() => handlePurchase(tx.amountExn, tx.paidAmount, tx.paidCurrency, tx.id)} 
-                                            disabled={isRetryingCurrent}
+                                            disabled={isLoadingPurchase || !canRetry}
                                         >
-                                            {isRetryingCurrent ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4 text-amber-400" />}
+                                            <RefreshCw className={`h-4 w-4 ${ (isLoadingPurchase && isRetryingCurrent) ? 'animate-spin' : ''} ${canRetry ? 'text-amber-400' : 'text-muted-foreground/50'}`} />
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>Retry Transaction</p>
+                                        <p>{canRetry ? "Retry Transaction" : "Retry only available for 5 mins"}</p>
                                     </TooltipContent>
                                 </Tooltip>
                             )}
