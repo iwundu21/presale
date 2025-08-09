@@ -65,19 +65,21 @@ export function TransactionHistoryTable() {
   };
   
   const isTransactionRecent = (tx: Transaction) => {
+    if (tx.status !== 'Pending') return false;
     const fiveMinutes = 5 * 60 * 1000;
     return new Date().getTime() - new Date(tx.date).getTime() < fiveMinutes;
   };
 
-  const getTooltipContent = (tx: Transaction, canRetry: boolean) => {
+  const getTooltipContent = (tx: Transaction) => {
+    const canRetry = isTransactionRecent(tx);
     if (canRetry) {
         return "Retry this pending transaction. A wallet prompt will appear.";
     }
     switch (tx.status) {
       case 'Pending':
-        return "Transaction is being processed. It will be marked as failed after 5 minutes.";
+        return "Transaction is processing. If it persists, it will be marked as failed after 5 minutes.";
       case 'Failed':
-        return tx.failureReason || "Transaction failed. View on Solscan for details.";
+        return tx.failureReason || "Transaction failed. View on Solscan for details if a transaction ID is available.";
       case 'Completed':
         return "View completed transaction details on Solscan.";
        default:
@@ -94,7 +96,7 @@ export function TransactionHistoryTable() {
         </div>
       </CardHeader>
       <CardContent>
-        <TooltipProvider>
+        <TooltipProvider delayDuration={100}>
           <Table>
             <TableHeader>
               <TableRow>
@@ -108,8 +110,10 @@ export function TransactionHistoryTable() {
             <TableBody>
               {currentTransactions.length > 0 ? (
                 currentTransactions.map((tx) => {
-                  const canRetry = tx.status === 'Pending' && isTransactionRecent(tx);
-                  const isRetryingCurrent = isLoadingPurchase && canRetry;
+                  const canRetry = isTransactionRecent(tx);
+                  const isRetryingCurrent = isLoadingPurchase && canRetry; // This assumes isLoadingPurchase is specific enough
+                  const hasValidTxId = tx.id && !tx.id.startsWith('tx_');
+
                   return (
                     <TableRow key={tx.id}>
                       <TableCell>
@@ -136,32 +140,33 @@ export function TransactionHistoryTable() {
                       <TableCell className="text-center">
                          <Tooltip>
                           <TooltipTrigger asChild>
-                              <span className="inline-block">
-                                  {canRetry ? (
-                                     <Button 
-                                        variant="ghost" 
-                                        size="icon"
-                                        disabled={isRetryingCurrent}
-                                        onClick={() => handlePurchase(tx.amountExn, tx.paidAmount, tx.paidCurrency, tx.id)}
-                                     >
-                                          {isRetryingCurrent 
-                                            ? <RefreshCw className="h-4 w-4 text-accent animate-spin" />
-                                            : <RefreshCw className="h-4 w-4 text-accent" />
-                                          }
-                                      </Button>
-                                  ) : tx.id.startsWith('tx_') ? (
-                                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                                  ) : (
-                                      <Button asChild variant="ghost" size="icon">
-                                          <Link href={`https://solscan.io/tx/${tx.id}`} target="_blank">
-                                              <ExternalLink className="h-4 w-4 text-accent" />
-                                          </Link>
-                                      </Button>
-                                  )}
+                              <span>
+                                {canRetry ? (
+                                   <Button 
+                                      variant="ghost" 
+                                      size="icon"
+                                      disabled={isRetryingCurrent}
+                                      onClick={() => handlePurchase(tx.amountExn, tx.paidAmount, tx.paidCurrency, tx.id)}
+                                      className="cursor-pointer"
+                                   >
+                                        {isRetryingCurrent 
+                                          ? <RefreshCw className="h-4 w-4 text-accent animate-spin" />
+                                          : <RefreshCw className="h-4 w-4 text-accent" />
+                                        }
+                                    </Button>
+                                ) : hasValidTxId ? (
+                                    <Button asChild variant="ghost" size="icon">
+                                        <Link href={`https://solscan.io/tx/${tx.id}?cluster=mainnet`} target="_blank" rel="noopener noreferrer">
+                                            <ExternalLink className="h-4 w-4 text-accent" />
+                                        </Link>
+                                    </Button>
+                                ) : (
+                                    <HelpCircle className="h-4 w-4 text-muted-foreground inline-block" />
+                                )}
                               </span>
                           </TooltipTrigger>
                           <TooltipContent>
-                             <p>{getTooltipContent(tx, canRetry)}</p>
+                             <p className="max-w-xs">{getTooltipContent(tx)}</p>
                           </TooltipContent>
                         </Tooltip>
                       </TableCell>
