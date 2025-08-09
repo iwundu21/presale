@@ -81,11 +81,13 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         // Fetch user data (balance)
         const userDataRes = await fetch(`/api/user-data?userKey=${userKey}`);
+        if (!userDataRes.ok) throw new Error('Failed to fetch user data');
         const userData = await userDataRes.json();
         setExnBalance(userData.balance || 0);
 
         // Fetch presale data (total sold)
         const presaleDataRes = await fetch('/api/presale-data');
+        if (!presaleDataRes.ok) throw new Error('Failed to fetch presale data');
         const presaleData = await presaleDataRes.json();
         setTotalExnSold(presaleData.totalExnSold || 0);
 
@@ -110,10 +112,17 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
    const fetchTransactionHistory = useCallback(async () => {
     if (!publicKey) return;
     // For now, transaction history is local. A full backend would store this.
+    // A more robust solution would be to query the blockchain for past transactions.
     const stored = localStorage.getItem(`transactions_${publicKey.toBase58()}`);
     if (stored) {
-      const parsed = JSON.parse(stored).map((tx: any) => ({...tx, date: new Date(tx.date)}));
-      setTransactions(parsed);
+      try {
+        const parsed = JSON.parse(stored).map((tx: any) => ({...tx, date: new Date(tx.date)}));
+        setTransactions(parsed);
+      } catch (e) {
+        console.error("Failed to parse transactions from localStorage", e);
+        // If parsing fails, clear the corrupted data
+        localStorage.removeItem(`transactions_${publicKey.toBase58()}`);
+      }
     }
   }, [publicKey]);
 
@@ -223,12 +232,16 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         signature = await sendTransaction(transaction, connection);
         
-        await connection.confirmTransaction({
+        const confirmation = await connection.confirmTransaction({
           signature,
           blockhash,
           lastValidBlockHeight
         }, 'confirmed');
         
+        if (confirmation.value.err) {
+            throw new Error(`Transaction failed to confirm: ${JSON.stringify(confirmation.value.err)}`);
+        }
+
         // --- SERVER STATE UPDATE ---
         const userKey = publicKey.toBase58();
         const purchaseResponse = await fetch('/api/purchase', {
@@ -238,7 +251,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         });
 
         if (!purchaseResponse.ok) {
-            throw new Error('Failed to update server-side balance.');
+            const errorData = await purchaseResponse.text();
+            throw new Error(`Server-side balance update failed: ${errorData}`);
         }
 
         const { newBalance, newTotalSold } = await purchaseResponse.json();
@@ -275,7 +289,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         
         toast({
             title: toastTitle,
-            description: "Your transaction could not be completed. Please try again.",
+            description: "Your transaction could not be completed. Your balance has not been charged.",
             variant: "destructive",
         });
     } finally {
@@ -304,3 +318,5 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
+
+    

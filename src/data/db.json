@@ -1,5 +1,8 @@
-
 {
-    "totalExnSold": 0,
-    "users": {}
+  "totalExnSold": 0.2,
+  "users": {
+    "9Kqt28pfMVBsBvXYYnYQCT2BZyorAwzbR6dUmgQfsZYW": {
+      "balance": 0.2
+    }
+  }
 }
