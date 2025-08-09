@@ -44,23 +44,12 @@ export default function AdminPage() {
   }, []);
   
   useEffect(() => {
-    // While connecting, show pending state and do nothing else.
-    if (connecting) {
-      setAuthStatus('pending');
-      return;
-    }
-
-    // Once connection status is resolved
-    if (!connected) {
-      // If not connected, redirect to home to connect wallet.
-      router.push('/');
-    } else {
-      // If connected, check the public key.
-      if (publicKey) {
+    // We should only check for auth status when the connection status is no longer changing.
+    if (!connecting) {
+      if (connected && publicKey) {
         if (publicKey.toBase58() === ADMIN_WALLET_ADDRESS) {
           setAuthStatus('authorized');
         } else {
-          // If the key is not the admin's, it's unauthorized.
           setAuthStatus('unauthorized');
           toast({
               title: "Unauthorized Access",
@@ -70,11 +59,14 @@ export default function AdminPage() {
           router.push('/dashboard');
         }
       } else {
-        // This case is unlikely if `connected` is true, but as a fallback.
+        // If not connected at all, it's unauthorized.
+        // A real app might have a dedicated login page, but for this flow,
+        // we'll guide them to the main page to connect their wallet first.
         setAuthStatus('unauthorized');
         router.push('/');
       }
     }
+    // The dependency array ensures this effect runs whenever the connection state settles.
   }, [publicKey, connected, connecting, router, toast]);
 
 
@@ -198,7 +190,7 @@ export default function AdminPage() {
            <CardHeader>
             <CardTitle className="text-2xl font-bold text-white">User Data</CardTitle>
             <CardDescription>Download a CSV of all user wallet addresses and balances.</CardDescription>
-          </CardHeader>
+          </Header>
           <CardContent>
             <Button onClick={handleDownload} className="w-full" variant="secondary" disabled={isDownloading}>
                 {isDownloading ? <Loader2 className="animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
