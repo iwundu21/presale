@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { ArrowDown, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardDescription, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "./ui/skeleton";
@@ -189,8 +189,8 @@ export function BuyExnCard() {
   }
 
   return (
-    <Card className="w-full shadow-lg border-primary/20 bg-gradient-to-br from-card to-primary/5">
-      <CardHeader>
+    <div className="w-full rounded-lg border border-border p-6 space-y-4">
+      <div className="space-y-1.5">
         <div className="flex items-center gap-3 mb-1">
             <div className="p-2 bg-primary/20 rounded-md">
                 <Zap className="h-6 w-6 text-primary"/>
@@ -200,8 +200,8 @@ export function BuyExnCard() {
         <CardDescription>
           Current Price: <strong>${exnPrice}</strong> per EXN
         </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+      </div>
+      <div className="space-y-4 pt-4">
         <div>
           <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-2">
             <div className="flex justify-between items-center text-sm">
@@ -276,8 +276,8 @@ export function BuyExnCard() {
             </p>
         )}
         
-      </CardContent>
-      <CardFooter className="flex-col gap-4">
+      </div>
+      <div className="flex-col gap-4 pt-4">
         <Button 
             size="lg" 
             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg py-6" 
@@ -286,7 +286,7 @@ export function BuyExnCard() {
         >
           {getButtonText()}
         </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }

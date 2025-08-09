@@ -2,7 +2,7 @@
 "use client";
 
 import { Flame } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { CardDescription, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
 import { HARD_CAP, SOFT_CAP } from "@/config";
@@ -39,8 +39,8 @@ export function PresaleProgressCard() {
     }, [totalExnSold, exnPrice]);
 
     return (
-        <Card className="w-full shadow-lg border-primary/20 bg-gradient-to-br from-card to-primary/5">
-            <CardHeader>
+        <div className="w-full rounded-lg border border-border p-6 space-y-4">
+            <div className="space-y-1.5">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-primary/20 rounded-md">
                         <Flame className="h-6 w-6 text-primary"/>
@@ -50,8 +50,8 @@ export function PresaleProgressCard() {
                  <CardDescription>
                     The presale is live! Join the revolution.
                 </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            </div>
+            <div className="space-y-4 pt-4">
                 <div className="relative pt-4">
                     <div className="flex items-center gap-3">
                         <Progress value={progress} className="w-full h-3" />
@@ -88,7 +88,7 @@ export function PresaleProgressCard() {
                         Once the Soft Cap is reached, the token launch is guaranteed, regardless of the roadmap progress.
                     </p>
                  </div>
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 }

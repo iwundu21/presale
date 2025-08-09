@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardDescription, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge, BadgeProps } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -187,8 +187,8 @@ export function TransactionHistoryTable() {
     const isMobile = useIsMobile();
     
     return (
-        <Card className="shadow-lg border-primary/20 bg-gradient-to-br from-card to-primary/5">
-            <CardHeader>
+        <div className="w-full rounded-lg border border-border p-6 space-y-4">
+            <div className="space-y-1.5">
                 <div className="flex items-center gap-3">
                      <div className="p-2 bg-primary/20 rounded-md">
                         <List className="h-6 w-6 text-primary"/>
@@ -198,8 +198,8 @@ export function TransactionHistoryTable() {
                 <CardDescription>
                     Your recent presale contributions.
                 </CardDescription>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div className="pt-4">
                 <ScrollArea className="h-[350px] w-full">
                    {transactions.length === 0 ? (
                         <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -230,7 +230,7 @@ export function TransactionHistoryTable() {
                     </TooltipProvider>
                    )}
                 </ScrollArea>
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 }
