@@ -6,7 +6,6 @@ service cloud.firestore {
     // in security rules without Firebase Authentication.
     match /users/{userId}/{document=**} {
       allow read: if true;
-
       // CRITICAL: Block all writes from the client.
       // All writes MUST go through your secure server-side function.
       allow write: if false;
@@ -15,7 +14,6 @@ service cloud.firestore {
     // Allow anyone to read the public presale statistics.
     match /presale/stats {
       allow read: if true;
-      
       // CRITICAL: Block all writes from the client.
       allow write: if false;
     }
