@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { UserData, getAllUsers, updateUser } from "@/services/firestore-service";
+import { UserData, getAllUsers, updateUserBalanceAndTotals } from "@/services/firestore-service";
 import { setClientPresaleEndDate, getClientPresaleEndDate } from "@/services/presale-date-service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -120,7 +120,7 @@ export default function AdminPage() {
 
         setIsUpdatingBalance(true);
         try {
-            await updateUser(selectedUser.walletAddress, { exnBalance: balanceValue });
+            await updateUserBalanceAndTotals(selectedUser.walletAddress, balanceValue);
             toast({ title: "Success", description: `Balance for ${selectedUser.walletAddress.substring(0, 8)}... updated.` });
             // Refresh user list to show new balance
             await fetchAdminData();
