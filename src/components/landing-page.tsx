@@ -5,13 +5,16 @@ import { Bot, BrainCircuit, Rocket, ArrowRight } from "lucide-react";
 import Image from "next/image";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useState } from "react";
+import { PresaleCountdown } from "./presale-countdown";
+import type { getPresaleEndDate } from "@/services/presale-date-service";
 
 type LandingPageProps = {
   onConnect: () => void;
   isConnecting: boolean;
+  presaleEndDate: Date;
 };
 
-export function LandingPage({ onConnect, isConnecting }: LandingPageProps) {
+export function LandingPage({ onConnect, isConnecting, presaleEndDate }: LandingPageProps) {
     const { wallet } = useWallet();
     const [isClient, setIsClient] = useState(false);
 
@@ -22,13 +25,18 @@ export function LandingPage({ onConnect, isConnecting }: LandingPageProps) {
   return (
     <main className="flex-grow">
       {/* Hero Section */}
-      <section className="container mx-auto text-center py-20 lg:py-32">
-        <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">
-          Welcome to the Future of <span className="text-primary">Exnus</span>
-        </h1>
-        <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
-          Exnus is not just a token; it's a revolution in decentralized intelligence. We're building a new ecosystem where your ideas have value and your data remains your own.
-        </p>
+      <section className="container mx-auto text-center py-20 lg:py-32 space-y-8">
+        <div>
+            <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">
+              Welcome to the Future of <span className="text-primary">Exnus</span>
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
+              Exnus is not just a token; it's a revolution in decentralized intelligence. We're building a new ecosystem where your ideas have value and your data remains your own.
+            </p>
+        </div>
+
+        <PresaleCountdown presaleEndDate={presaleEndDate} />
+        
         {isClient && (
             <Button size="lg" onClick={onConnect} disabled={isConnecting || !!wallet}>
                 {isConnecting ? "Entering Ecosystem..." : "Enter the Ecosystem"}

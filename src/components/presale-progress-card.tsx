@@ -16,17 +16,12 @@ const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
     }).format(num);
 };
 
-type PresaleProgressCardProps = {
-    presaleEndDate: Date;
-}
-
-export function PresaleProgressCard({ presaleEndDate }: PresaleProgressCardProps) {
+export function PresaleProgressCard() {
     const { totalExnSold } = useDashboard();
     const [progress, setProgress] = useState(0);
-    const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
     const [totalSoldValue, setTotalSoldValue] = useState(0);
 
-    // Effect for updating progress bar and countdown
+    // Effect for updating progress bar
     useEffect(() => {
         const percentage = totalExnSold > 0 && SOFT_CAP > 0 ? (totalExnSold / SOFT_CAP) * 100 : 0;
         const soldValue = totalExnSold * EXN_PRICE;
@@ -34,28 +29,7 @@ export function PresaleProgressCard({ presaleEndDate }: PresaleProgressCardProps
         
         // Clamp progress to a max of 100
         setProgress(Math.min(percentage, 100));
-
-        // Countdown timer logic
-        const countdownTimer = setInterval(() => {
-            const now = new Date();
-            const difference = new Date(presaleEndDate).getTime() - now.getTime();
-
-            if (difference > 0) {
-                const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
-                const minutes = Math.floor((difference / 1000 / 60) % 60);
-                const seconds = Math.floor((difference / 1000) % 60);
-                setTimeLeft({ days, hours, minutes, seconds });
-            } else {
-                 setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-                 clearInterval(countdownTimer);
-            }
-        }, 1000);
-
-        return () => {
-            clearInterval(countdownTimer);
-        };
-    }, [totalExnSold, presaleEndDate]);
+    }, [totalExnSold]);
 
     return (
         <Card className="w-full shadow-lg border-primary/20 bg-gradient-to-br from-card to-primary/5">
@@ -88,27 +62,6 @@ export function PresaleProgressCard({ presaleEndDate }: PresaleProgressCardProps
                     </p>
                     <p className="text-xs text-muted-foreground">Total Raised</p>
                  </div>
-                 <div className="text-center bg-muted/50 rounded-lg p-2">
-                    <p className="text-sm text-muted-foreground mb-1">Presale Ends In</p>
-                    <div className="grid grid-cols-4 gap-1 text-center">
-                        <div>
-                            <p className="text-2xl font-bold text-primary">{String(timeLeft.days).padStart(2, '0')}</p>
-                            <p className="text-xs text-muted-foreground">Days</p>
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold text-primary">{String(timeLeft.hours).padStart(2, '0')}</p>
-                            <p className="text-xs text-muted-foreground">Hours</p>
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold text-primary">{String(timeLeft.minutes).padStart(2, '0')}</p>
-                            <p className="text-xs text-muted-foreground">Minutes</p>
-                        </div>
-                        <div>
-                            <p className="text-2xl font-bold text-primary">{String(timeLeft.seconds).padStart(2, '0')}</p>
-                            <p className="text-xs text-muted-foreground">Seconds</p>
-                        </div>
-                    </div>
-                </div>
             </CardContent>
         </Card>
     );
