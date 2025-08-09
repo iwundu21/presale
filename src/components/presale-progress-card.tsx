@@ -5,7 +5,7 @@ import { Flame } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
-import { HARD_CAP, EXN_PRICE } from "@/config";
+import { HARD_CAP, SOFT_CAP, EXN_PRICE } from "@/config";
 import { useDashboard } from "./dashboard-client-provider";
 
 const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
@@ -20,6 +20,7 @@ export function PresaleProgressCard() {
     const { totalExnSold } = useDashboard();
     const [progress, setProgress] = useState(0);
     const [totalSoldValue, setTotalSoldValue] = useState(0);
+    const [softCapPosition, setSoftCapPosition] = useState(0);
 
     // Effect for updating progress bar
     useEffect(() => {
@@ -27,6 +28,10 @@ export function PresaleProgressCard() {
         const soldValue = totalExnSold * EXN_PRICE;
         setTotalSoldValue(soldValue);
         
+        if (HARD_CAP > 0) {
+            setSoftCapPosition((SOFT_CAP / HARD_CAP) * 100);
+        }
+
         // Clamp progress to a max of 100
         setProgress(Math.min(percentage, 100));
     }, [totalExnSold]);
@@ -45,9 +50,19 @@ export function PresaleProgressCard() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <div className="flex items-center gap-3">
-                    <Progress value={progress} className="w-full h-3" />
-                    <span className="text-sm font-bold text-primary">{progress.toFixed(2)}%</span>
+                <div className="relative pt-4">
+                    <div className="flex items-center gap-3">
+                        <Progress value={progress} className="w-full h-3" />
+                        <span className="text-sm font-bold text-primary">{progress.toFixed(2)}%</span>
+                    </div>
+                     {softCapPosition > 0 && (
+                        <div className="absolute top-0" style={{ left: `${softCapPosition}%` }}>
+                            <div className="h-3 w-0.5 bg-accent/80"></div>
+                            <div className="text-xs text-accent -translate-x-1/2 mt-1 whitespace-nowrap">
+                                Soft Cap
+                            </div>
+                        </div>
+                    )}
                 </div>
                 <div className="flex justify-between items-center text-sm font-medium">
                     <span className="text-muted-foreground">Sold: <span className="text-white font-bold">{formatNumber(totalExnSold)} EXN</span></span>
