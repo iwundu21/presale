@@ -182,6 +182,45 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
   }, [publicKey, toast]);
 
+  const confirmAndFinalizeTransaction = useCallback(async (tx: Transaction) => {
+    if (!tx.blockhash || !tx.lastValidBlockHeight) return;
+
+    try {
+        const confirmation = await connection.confirmTransaction({
+            signature: tx.id,
+            blockhash: tx.blockhash,
+            lastValidBlockHeight: tx.lastValidBlockHeight
+        }, 'confirmed');
+        
+        if (confirmation.value.err) {
+            throw new Error(`Transaction failed to confirm: ${JSON.stringify(confirmation.value.err)}`);
+        }
+
+        const completedTx: Transaction = { ...tx, status: 'Completed' };
+        updateTransactionInState(completedTx);
+        await persistTransaction(completedTx);
+
+        toast({
+            title: "Purchase Successful!",
+            description: `You purchased ${tx.amountExn.toLocaleString()} EXN. Your balance is updated.`,
+            variant: "success"
+        });
+
+    } catch (error: any) {
+        console.error("Transaction finalization failed:", error);
+        
+        const failedTx: Transaction = { ...tx, status: 'Failed', failureReason: "Failed to confirm on-chain." };
+        updateTransactionInState(failedTx);
+        await persistTransaction(failedTx);
+        
+        toast({
+            title: "Transaction Failed",
+            description: "Your transaction could not be confirmed on the blockchain.",
+            variant: "destructive",
+        });
+    }
+  }, [connection, persistTransaction, toast, updateTransactionInState]);
+
   const handlePurchase = useCallback(async (exnAmount: number, paidAmount: number, currency: string) => {
     if (!publicKey || !wallet?.adapter.connected) {
       toast({ title: "Wallet not connected", description: "Please connect your wallet and try again.", variant: "destructive" });
@@ -268,33 +307,18 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         signature = await sendTransaction(transaction, connection);
         
-        // Update the transaction in state with the real signature
         newTx = {...newTx, id: signature, blockhash, lastValidBlockHeight};
         updateTransactionInState(newTx);
-
-        const confirmationPromise = connection.confirmTransaction({
-          signature,
-          blockhash,
-          lastValidBlockHeight
-        }, 'confirmed');
-
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Transaction confirmation timed out.")), TRANSACTION_TIMEOUT_MS));
-
-        const confirmation = await Promise.race([confirmationPromise, timeoutPromise]);
-        
-        if ((confirmation as any).value.err) {
-            throw new Error(`Transaction failed to confirm: ${JSON.stringify((confirmation as any).value.err)}`);
-        }
-
-        const completedTx: Transaction = { ...newTx, status: 'Completed' };
-        updateTransactionInState(completedTx);
-        await persistTransaction(completedTx);
+        await persistTransaction(newTx); // Persist pending transaction immediately
 
         toast({
-            title: "Purchase Successful!",
-            description: `You purchased ${exnAmount.toLocaleString()} EXN. Your balance is updated.`,
-            variant: "success"
+            title: "Transaction Sent!",
+            description: "Your purchase is being processed. This may take a few moments.",
+            variant: "success",
         });
+
+        // Start polling for confirmation without blocking UI
+        confirmAndFinalizeTransaction(newTx);
         
     } catch (error: any) {
         console.error("Transaction failed:", error);
@@ -326,7 +350,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     } finally {
         setIsLoadingPurchase(false);
     }
-  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, persistTransaction]);
+  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, persistTransaction, confirmAndFinalizeTransaction]);
   
   const retryTransaction = useCallback(async (tx: Transaction) => {
     if (tx.id.startsWith('tx_') || !tx.blockhash || !tx.lastValidBlockHeight) {
@@ -424,3 +448,5 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
+
+    

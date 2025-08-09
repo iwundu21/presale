@@ -1,5 +1,21 @@
-
 {
   "totalExnSold": 0,
-  "users": {}
+  "users": {
+    "9Kqt28pfMVBsBvXYYnYQCT2BZyorAwzbR6dUmgQfsZYW": {
+      "balance": 0,
+      "transactions": [
+        {
+          "id": "tx_1754755821755",
+          "amountExn": 0.2,
+          "paidAmount": 0.0001,
+          "paidCurrency": "SOL",
+          "date": "2025-08-09T16:10:21.755Z",
+          "status": "Failed",
+          "failureReason": "Transaction was rejected in the wallet.",
+          "blockhash": "9pz9ghvUH6DJUfzS28gnab2pVYYwkhaFZ5tzveLSA3Fg",
+          "lastValidBlockHeight": 337119198
+        }
+      ]
+    }
+  }
 }
