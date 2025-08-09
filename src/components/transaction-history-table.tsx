@@ -12,11 +12,9 @@ import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import Link from "next/link";
 import { useDashboard } from "./dashboard-client-provider";
@@ -90,7 +88,7 @@ export function TransactionHistoryTable() {
   const getTooltipContent = (tx: Transaction) => {
     switch (tx.status) {
       case 'Pending':
-        return "This transaction is waiting for confirmation on the Solana network. This can take up to 10 minutes. If you accidentally closed the wallet pop-up, you can use the 'Retry' button.";
+        return "This transaction is waiting for confirmation on the Solana network, which can take up to 10 minutes. If you accidentally closed the wallet pop-up, you can use the 'Retry' button.";
       case 'Failed':
         return tx.failureReason || "Transaction failed. View on Solscan for details if a transaction ID is available.";
       case 'Completed':
