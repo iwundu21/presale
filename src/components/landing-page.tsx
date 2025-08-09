@@ -48,51 +48,53 @@ export function LandingPage({ onConnect, isConnecting, presaleEndDate, presaleIn
     }, [presaleInfo.seasonName]);
 
   return (
-    <main className="flex-grow">
+    <main className="flex-grow flex flex-col">
       {/* Hero Section */}
-      <section className="container mx-auto text-center py-20 lg:py-32 space-y-8 landing-hero">
-        <div>
-            <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 mb-4">
-               <Badge variant="secondary" className="text-sm py-1 px-3 border border-border">
-                  <BadgePercent className="h-4 w-4 mr-2 text-primary" />
-                  {presaleInfo.seasonName}
-               </Badge>
-                <p className="text-md text-foreground/80">
-                    Current Price: <span className="font-bold text-primary">${presaleInfo.tokenPrice.toFixed(2)}</span>
+      <section className="flex-grow flex items-center justify-center container mx-auto text-center py-20 lg:py-24 landing-hero">
+        <div className="space-y-8">
+            <div>
+                <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 mb-4">
+                   <Badge variant="secondary" className="text-sm py-1 px-3 border border-border">
+                      <BadgePercent className="h-4 w-4 mr-2 text-primary" />
+                      {presaleInfo.seasonName}
+                   </Badge>
+                    <p className="text-md text-foreground/80">
+                        Current Price: <span className="font-bold text-primary">${presaleInfo.tokenPrice.toFixed(2)}</span>
+                    </p>
+                    {nextSeason && (
+                       <div className="flex items-center gap-2 text-sm text-foreground/80">
+                           <ChevronsRight className="h-4 w-4 text-primary/70" />
+                           Next: <span className="font-semibold text-white/90">{nextSeason.name} at ${nextSeason.price.toFixed(2)}</span>
+                       </div>
+                    )}
+                </div>
+                <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">
+                  Welcome to the Future of <span className="text-primary">Exnus</span>
+                </h1>
+                <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
+                  Exnus is not just a token; it's a revolution in decentralized intelligence. We're building a new ecosystem where your ideas have value and your data remains your own.
                 </p>
-                {nextSeason && (
-                   <div className="flex items-center gap-2 text-sm text-foreground/80">
-                       <ChevronsRight className="h-4 w-4 text-primary/70" />
-                       Next: <span className="font-semibold text-white/90">{nextSeason.name} at ${nextSeason.price.toFixed(2)}</span>
-                   </div>
-                )}
             </div>
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">
-              Welcome to the Future of <span className="text-primary">Exnus</span>
-            </h1>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
-              Exnus is not just a token; it's a revolution in decentralized intelligence. We're building a new ecosystem where your ideas have value and your data remains your own.
-            </p>
+    
+            {!isPresaleActive && (
+              <Alert variant="destructive" className="max-w-xl mx-auto text-left border-destructive/50 bg-destructive/10">
+                <Info className="h-5 w-5" />
+                <AlertTitle className="font-bold">Presale Currently Closed</AlertTitle>
+                <AlertDescription>
+                  Thank you for your interest. The presale is not active at this time. Details on when token claiming will begin will be announced here on our official website. Please follow our social channels for further announcements.
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {isPresaleActive && <PresaleCountdown presaleEndDate={presaleEndDate} />}
+            
+            {isClient && (
+                <Button size="lg" onClick={onConnect} disabled={isConnecting || !!wallet || !isPresaleActive}>
+                    {isConnecting ? "Entering Ecosystem..." : "Enter the Ecosystem"}
+                  <ArrowRight className="ml-2 h-5 w-5"/>
+                </Button>
+            )}
         </div>
-
-        {!isPresaleActive && (
-          <Alert variant="destructive" className="max-w-xl mx-auto text-left border-destructive/50 bg-destructive/10">
-            <Info className="h-5 w-5" />
-            <AlertTitle className="font-bold">Presale Currently Closed</AlertTitle>
-            <AlertDescription>
-              Thank you for your interest. The presale is not active at this time. Details on when token claiming will begin will be announced here on our official website. Please follow our social channels for further announcements.
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        {isPresaleActive && <PresaleCountdown presaleEndDate={presaleEndDate} />}
-        
-        {isClient && (
-            <Button size="lg" onClick={onConnect} disabled={isConnecting || !!wallet || !isPresaleActive}>
-                {isConnecting ? "Entering Ecosystem..." : "Enter the Ecosystem"}
-              <ArrowRight className="ml-2 h-5 w-5"/>
-            </Button>
-        )}
       </section>
 
       {/* Features Section */}
