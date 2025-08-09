@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { Badge, BadgeProps } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { List, CheckCircle, AlertCircle, Clock } from "lucide-react";
 import { useDashboard, Transaction } from "./dashboard-client-provider";
@@ -13,7 +13,7 @@ const formatTxId = (txId: string) => {
     return `${txId.substring(0, 4)}...${txId.substring(txId.length - 4)}`;
 }
 
-const getStatusBadgeVariant = (status: Transaction['status']) => {
+const getStatusBadgeVariant = (status: Transaction['status']): BadgeProps['variant'] => {
     switch (status) {
         case 'Completed': return 'success';
         case 'Pending': return 'secondary';
@@ -98,30 +98,3 @@ export function TransactionHistoryTable() {
         </Card>
     );
 }
-
-// Add a new Badge variant for success
-import { cva } from "class-variance-authority";
-import { Badge as OriginalBadge } from "@/components/ui/badge";
-
-const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-  {
-    variants: {
-      variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
-        success: "border-transparent bg-green-500/20 text-green-400"
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-)
-
-const Badge = ({className, variant, ...props}: any) => <OriginalBadge className={badgeVariants({variant, className})} {...props}/>
