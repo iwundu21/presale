@@ -180,17 +180,17 @@ export function TransactionHistoryTable() {
                                       <AlertDialogContent>
                                         <AlertDialogHeader>
                                           <AlertDialogTitle>Transaction Details</AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            {tx.failureReason ? (
-                                              <div>
-                                                <div className="mb-2">This transaction failed with the following error:</div>
-                                                <div className="text-red-400 bg-red-500/10 p-2 rounded-md text-xs">{tx.failureReason}</div>
-                                              </div>
-                                            ) : (
-                                              "This transaction did not generate an on-chain signature. This can happen if it was cancelled, timed out, or failed before being sent to the network."
-                                            )}
-                                          </AlertDialogDescription>
                                         </AlertDialogHeader>
+                                        {tx.failureReason ? (
+                                          <div className="text-sm">
+                                            <p className="mb-2 text-muted-foreground">This transaction failed with the following error:</p>
+                                            <div className="text-red-400 bg-red-500/10 p-2 rounded-md text-xs">{tx.failureReason}</div>
+                                          </div>
+                                        ) : (
+                                          <AlertDialogDescription>
+                                            This transaction did not generate an on-chain signature. This can happen if it was cancelled, timed out, or failed before being sent to the network.
+                                          </AlertDialogDescription>
+                                        )}
                                         <AlertDialogFooter>
                                           <AlertDialogAction>Close</AlertDialogAction>
                                         </AlertDialogFooter>
