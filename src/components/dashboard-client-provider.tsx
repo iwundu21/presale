@@ -13,9 +13,10 @@ import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, HARD_CAP } from "@/config
 // Local storage keys
 const EXN_BALANCE_KEY = "exnus_exn_balance";
 const TOTAL_EXN_SOLD_KEY = "exnus_total_exn_sold";
+const TRANSACTIONS_KEY = "exnus_transactions";
 
 export type Transaction = {
-  id: string; // Signature
+  id: string; // Signature or temp ID
   amountExn: number;
   paidAmount: number;
   paidCurrency: string;
@@ -73,6 +74,31 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
   }, [isClient, connected, connecting, router]);
   
+  const getStoredData = useCallback((key: string) => {
+    if (typeof window !== 'undefined') {
+        const item = localStorage.getItem(key);
+        if (item) {
+            try {
+                // The date objects need to be reconstructed
+                const parsed = JSON.parse(item);
+                if(Array.isArray(parsed)) {
+                    return parsed.map(t => ({...t, date: new Date(t.date)}));
+                }
+                return parsed;
+            } catch(e) {
+                return null;
+            }
+        }
+    }
+    return null;
+  }, []);
+
+  const setStoredData = (key: string, data: any) => {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(key, JSON.stringify(data));
+    }
+  }
+  
   const fetchDashboardData = useCallback(async () => {
     if (!connected || !publicKey) return;
 
@@ -84,35 +110,13 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         const solPriceData = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd').then(res => res.json());
         setSolPrice(solPriceData.solana.usd);
         
-        // Load EXN balance and total sold from local storage
-        const storedBalance = localStorage.getItem(`${EXN_BALANCE_KEY}_${publicKey.toBase58()}`);
-        setExnBalance(storedBalance ? parseFloat(storedBalance) : 0);
-
-        const storedTotalSold = localStorage.getItem(TOTAL_EXN_SOLD_KEY);
-        setTotalExnSold(storedTotalSold ? parseFloat(storedTotalSold) : 0);
-
-        // Fetch real on-chain transaction history for user's wallet
-        try {
-            const signatures = await connection.getSignaturesForAddress(publicKey, { limit: 25 });
-            const userTransactions: Transaction[] = [];
-            signatures.forEach(sig => {
-                // Here, a backend would parse the transaction to get purchase details.
-                // Since we can't do that client-side securely/reliably, we display the raw transaction.
-                 userTransactions.push({
-                    id: sig.signature,
-                    amountExn: 0, // Cannot determine this reliably from just the signature
-                    paidAmount: 0,
-                    paidCurrency: 'N/A',
-                    date: sig.blockTime ? new Date(sig.blockTime * 1000) : new Date(),
-                    status: sig.err ? 'Failed' : 'Completed',
-                    failureReason: sig.err ? JSON.stringify(sig.err) : undefined,
-                })
-            });
-            setTransactions(userTransactions);
-        } catch (error) {
-            console.error("Could not fetch on-chain transaction history:", error);
-            setTransactions([]);
-        }
+        const userKey = publicKey.toBase58();
+        setExnBalance(getStoredData(`${EXN_BALANCE_KEY}_${userKey}`) || 0);
+        setTotalExnSold(getStoredData(TOTAL_EXN_SOLD_KEY) || 0);
+        
+        // Load transactions from local storage for this user
+        const storedTransactions = getStoredData(`${TRANSACTIONS_KEY}_${userKey}`) || [];
+        setTransactions(storedTransactions);
 
     } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
@@ -126,7 +130,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         setIsLoadingPrice(false);
         setIsLoadingDashboard(false);
     }
-  }, [connected, publicKey, connection, toast]);
+  }, [connected, publicKey, toast, getStoredData]);
 
 
   useEffect(() => {
@@ -137,16 +141,16 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   
   const updateTransactionInState = useCallback((tx: Transaction) => {
      setTransactions(prev => {
-        const index = prev.findIndex(t => t.id === tx.id);
-        if (index > -1) {
-            const newTxs = [...prev];
-            newTxs[index] = tx;
-            return newTxs;
-        } else {
-            return [tx, ...prev].sort((a,b) => b.date.getTime() - a.date.getTime());
+        const newTxs = prev.filter(t => t.id !== tx.id);
+        newTxs.unshift(tx); // Add new/updated transaction to the top
+        newTxs.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+        if (publicKey) {
+            setStoredData(`${TRANSACTIONS_KEY}_${publicKey.toBase58()}`, newTxs);
         }
+        return newTxs;
     });
-  }, []);
+  }, [publicKey]);
 
   const handlePurchase = useCallback(async (exnAmount: number, paidAmount: number, currency: string, retryFromId?: string) => {
     if (!publicKey || !wallet) {
@@ -241,12 +245,12 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         }, 'confirmed');
         
         // --- LOCAL STATE UPDATE ---
-        // On successful transaction, update local storage state.
-        const newBalance = exnBalance + exnAmount;
-        const newTotalSold = totalExnSold + exnAmount;
+        const userKey = publicKey.toBase58();
+        const newBalance = (exnBalance || 0) + exnAmount;
+        const newTotalSold = (totalExnSold || 0) + exnAmount;
         
-        localStorage.setItem(`${EXN_BALANCE_KEY}_${publicKey.toBase58()}`, newBalance.toString());
-        localStorage.setItem(TOTAL_EXN_SOLD_KEY, newTotalSold.toString());
+        setStoredData(`${EXN_BALANCE_KEY}_${userKey}`, newBalance);
+        setStoredData(TOTAL_EXN_SOLD_KEY, newTotalSold);
 
         setExnBalance(newBalance);
         setTotalExnSold(newTotalSold);
@@ -257,14 +261,9 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         toast({
             title: "Purchase Successful!",
-            description: `Your transaction was confirmed. Your balance has been updated.`,
+            description: `You purchased ${exnAmount.toLocaleString()} EXN. Your balance is updated.`,
             variant: "success"
         });
-        
-        // Refetch transaction history
-        setTimeout(() => {
-             fetchDashboardData();
-        }, 3000);
         
     } catch (error: any) {
         console.error("Transaction failed:", error);
@@ -272,7 +271,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         let failureReason = "An unknown error occurred.";
         let toastTitle = "Transaction Failed";
         
-        if (error.name === 'WalletSendTransactionError' && error.message.includes("User rejected the request")) {
+        if (error.name === 'WalletSendTransactionError' || (error.message && error.message.includes("User rejected the request"))) {
             failureReason = "Transaction was rejected in the wallet.";
             toastTitle = "Transaction Cancelled";
         } else if (error.message) {
@@ -286,13 +285,13 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         
         toast({
             title: toastTitle,
-            description: failureReason,
+            description: "Your transaction could not be completed. Please try again.",
             variant: "destructive",
         });
     } finally {
         setIsLoadingPurchase(false);
     }
-  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, fetchDashboardData, exnBalance, totalExnSold]);
+  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, exnBalance, totalExnSold, setStoredData]);
   
   if (!isClient || connecting || !publicKey || isLoadingDashboard) {
       return <DashboardLoadingSkeleton />; 
@@ -315,5 +314,3 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
-
-    
