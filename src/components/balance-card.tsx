@@ -10,22 +10,19 @@ export function BalanceCard() {
 
     return (
         <Card className="w-full shadow-lg border-primary/20 bg-gradient-to-br from-card to-primary/5">
-            <CardHeader>
-                <div className="flex items-center gap-3">
-                     <div className="p-2 bg-primary/20 rounded-md">
+           <CardContent className="p-6 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-primary/20 rounded-lg">
                         <Wallet className="h-6 w-6 text-primary"/>
                     </div>
-                    <CardTitle className="text-2xl font-bold text-white">Your Balance</CardTitle>
+                    <div>
+                        <CardTitle className="text-lg font-semibold text-muted-foreground">Your Balance</CardTitle>
+                        <p className="text-3xl font-bold text-primary">
+                            {exnBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })} EXN
+                        </p>
+                    </div>
                 </div>
-                 <CardDescription>
-                    The total amount of EXN tokens you hold.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <p className="text-4xl font-bold text-primary">
-                    {exnBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })} EXN
-                </p>
-            </CardContent>
+           </CardContent>
         </Card>
     );
 }
