@@ -9,7 +9,7 @@ import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, Version
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT } from "@/config";
-import { getUser, getTransactions, saveTransaction, getPresaleStats, processPurchaseAndUpdateTotals } from "@/services/firestore-service";
+import { getUser, getTransactions, saveTransaction, getPresaleStats, processPurchaseAndUpdateTotals, deleteTransaction } from "@/services/firestore-service";
 
 export type Transaction = {
   id: string;
@@ -26,9 +26,10 @@ type DashboardContextType = {
     transactions: Transaction[];
     totalExnSold: number;
     connected: boolean;
-    handlePurchase: (exnAmount: number, paidAmount: number, currency: string) => Promise<void>;
+    handlePurchase: (exnAmount: number, paidAmount: number, currency: string, retryFromId?: string) => Promise<void>;
     solPrice: number | null;
     isLoadingPrice: boolean;
+    isLoadingPurchase: boolean;
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
@@ -58,6 +59,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const [solPrice, setSolPrice] = useState<number | null>(null);
   const [isLoadingPrice, setIsLoadingPrice] = useState(true);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
+  const [isLoadingPurchase, setIsLoadingPurchase] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -137,7 +139,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     });
   }, []);
 
-  const handlePurchase = useCallback(async (exnAmount: number, paidAmount: number, currency: string) => {
+  const handlePurchase = useCallback(async (exnAmount: number, paidAmount: number, currency: string, retryFromId?: string) => {
     if (!publicKey) {
       toast({ title: "Wallet not connected", variant: "destructive" });
       return;
@@ -146,8 +148,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
       toast({ title: "Presale address is not configured. Please contact support.", variant: "destructive" });
       return;
     }
+    
+    setIsLoadingPurchase(true);
 
-    const tempId = `tx_${Date.now()}`;
+    const tempId = retryFromId || `tx_${Date.now()}`;
     const txDetails: Omit<Transaction, 'status' | 'id'> = { 
         amountExn: exnAmount, 
         paidAmount, 
@@ -161,9 +165,11 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         status: "Pending",
     };
     
-    // Save pending transaction immediately to ensure it's not lost
-    await saveTransaction(publicKey.toBase58(), pendingTx);
-    updateTransactionInState(pendingTx);
+    // If this is a new transaction (not a retry), save it as pending
+    if (!retryFromId) {
+        await saveTransaction(publicKey.toBase58(), pendingTx);
+        updateTransactionInState(pendingTx);
+    }
 
     const timeoutId = setTimeout(async () => {
         const failedTx: Transaction = {
@@ -173,6 +179,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         };
         await saveTransaction(publicKey.toBase58(), failedTx);
         updateTransactionInState(failedTx);
+        setIsLoadingPurchase(false);
         toast({
             title: "Transaction Timed Out",
             description: "Your transaction was not confirmed within 5 minutes.",
@@ -255,6 +262,11 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
           lastValidBlockHeight
         }, 'confirmed');
         
+        // If this was a retry, delete the old temporary transaction record
+        if (retryFromId) {
+            await deleteTransaction(publicKey.toBase58(), retryFromId);
+        }
+
         const completedTx: Transaction = { id: signature, ...txDetails, status: 'Completed' };
         const newBalance = exnBalance + exnAmount;
 
@@ -289,10 +301,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         const finalId = signature || tempId;
         const failedTx: Transaction = { id: finalId, ...txDetails, status: 'Failed', failureReason };
 
-        await saveTransaction(publicKey.to_base58(), failedTx);
+        await saveTransaction(publicKey.toBase58(), failedTx);
         
         setTransactions(prev => {
-            const otherTxs = prev.filter(tx => tx.id !== tempId);
+            const otherTxs = prev.filter(tx => tx.id !== tempId || tx.id !== signature);
             return [failedTx, ...otherTxs].sort((a,b) => b.date.getTime() - a.date.getTime());
         });
         
@@ -301,6 +313,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             description: failureReason,
             variant: "destructive",
         });
+    } finally {
+        setIsLoadingPurchase(false);
     }
   }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, exnBalance, fetchDashboardData]);
   
@@ -315,7 +329,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     connected,
     handlePurchase,
     solPrice,
-    isLoadingPrice
+    isLoadingPrice,
+    isLoadingPurchase,
   };
 
   return (

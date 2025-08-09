@@ -1,7 +1,7 @@
 
 'use server';
 
-import { collection, doc, getDoc, getDocs, setDoc, Timestamp, runTransaction, increment } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc, Timestamp, runTransaction, increment, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Transaction } from "@/components/dashboard-client-provider";
 
@@ -85,6 +85,16 @@ export async function saveTransaction(walletAddress: string, transaction: Transa
     } catch (error) {
         console.error("Error saving transaction:", error);
         throw new Error("Could not save transaction to the database.");
+    }
+}
+
+export async function deleteTransaction(walletAddress: string, transactionId: string): Promise<void> {
+    try {
+        const docRef = doc(db, USERS_COLLECTION, walletAddress, TRANSACTIONS_COLLECTION, transactionId);
+        await deleteDoc(docRef);
+    } catch (error) {
+        console.error("Error deleting transaction:", error);
+        throw new Error("Could not delete transaction from the database.");
     }
 }
 

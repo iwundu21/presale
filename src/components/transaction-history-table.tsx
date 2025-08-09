@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { History, CheckCircle2, ExternalLink, XCircle, AlertCircle, ChevronLeft, ChevronRight, HelpCircle } from "lucide-react";
+import { History, CheckCircle2, ExternalLink, XCircle, AlertCircle, ChevronLeft, ChevronRight, HelpCircle, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -42,10 +42,10 @@ const StatusBadge = ({ status }: { status: Transaction["status"] }) => {
 
 
 export function TransactionHistoryTable() {
-  const { transactions } = useDashboard();
+  const { transactions, handlePurchase, isLoadingPurchase } = useDashboard();
   const [currentPage, setCurrentPage] = useState(1);
   const transactionsPerPage = 10;
-
+  
   const indexOfLastTransaction = currentPage * transactionsPerPage;
   const indexOfFirstTransaction = indexOfLastTransaction - transactionsPerPage;
   const currentTransactions = transactions.slice(indexOfFirstTransaction, indexOfLastTransaction);
@@ -63,11 +63,19 @@ export function TransactionHistoryTable() {
       setCurrentPage(currentPage - 1);
     }
   };
+  
+  const isTransactionRecent = (tx: Transaction) => {
+    const fiveMinutes = 5 * 60 * 1000;
+    return new Date().getTime() - new Date(tx.date).getTime() < fiveMinutes;
+  };
 
-  const getTooltipContent = (tx: Transaction) => {
+  const getTooltipContent = (tx: Transaction, canRetry: boolean) => {
+    if (canRetry) {
+        return "Retry this pending transaction. A wallet prompt will appear.";
+    }
     switch (tx.status) {
       case 'Pending':
-        return "Transaction is being processed. Waiting for wallet confirmation...";
+        return "Transaction is being processed. It will be marked as failed after 5 minutes.";
       case 'Failed':
         return tx.failureReason || "Transaction failed. View on Solscan for details.";
       case 'Completed':
@@ -99,51 +107,67 @@ export function TransactionHistoryTable() {
             </TableHeader>
             <TableBody>
               {currentTransactions.length > 0 ? (
-                currentTransactions.map((tx) => (
-                  <TableRow key={tx.id}>
-                    <TableCell>
-                      <div className="font-medium text-white">
-                        {tx.amountExn.toLocaleString()} EXN
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      {tx.paidAmount.toLocaleString()} {tx.paidCurrency}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span>{new Date(tx.date).toLocaleDateString()}</span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{new Date(tx.date).toLocaleString()}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <StatusBadge status={tx.status} />
-                    </TableCell>
-                    <TableCell className="text-center">
-                       <Tooltip>
-                        <TooltipTrigger asChild>
-                            <span className="inline-block">
-                                {tx.id.startsWith('pending-') ? (
-                                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                    <Button asChild variant="ghost" size="icon">
-                                        <Link href={`https://solscan.io/tx/${tx.id}`} target="_blank">
-                                            <ExternalLink className="h-4 w-4 text-accent" />
-                                        </Link>
-                                    </Button>
-                                )}
-                            </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                           <p>{getTooltipContent(tx)}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))
+                currentTransactions.map((tx) => {
+                  const canRetry = tx.status === 'Pending' && isTransactionRecent(tx);
+                  const isRetryingCurrent = isLoadingPurchase && canRetry;
+                  return (
+                    <TableRow key={tx.id}>
+                      <TableCell>
+                        <div className="font-medium text-white">
+                          {tx.amountExn.toLocaleString()} EXN
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {tx.paidAmount.toLocaleString()} {tx.paidCurrency}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>{new Date(tx.date).toLocaleDateString()}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{new Date(tx.date).toLocaleString()}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <StatusBadge status={tx.status} />
+                      </TableCell>
+                      <TableCell className="text-center">
+                         <Tooltip>
+                          <TooltipTrigger asChild>
+                              <span className="inline-block">
+                                  {canRetry ? (
+                                     <Button 
+                                        variant="ghost" 
+                                        size="icon"
+                                        disabled={isRetryingCurrent}
+                                        onClick={() => handlePurchase(tx.amountExn, tx.paidAmount, tx.paidCurrency, tx.id)}
+                                     >
+                                          {isRetryingCurrent 
+                                            ? <RefreshCw className="h-4 w-4 text-accent animate-spin" />
+                                            : <RefreshCw className="h-4 w-4 text-accent" />
+                                          }
+                                      </Button>
+                                  ) : tx.id.startsWith('tx_') ? (
+                                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                                  ) : (
+                                      <Button asChild variant="ghost" size="icon">
+                                          <Link href={`https://solscan.io/tx/${tx.id}`} target="_blank">
+                                              <ExternalLink className="h-4 w-4 text-accent" />
+                                          </Link>
+                                      </Button>
+                                  )}
+                              </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                             <p>{getTooltipContent(tx, canRetry)}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
@@ -175,5 +199,3 @@ export function TransactionHistoryTable() {
     </Card>
   );
 }
-
-    
