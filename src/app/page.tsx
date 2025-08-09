@@ -7,20 +7,44 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { LandingPage } from "@/components/landing-page";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { getClientPresaleEndDate } from "@/services/presale-date-service";
+import { getPresaleInfo, PresaleInfo } from "@/services/presale-info-service";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Home() {
   const { connected, connecting } = useWallet();
   const { setVisible } = useWalletModal();
   const router = useRouter();
   const [presaleEndDate, setPresaleEndDate] = useState<Date | null>(null);
-  const [isLoadingDate, setIsLoadingDate] = useState(true);
+  const [presaleInfo, setPresaleInfo] = useState<PresaleInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     document.title = "Exnus Presale";
-    setIsLoadingDate(true);
-    const date = getClientPresaleEndDate();
-    setPresaleEndDate(date);
-    setIsLoadingDate(false);
+    setIsLoading(true);
+    
+    const fetchInitialData = async () => {
+        try {
+            const date = getClientPresaleEndDate();
+            const info = await getPresaleInfo();
+            setPresaleEndDate(date);
+            setPresaleInfo(info);
+        } catch (error) {
+            console.error("Failed to load presale data", error);
+            // Set defaults on error
+             if (!presaleEndDate) {
+                const defaultEndDate = new Date();
+                defaultEndDate.setDate(defaultEndDate.getDate() + 30);
+                setPresaleEndDate(defaultEndDate);
+            }
+            if (!presaleInfo) {
+                setPresaleInfo({ seasonName: "Early Stage", tokenPrice: 0.09 });
+            }
+        } finally {
+             setIsLoading(false);
+        }
+    };
+
+    fetchInitialData();
   }, []);
 
   useEffect(() => {
@@ -33,11 +57,21 @@ export default function Home() {
     setVisible(true);
   };
   
-  // Ensure we have a valid date before rendering LandingPage
-  if (isLoadingDate || !presaleEndDate) {
+  if (isLoading || !presaleEndDate || !presaleInfo) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-          <p>Loading Presale Information...</p>
+      <div className="flex-grow container mx-auto text-center py-20 lg:py-32 space-y-8">
+          <Skeleton className="h-16 w-3/4 mx-auto" />
+          <Skeleton className="h-8 w-1/2 mx-auto" />
+          <div className="text-center bg-muted/50 rounded-lg p-4 max-w-md mx-auto">
+             <Skeleton className="h-5 w-32 mx-auto mb-2" />
+             <div className="grid grid-cols-4 gap-2">
+                <div><Skeleton className="h-10 w-full" /><Skeleton className="h-3 w-1/2 mx-auto mt-1" /></div>
+                <div><Skeleton className="h-10 w-full" /><Skeleton className="h-3 w-1/2 mx-auto mt-1" /></div>
+                <div><Skeleton className="h-10 w-full" /><Skeleton className="h-3 w-1/2 mx-auto mt-1" /></div>
+                <div><Skeleton className="h-10 w-full" /><Skeleton className="h-3 w-1/2 mx-auto mt-1" /></div>
+             </div>
+           </div>
+          <Skeleton className="h-12 w-48 mx-auto" />
       </div>
     );
   }
@@ -47,7 +81,7 @@ export default function Home() {
       onConnect={handleConnect} 
       isConnecting={connecting} 
       presaleEndDate={presaleEndDate}
-      isLoadingDate={isLoadingDate}
+      presaleInfo={presaleInfo}
     />
   );
 }

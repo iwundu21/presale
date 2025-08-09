@@ -10,19 +10,58 @@ async function readDb() {
         const data = await fs.readFile(dbPath, 'utf-8');
         return JSON.parse(data);
     } catch (error) {
-        if (error.code === 'ENOENT') {
-            return { totalExnSold: 0, users: {} };
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            // Default structure if db.json doesn't exist
+            return { 
+                totalExnSold: 0, 
+                users: {},
+                presaleInfo: {
+                    seasonName: "Early Stage",
+                    tokenPrice: 0.09
+                } 
+            };
         }
         throw error;
     }
 }
 
+async function writeDb(data: any) {
+    await fs.writeFile(dbPath, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+
 export async function GET() {
     try {
         const db = await readDb();
-        return NextResponse.json({ totalExnSold: db.totalExnSold || 0 }, { status: 200 });
+        return NextResponse.json({ 
+            totalExnSold: db.totalExnSold || 0,
+            presaleInfo: db.presaleInfo || { seasonName: "Early Stage", tokenPrice: 0.09 }
+        }, { status: 200 });
     } catch (error) {
         console.error('API Presale-Data Error:', error);
+        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    }
+}
+
+export async function POST(request: Request) {
+     try {
+        const { presaleInfo } = await request.json();
+
+        if (!presaleInfo || !presaleInfo.seasonName || typeof presaleInfo.tokenPrice !== 'number') {
+            return NextResponse.json({ message: 'Invalid input for presale info' }, { status: 400 });
+        }
+
+        const db = await readDb();
+        db.presaleInfo = presaleInfo;
+        await writeDb(db);
+        
+        return NextResponse.json({ 
+            message: 'Presale info updated successfully',
+            presaleInfo: db.presaleInfo,
+        }, { status: 200 });
+
+    } catch (error) {
+        console.error('API Presale-Data POST Error:', error);
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }

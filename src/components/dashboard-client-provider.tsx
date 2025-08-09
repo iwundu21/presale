@@ -9,7 +9,7 @@ import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, Version
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, HARD_CAP } from "@/config";
-
+import type { PresaleInfo } from "@/services/presale-info-service";
 
 export type Transaction = {
   id: string; // Signature or temp ID
@@ -33,6 +33,7 @@ type DashboardContextType = {
     solPrice: number | null;
     isLoadingPrice: boolean;
     isLoadingPurchase: boolean;
+    presaleInfo: PresaleInfo | null;
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
@@ -64,6 +65,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const [isLoadingPrice, setIsLoadingPrice] = useState(true);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
   const [isLoadingPurchase, setIsLoadingPurchase] = useState(false);
+  const [presaleInfo, setPresaleInfo] = useState<PresaleInfo | null>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -105,6 +107,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         if (presaleDataRes.status === 'fulfilled' && presaleDataRes.value.ok) {
             const presaleData = await presaleDataRes.value.json();
             setTotalExnSold(presaleData.totalExnSold || 0);
+            setPresaleInfo(presaleData.presaleInfo || null);
         } else {
             console.error('Failed to fetch presale data:', presaleDataRes.status === 'rejected' ? presaleDataRes.reason : await presaleDataRes.value.text());
             throw new Error('Could not load presale progress.');
@@ -440,6 +443,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     solPrice,
     isLoadingPrice,
     isLoadingPurchase,
+    presaleInfo,
   };
 
   return (
@@ -448,5 +452,3 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
-
-    

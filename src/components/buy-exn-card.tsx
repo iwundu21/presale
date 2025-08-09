@@ -11,7 +11,7 @@ import { Skeleton } from "./ui/skeleton";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { getAssociatedTokenAddress } from "@solana/spl-token";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { USDC_MINT, USDT_MINT, EXN_PRICE } from "@/config";
+import { USDC_MINT, USDT_MINT } from "@/config";
 import { useDashboard } from "./dashboard-client-provider";
 
 const SOL_GAS_BUFFER = 0.005; // Reserve 0.005 SOL for gas fees
@@ -19,7 +19,7 @@ const MIN_PURCHASE_USD = 1;
 const MAX_PURCHASE_USD = 10000;
 
 export function BuyExnCard() {
-  const { connected: isConnected, handlePurchase, solPrice, isLoadingPrice } = useDashboard();
+  const { connected: isConnected, handlePurchase, solPrice, isLoadingPrice, presaleInfo } = useDashboard();
   const { publicKey } = useWallet();
   const { connection } = useConnection();
   const [payAmount, setPayAmount] = useState("1.00");
@@ -29,6 +29,8 @@ export function BuyExnCard() {
   const [isFetchingBalance, setIsFetchingBalance] = useState(false);
   const [balanceError, setBalanceError] = useState("");
   const [limitError, setLimitError] = useState("");
+
+  const exnPrice = presaleInfo?.tokenPrice || 0.09;
   
   useEffect(() => {
     const fetchBalances = async () => {
@@ -89,9 +91,9 @@ export function BuyExnCard() {
 
   const calculateReceiveAmount = (pay: string, curr: string, priceOfSol: number | null) => {
       const usdValue = getUsdValue(pay, curr, priceOfSol);
-      if (usdValue === null) return "";
+      if (usdValue === null || exnPrice === 0) return "";
 
-      const calculatedReceive = usdValue / EXN_PRICE;
+      const calculatedReceive = usdValue / exnPrice;
       return calculatedReceive.toFixed(2);
   };
 
@@ -101,10 +103,10 @@ export function BuyExnCard() {
       return "";
     }
     
-    const usdValue = numericReceiveAmount * EXN_PRICE;
+    const usdValue = numericReceiveAmount * exnPrice;
     
     if (curr === 'SOL') {
-      if (!priceOfSol) return "";
+      if (!priceOfSol || priceOfSol === 0) return "";
       return (usdValue / priceOfSol).toFixed(5);
     }
     
@@ -113,7 +115,7 @@ export function BuyExnCard() {
 
   useEffect(() => {
     setReceiveAmount(calculateReceiveAmount(payAmount, currency, solPrice));
-  }, [payAmount, currency, solPrice]);
+  }, [payAmount, currency, solPrice, exnPrice]);
 
 
   useEffect(() => {
@@ -186,7 +188,7 @@ export function BuyExnCard() {
             <CardTitle className="text-2xl font-bold text-white">Buy EXN Tokens</CardTitle>
         </div>
         <CardDescription>
-          Current Price: <strong>${EXN_PRICE}</strong> per EXN
+          Current Price: <strong>${exnPrice}</strong> per EXN
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -278,5 +280,3 @@ export function BuyExnCard() {
     </Card>
   );
 }
-
-    

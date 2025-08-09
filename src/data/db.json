@@ -1,5 +1,9 @@
 {
   "totalExnSold": 0,
+  "presaleInfo": {
+    "seasonName": "Early Stage",
+    "tokenPrice": 0.09
+  },
   "users": {
     "9Kqt28pfMVBsBvXYYnYQCT2BZyorAwzbR6dUmgQfsZYW": {
       "balance": 0,

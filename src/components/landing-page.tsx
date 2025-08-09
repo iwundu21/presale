@@ -1,21 +1,22 @@
 
 "use client";
 import { Button } from "@/components/ui/button";
-import { Bot, BrainCircuit, Rocket, ArrowRight } from "lucide-react";
+import { Bot, BrainCircuit, Rocket, ArrowRight, BadgePercent } from "lucide-react";
 import Image from "next/image";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useState } from "react";
 import { PresaleCountdown } from "./presale-countdown";
-import { Skeleton } from "./ui/skeleton";
+import type { PresaleInfo } from "@/services/presale-info-service";
+import { Badge } from "@/components/ui/badge";
 
 type LandingPageProps = {
   onConnect: () => void;
   isConnecting: boolean;
   presaleEndDate: Date;
-  isLoadingDate: boolean;
+  presaleInfo: PresaleInfo;
 };
 
-export function LandingPage({ onConnect, isConnecting, presaleEndDate, isLoadingDate }: LandingPageProps) {
+export function LandingPage({ onConnect, isConnecting, presaleEndDate, presaleInfo }: LandingPageProps) {
     const { wallet } = useWallet();
     const [isClient, setIsClient] = useState(false);
 
@@ -28,6 +29,15 @@ export function LandingPage({ onConnect, isConnecting, presaleEndDate, isLoading
       {/* Hero Section */}
       <section className="container mx-auto text-center py-20 lg:py-32 space-y-8">
         <div>
+            <div className="flex justify-center items-center gap-4 mb-4">
+               <Badge variant="secondary" className="text-sm py-1 px-3 border border-border">
+                  <BadgePercent className="h-4 w-4 mr-2 text-primary" />
+                  {presaleInfo.seasonName}
+               </Badge>
+                <p className="text-md text-muted-foreground">
+                    Current Price: <span className="font-bold text-primary">${presaleInfo.tokenPrice.toFixed(2)}</span>
+                </p>
+            </div>
             <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">
               Welcome to the Future of <span className="text-primary">Exnus</span>
             </h1>
@@ -36,19 +46,7 @@ export function LandingPage({ onConnect, isConnecting, presaleEndDate, isLoading
             </p>
         </div>
         
-        {isLoadingDate ? (
-           <div className="text-center bg-muted/50 rounded-lg p-4 max-w-sm mx-auto">
-             <Skeleton className="h-5 w-24 mx-auto mb-2" />
-             <div className="grid grid-cols-4 gap-2">
-                <div><Skeleton className="h-10 w-full" /><Skeleton className="h-3 w-1/2 mx-auto mt-1" /></div>
-                <div><Skeleton className="h-10 w-full" /><Skeleton className="h-3 w-1/2 mx-auto mt-1" /></div>
-                <div><Skeleton className="h-10 w-full" /><Skeleton className="h-3 w-1/2 mx-auto mt-1" /></div>
-                <div><Skeleton className="h-10 w-full" /><Skeleton className="h-3 w-1/2 mx-auto mt-1" /></div>
-             </div>
-           </div>
-        ) : (
-            <PresaleCountdown presaleEndDate={presaleEndDate} />
-        )}
+        <PresaleCountdown presaleEndDate={presaleEndDate} />
         
         {isClient && (
             <Button size="lg" onClick={onConnect} disabled={isConnecting || !!wallet}>
