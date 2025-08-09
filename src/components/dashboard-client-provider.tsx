@@ -145,7 +145,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
     
     // Update local state to reflect change immediately
-    const otherTransactions = transactions.filter(tx => tx.id !== signature && tx.id !== `pending-${txDetails.amountExn}`);
+    const otherTransactions = transactions.filter(tx => tx.id !== signature && !tx.id.startsWith('pending-'));
     setTransactions([finalTransaction, ...otherTransactions].sort((a, b) => b.date.getTime() - a.date.getTime()));
 
   }, [publicKey, exnBalance, transactions, fetchPresaleProgress]);
@@ -165,7 +165,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     
     // Optimistically create pending transaction for UI
     const pendingTx: Transaction = {
-        id: `pending-${exnAmount}`, // Use a more stable temp ID
+        id: `pending-${Date.now()}-${exnAmount}`, // Use a unique temporary ID
         amountExn: exnAmount,
         paidAmount,
         paidCurrency: currency,

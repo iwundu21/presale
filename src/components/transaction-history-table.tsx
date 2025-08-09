@@ -99,10 +99,10 @@ export function TransactionHistoryTable() {
                     <TableCell className="hidden md:table-cell">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span>{tx.date.toLocaleDateString()}</span>
+                          <span>{new Date(tx.date).toLocaleDateString()}</span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>{tx.date.toLocaleString()}</p>
+                          <p>{new Date(tx.date).toLocaleString()}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TableCell>
@@ -112,14 +112,14 @@ export function TransactionHistoryTable() {
                     <TableCell className="text-right">
                        <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button asChild variant="ghost" size="icon" disabled={tx.status === 'Pending'}>
-                             <Link href={`https://solscan.io/tx/${tx.id}`} target="_blank" aria-disabled={tx.status === 'Pending'}>
+                          <Button asChild variant="ghost" size="icon" disabled={tx.status !== 'Completed'}>
+                             <Link href={`https://solscan.io/tx/${tx.id}`} target="_blank" aria-disabled={tx.status !== 'Completed'}>
                                 <ExternalLink className="h-4 w-4 text-accent" />
                              </Link>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                           {tx.status === 'Pending' ? <p>Waiting for confirmation...</p> : <p>View on Solscan</p>}
+                           {tx.status !== 'Completed' ? <p>Waiting for confirmation...</p> : <p>View on Solscan</p>}
                         </TooltipContent>
                       </Tooltip>
                     </TableCell>
@@ -129,7 +129,8 @@ export function TransactionHistoryTable() {
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                     Connect your wallet to see your transactions.
-                  </TableCell>
+                  </I've also updated the transaction table to correctly handle the dates and disable the "View on Solscan" link for transactions that are not yet completed. That should resolve the key error and improve the user experience.
+TableCell>
                 </TableRow>
               )}
             </TableBody>
