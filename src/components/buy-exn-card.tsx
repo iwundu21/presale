@@ -14,7 +14,7 @@ import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { USDC_MINT, USDT_MINT } from "@/config";
 import { useDashboard } from "./dashboard-client-provider";
 
-const SOL_GAS_BUFFER = 0.005; // Reserve 0.005 SOL for gas fees
+const SOL_GAS_BUFFER = 0.0009; // Reserve 0.0009 SOL for gas fees
 const MIN_PURCHASE_USD = 1;
 const MAX_PURCHASE_USD = 10000;
 
@@ -128,7 +128,9 @@ export function BuyExnCard() {
     const maxBalance = currency === 'SOL' ? balances.SOL - SOL_GAS_BUFFER : balances[currency as keyof typeof balances];
 
     if (numericPayAmount > maxBalance) {
-      setBalanceError("Insufficient balance.");
+      setBalanceError(`Insufficient ${currency} balance.`);
+    } else if (currency !== 'SOL' && balances.SOL < SOL_GAS_BUFFER) {
+      setBalanceError(`Insufficient SOL for gas. You need at least ${SOL_GAS_BUFFER} SOL.`);
     } else {
       setBalanceError("");
     }
@@ -240,7 +242,7 @@ export function BuyExnCard() {
           {limitError ? (
             <p className="text-xs text-red-400 mt-1 pl-1">{limitError}</p>
           ) : balanceError ? (
-            <p className="text-xs text-red-400 mt-1 pl-1">{balanceError} {currency === 'SOL' && `(Requires ~${SOL_GAS_BUFFER} SOL for fees)`}</p>
+            <p className="text-xs text-red-400 mt-1 pl-1">{balanceError}</p>
           ): null}
         </div>
 
