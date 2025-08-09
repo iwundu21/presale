@@ -95,7 +95,7 @@ export function TransactionHistoryTable() {
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     {isTxPendingAndRecent(tx) && (
-                                                        <Tooltip delayDuration={100}>
+                                                        <Tooltip>
                                                             <TooltipTrigger asChild>
                                                                 <Button 
                                                                     variant="ghost" 
@@ -124,7 +124,7 @@ export function TransactionHistoryTable() {
                                                             {!tx.id.startsWith('tx_') && <ExternalLink className="h-3 w-3" />}
                                                         </Badge>
                                                     </a>
-                                                    <Tooltip delayDuration={100}>
+                                                    <Tooltip>
                                                         <TooltipTrigger asChild>
                                                             <button className="text-muted-foreground hover:text-white">
                                                                 <HelpCircle className="h-4 w-4"/>
@@ -154,3 +154,4 @@ export function TransactionHistoryTable() {
         </Card>
     );
 }
+
