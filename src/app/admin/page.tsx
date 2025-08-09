@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
-import { setClientPresaleEndDate } from "@/services/presale-date-service";
+import { setPresaleEndDate } from "@/services/presale-date-service";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getPresaleInfo, setPresaleInfo, PresaleInfo } from "@/services/presale-info-service";
 
@@ -23,6 +23,7 @@ export default function AdminPage() {
     const [season, setSeason] = useState("Early Stage");
     const [price, setPrice] = useState(SEASON_PRICES[season]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isUpdatingDate, setIsUpdatingDate] = useState(false);
 
     useEffect(() => {
         const fetchInfo = async () => {
@@ -47,7 +48,7 @@ export default function AdminPage() {
         fetchInfo();
     }, [toast]);
     
-    const handleUpdateDate = () => {
+    const handleUpdateDate = async () => {
         if (!date || !time) {
             toast({
                 title: "Invalid Date/Time",
@@ -57,13 +58,14 @@ export default function AdminPage() {
             return;
         }
 
+        setIsUpdatingDate(true);
         try {
             const newEndDate = new Date(`${date}T${time}`);
             if (isNaN(newEndDate.getTime())) {
                 throw new Error("Invalid date created.");
             }
             
-            setClientPresaleEndDate(newEndDate);
+            await setPresaleEndDate(newEndDate);
 
             toast({
                 title: "Success",
@@ -78,6 +80,8 @@ export default function AdminPage() {
                 description: "The date or time format is invalid. Please check and try again.",
                 variant: "destructive",
             });
+        } finally {
+            setIsUpdatingDate(false);
         }
     };
     
@@ -148,7 +152,7 @@ export default function AdminPage() {
                         <CardTitle>Update Presale End Date</CardTitle>
                         <CardDescription>
                             Set a new end date and time for the token presale countdown. 
-                            This change will be reflected for all users on their next visit.
+                            This change will be reflected for all users globally.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-col sm:flex-row gap-4">
@@ -156,13 +160,17 @@ export default function AdminPage() {
                             type="date" 
                             value={date}
                             onChange={(e) => setDate(e.target.value)}
+                            disabled={isUpdatingDate}
                         />
                         <Input 
                             type="time" 
                             value={time}
                             onChange={(e) => setTime(e.target.value)}
+                            disabled={isUpdatingDate}
                         />
-                        <Button onClick={handleUpdateDate}>Update Date</Button>
+                        <Button onClick={handleUpdateDate} disabled={isUpdatingDate}>
+                           {isUpdatingDate ? 'Updating...' : 'Update Date'}
+                        </Button>
                     </CardContent>
                 </Card>
             </div>

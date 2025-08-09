@@ -6,9 +6,9 @@ import { useRouter } from 'next/navigation';
 import { useWallet } from "@solana/wallet-adapter-react";
 import { LandingPage } from "@/components/landing-page";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { getClientPresaleEndDate } from "@/services/presale-date-service";
 import { getPresaleInfo, PresaleInfo } from "@/services/presale-info-service";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getPresaleEndDate } from "@/services/presale-date-service";
 
 export default function Home() {
   const { connected, connecting } = useWallet();
@@ -24,8 +24,10 @@ export default function Home() {
     
     const fetchInitialData = async () => {
         try {
-            const date = getClientPresaleEndDate();
-            const info = await getPresaleInfo();
+            const [date, info] = await Promise.all([
+              getPresaleEndDate(),
+              getPresaleInfo()
+            ]);
             setPresaleEndDate(date);
             setPresaleInfo(info);
         } catch (error) {

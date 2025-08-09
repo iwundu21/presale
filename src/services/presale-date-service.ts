@@ -1,41 +1,49 @@
 
 'use client';
 
-const PRESALE_END_DATE_KEY = 'presaleEndDate';
-
 /**
- * Gets the presale end date from localStorage.
- * This client-side function provides a fallback if no date is set.
- * @returns {Date} The current presale end date.
+ * Gets the presale end date from the API.
+ * @returns {Promise<Date>} The current presale end date.
  */
-export function getClientPresaleEndDate(): Date {
-  if (typeof window !== 'undefined') {
-    const storedDate = localStorage.getItem(PRESALE_END_DATE_KEY);
-    if (storedDate) {
-      const date = new Date(storedDate);
-      if (!isNaN(date.getTime())) {
-        return date;
-      }
+export async function getPresaleEndDate(): Promise<Date> {
+  try {
+    const response = await fetch('/api/presale-date');
+    if (!response.ok) {
+      throw new Error('Failed to fetch presale end date');
     }
+    const data = await response.json();
+    const date = new Date(data.presaleEndDate);
+    if (isNaN(date.getTime())) {
+       throw new Error('Invalid date format from API');
+    }
+    return date;
+  } catch (error) {
+    console.error("Error fetching presale end date:", error);
+    // Fallback if API fails
+    const defaultEndDate = new Date();
+    defaultEndDate.setDate(defaultEndDate.getDate() + 30);
+    return defaultEndDate;
   }
-  
-  // Fallback if no valid date is in localStorage
-  const defaultEndDate = new Date();
-  defaultEndDate.setDate(defaultEndDate.getDate() + 30);
-  return defaultEndDate;
 }
 
 /**
- * (Client-side) Updates the presale end date in localStorage.
- * This affects all tabs and sessions in the current browser.
+ * (Admin) Updates the presale end date via the API.
  * @param {Date} newDate The new end date for the presale.
  */
-export function setClientPresaleEndDate(newDate: Date | null): void {
-    if (typeof window !== 'undefined') {
-        if(newDate && !isNaN(newDate.getTime())) {
-          localStorage.setItem(PRESALE_END_DATE_KEY, newDate.toISOString());
-        } else {
-          localStorage.removeItem(PRESALE_END_DATE_KEY);
-        }
+export async function setPresaleEndDate(newDate: Date | null): Promise<void> {
+    if (!newDate || isNaN(newDate.getTime())) {
+        throw new Error("Invalid date provided.");
+    }
+    const response = await fetch('/api/presale-date', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ presaleEndDate: newDate.toISOString() }),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Failed to update presale date: ${errorData}`);
     }
 }
