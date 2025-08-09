@@ -18,6 +18,7 @@ export type Transaction = {
   paidCurrency: string;
   date: Date;
   status: "Completed" | "Pending" | "Failed";
+  failureReason?: string;
 };
 
 type DashboardContextType = {
@@ -78,7 +79,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         const walletAddress = publicKey.toBase58();
         const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
 
-        // --- Start fetching all data in parallel ---
         const [
             userData, 
             userTransactions,
@@ -94,9 +94,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             connection.getParsedAccountInfo(await getAssociatedTokenAddress(USDC_MINT, presaleWalletPublicKey)).catch(() => null),
             connection.getParsedAccountInfo(await getAssociatedTokenAddress(USDT_MINT, presaleWalletPublicKey)).catch(() => null),
         ]);
-        // --- All parallel fetching ends ---
 
-        // Process User Data
         if (userData) {
             setExnBalance(userData.exnBalance);
         } else {
@@ -105,12 +103,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         }
         setTransactions(userTransactions);
 
-        // Process SOL Price
         const price = solPriceData.solana.usd;
         setSolPrice(price);
         setIsLoadingPrice(false);
 
-        // Process Presale Progress
         const solValue = (presaleSolBalance / LAMPORTS_PER_SOL) * price;
         
         let usdcValue = 0;
@@ -133,7 +129,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             description: "Could not load dashboard data. Please refresh the page.",
             variant: "destructive"
         });
-        setSolPrice(150); // Set fallback
+        setSolPrice(150);
         setIsLoadingPrice(false);
     } finally {
         setIsLoadingDashboard(false);
@@ -151,12 +147,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
      setTransactions(prev => {
         const index = prev.findIndex(t => t.id === tx.id);
         if (index > -1) {
-            // Update existing transaction
             const newTxs = [...prev];
             newTxs[index] = tx;
             return newTxs;
         } else {
-            // Add new transaction
             return [tx, ...prev].sort((a,b) => b.date.getTime() - a.date.getTime());
         }
     });
@@ -174,7 +168,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
     const txDetails = { amountExn: exnAmount, paidAmount, paidCurrency: currency, date: new Date() };
 
-    // Use a unique temporary ID for the optimistic update
     const tempId = `pending-${Date.now()}`;
     const pendingTx: Transaction = {
         id: tempId,
@@ -183,6 +176,23 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     };
     updateTransactionInState(pendingTx);
     
+    // Set a timeout for the pending transaction
+    const timeoutId = setTimeout(async () => {
+        const failedTx: Transaction = {
+            ...pendingTx,
+            status: "Failed",
+            failureReason: "Transaction timed out after 5 minutes.",
+        };
+        // We need a stable ID to save to Firestore. Let's use the tempId.
+        await saveTransaction(publicKey.toBase58(), failedTx);
+        updateTransactionInState(failedTx);
+         toast({
+            title: "Transaction Timed Out",
+            description: "Your transaction was not confirmed within 5 minutes.",
+            variant: "destructive",
+        });
+    }, 5 * 60 * 1000); // 5 minutes
+
     let signature: string | null = null;
     
     try {
@@ -216,10 +226,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             if (!toTokenAccountInfo) {
                 instructions.push(
                     createAssociatedTokenAccountInstruction(
-                        publicKey, // Payer
-                        toTokenAccount, // Associated Token Account
-                        presaleWalletPublicKey, // Owner
-                        mintPublicKey // Mint
+                        publicKey,
+                        toTokenAccount,
+                        presaleWalletPublicKey,
+                        mintPublicKey
                     )
                 );
             }
@@ -250,8 +260,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         });
 
         signature = await sendTransaction(transaction, connection);
+        clearTimeout(timeoutId); // Clear timeout on successful send
         
-        // The UI already shows "Pending", we wait for confirmation
         await connection.confirmTransaction({
           signature,
           blockhash,
@@ -265,7 +275,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         await updateUser(publicKey.toBase58(), { exnBalance: newBalance });
         setExnBalance(newBalance);
 
-        // Replace pending tx with completed one
         setTransactions(prev => [completedTx, ...prev.filter(tx => tx.id !== tempId)].sort((a,b) => b.date.getTime() - a.date.getTime()));
 
         toast({
@@ -274,35 +283,35 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             variant: "success"
         });
         
-        // Re-fetch total presale progress
         fetchDashboardData();
 
     } catch (error: any) {
+        clearTimeout(timeoutId); // Clear timeout on any error
         console.error("Transaction failed:", error);
         
-        let errorMessage = "An unknown error occurred.";
+        let failureReason = "An unknown error occurred.";
+        let toastTitle = "Transaction Failed";
+
         if (error.message.includes("User rejected the request")) {
-            errorMessage = "Transaction rejected in wallet.";
-        } else if (error.message) {
-            errorMessage = error.message;
+            failureReason = "Transaction was rejected in the wallet.";
+            toastTitle = "Transaction Cancelled";
+            setTransactions(prev => prev.filter(tx => tx.id !== tempId));
+        } else {
+             if (error.message) {
+                failureReason = error.message;
+            }
+            if (signature) {
+                const failedTx: Transaction = { id: signature, ...txDetails, status: 'Failed', failureReason };
+                await saveTransaction(publicKey.toBase58(), failedTx);
+                setTransactions(prev => [failedTx, ...prev.filter(tx => tx.id !== tempId)].sort((a,b) => b.date.getTime() - a.date.getTime()));
+            } else {
+                setTransactions(prev => prev.filter(tx => tx.id !== tempId));
+            }
         }
         
-        // If we have a signature, the transaction was sent but failed to process.
-        // It's a failed transaction and should be recorded.
-        if (signature) {
-            const failedTx: Transaction = { id: signature, ...txDetails, status: 'Failed' };
-            await saveTransaction(publicKey.toBase58(), failedTx);
-            // Replace pending tx with failed one
-            setTransactions(prev => [failedTx, ...prev.filter(tx => tx.id !== tempId)].sort((a,b) => b.date.getTime() - a.date.getTime()));
-        } else {
-             // If there's no signature, the transaction was never even sent (e.g., user rejected).
-             // We can just remove the pending transaction from the UI.
-            setTransactions(prev => prev.filter(tx => tx.id !== tempId));
-        }
-
         toast({
-            title: "Transaction Failed",
-            description: errorMessage,
+            title: toastTitle,
+            description: failureReason,
             variant: "destructive",
         });
     }
@@ -328,3 +337,5 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
+
+    

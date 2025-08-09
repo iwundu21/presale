@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { History, CheckCircle2, ExternalLink, XCircle, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { History, CheckCircle2, ExternalLink, XCircle, AlertCircle, ChevronLeft, ChevronRight, HelpCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -64,13 +64,15 @@ export function TransactionHistoryTable() {
     }
   };
 
-  const getTooltipContent = (status: Transaction['status']) => {
-    switch (status) {
+  const getTooltipContent = (tx: Transaction) => {
+    switch (tx.status) {
       case 'Pending':
         return "Transaction is being processed. Waiting for wallet confirmation...";
       case 'Failed':
-        return "Transaction failed or was rejected. View on Solscan for details.";
-      default:
+        return tx.failureReason || "Transaction failed. View on Solscan for details.";
+      case 'Completed':
+        return "View completed transaction details on Solscan.";
+       default:
         return "View transaction details on Solscan.";
     }
   }
@@ -92,7 +94,7 @@ export function TransactionHistoryTable() {
                 <TableHead className="hidden sm:table-cell">Value</TableHead>
                 <TableHead className="hidden md:table-cell">Date</TableHead>
                 <TableHead className="text-right">Status</TableHead>
-                <TableHead className="text-right">View</TableHead>
+                <TableHead className="text-center">Info</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -120,17 +122,23 @@ export function TransactionHistoryTable() {
                     <TableCell className="text-right">
                       <StatusBadge status={tx.status} />
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-center">
                        <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button asChild variant="ghost" size="icon" disabled={tx.status === 'Pending' || tx.id.startsWith('pending-')}>
-                             <Link href={`https://solscan.io/tx/${tx.id}`} target="_blank" aria-disabled={tx.status === 'Pending'}>
-                                <ExternalLink className="h-4 w-4 text-accent" />
-                             </Link>
-                          </Button>
+                            <span className="inline-block">
+                                {tx.id.startsWith('pending-') ? (
+                                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                    <Button asChild variant="ghost" size="icon">
+                                        <Link href={`https://solscan.io/tx/${tx.id}`} target="_blank">
+                                            <ExternalLink className="h-4 w-4 text-accent" />
+                                        </Link>
+                                    </Button>
+                                )}
+                            </span>
                         </TooltipTrigger>
                         <TooltipContent>
-                           <p>{getTooltipContent(tx.status)}</p>
+                           <p>{getTooltipContent(tx)}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TableCell>
@@ -167,3 +175,5 @@ export function TransactionHistoryTable() {
     </Card>
   );
 }
+
+    
