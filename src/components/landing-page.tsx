@@ -98,7 +98,7 @@ export function LandingPage({ onConnect, isConnecting, presaleEndDate, presaleIn
       </section>
 
       {/* Features Section */}
-      <section className="bg-card py-20 lg:py-24">
+      <section className="bg-background py-20 lg:py-24">
           <div className="container mx-auto">
               <div className="text-center mb-12">
                   <h2 className="text-4xl font-bold text-white">Why Exnus?</h2>
