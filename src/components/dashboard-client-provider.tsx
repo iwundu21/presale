@@ -8,7 +8,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
-import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, SOFT_CAP } from "@/config";
+import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, HARD_CAP, EXN_MINT, EXN_TOKEN_DECIMALS } from "@/config";
 
 
 export type Transaction = {
@@ -77,23 +77,49 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     setIsLoadingPrice(true);
 
     try {
-        // Fetch SOL Price (real)
+        // Fetch SOL Price
         const solPriceData = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd').then(res => res.json());
         setSolPrice(solPriceData.solana.usd);
         
-        // Simulate initial state (local backend)
-        setExnBalance(15000); // Give user a simulated starting balance
-        setTotalExnSold(SOFT_CAP * 0.25); // Start progress at 25% of soft cap
+        // Fetch real EXN balance
+        try {
+            const tokenAccount = await getAssociatedTokenAddress(EXN_MINT, publicKey);
+            const tokenAccountInfo = await connection.getParsedAccountInfo(tokenAccount);
+            if (tokenAccountInfo.value) {
+                 const balance = (tokenAccountInfo.value.data as any).parsed.info.tokenAmount.uiAmount;
+                 setExnBalance(balance);
+            } else {
+                setExnBalance(0);
+            }
+        } catch (error) {
+            console.warn("Could not fetch user EXN balance:", error);
+            setExnBalance(0);
+        }
 
-        // Fetch real on-chain transaction history for user's wallet (SOL, USDC, etc.)
-        // This gives a realistic list, but purchase details remain simulated.
+        // Fetch total EXN sold (total supply of the mint)
+        try {
+            const mintInfo = await connection.getParsedAccountInfo(EXN_MINT);
+            if(mintInfo.value) {
+                const supply = (mintInfo.value.data as any).parsed.info.supply;
+                const decimals = (mintInfo.value.data as any).parsed.info.decimals;
+                setTotalExnSold(supply / (10 ** decimals));
+            }
+        } catch(error) {
+            console.error("Could not fetch total EXN supply:", error);
+            // In a real scenario, you might have a fallback or an indexed value
+            setTotalExnSold(0);
+        }
+
+        // Fetch real on-chain transaction history for user's wallet
         try {
             const signatures = await connection.getSignaturesForAddress(publicKey, { limit: 25 });
             const userTransactions: Transaction[] = [];
             signatures.forEach(sig => {
                 userTransactions.push({
                     id: sig.signature,
-                    amountExn: 0, // In a real app, this would be indexed by a backend
+                    // In a real indexed backend, you'd fetch the parsed transaction to get details
+                    // For now, we are just listing the transactions without purchase details
+                    amountExn: 0, 
                     paidAmount: 0,
                     paidCurrency: 'N/A',
                     date: sig.blockTime ? new Date(sig.blockTime * 1000) : new Date(),
@@ -233,19 +259,24 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
           lastValidBlockHeight
         }, 'confirmed');
         
-        // This is the local backend simulation part
-        // We pretend the purchase was successful and update our local state
-        setExnBalance(prev => prev + exnAmount);
-        setTotalExnSold(prev => prev + exnAmount);
+        // After successful on-chain transaction, we refetch data
+        // A backend would typically credit the EXN tokens here.
+        // Since we don't have that, we simulate the balance update and refetch other data.
         
         const completedTx: Transaction = { id: signature, ...txDetails, status: 'Completed', date: new Date() };
-        updateTransactionInState(completedTx); // Show the new tx immediately
-        
+        updateTransactionInState(completedTx); 
+
         toast({
             title: "Purchase Successful!",
-            description: `You purchased ${exnAmount.toLocaleString()} EXN. Your new balance is reflected.`,
+            description: `Your transaction ${signature.substring(0,10)}... was confirmed. Your balances will update shortly.`,
             variant: "success"
         });
+        
+        // Refetch all data to get latest balances and total supply
+        // Adding a small delay to allow blockchain to settle
+        setTimeout(() => {
+             fetchDashboardData();
+        }, 3000);
         
     } catch (error: any) {
         console.error("Transaction failed:", error);
@@ -273,7 +304,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     } finally {
         setIsLoadingPurchase(false);
     }
-  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet]);
+  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, fetchDashboardData]);
   
   if (!isClient || connecting || !publicKey || isLoadingDashboard) {
       return <DashboardLoadingSkeleton />; 

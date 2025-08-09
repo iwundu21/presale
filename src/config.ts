@@ -7,11 +7,11 @@ export const RPC_URL = "https://mainnet.helius-rpc.com/?api-key=ef62b792-793e-4e
 export const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // Mainnet
 export const USDT_MINT = new PublicKey("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"); // Mainnet
 
-// EXN_MINT is removed as it's a simulated token for now.
-// A real mint address would be added here in a production environment.
-export const EXN_MINT = new PublicKey("D5h2hJZv4z4K3yK1N1j1f1g1H1c1b1A1g1H1c1b1A1g1");
+// This is a placeholder for a real token mint on mainnet.
+// This allows the app to fetch real on-chain data for balance and supply.
+export const EXN_MINT = new PublicKey("DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"); // Example valid mint (BONK) used for demonstration
 
 export const EXN_PRICE = 0.09;
 export const SOFT_CAP = 500_000_000;
 export const HARD_CAP = 700_000_000;
-export const EXN_TOKEN_DECIMALS = 9;
+export const EXN_TOKEN_DECIMALS = 5; // Updated to match example token

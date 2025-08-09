@@ -5,7 +5,7 @@ import { Flame } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
-import { SOFT_CAP, HARD_CAP, EXN_PRICE } from "@/config";
+import { HARD_CAP, EXN_PRICE } from "@/config";
 import { useDashboard } from "./dashboard-client-provider";
 
 const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
