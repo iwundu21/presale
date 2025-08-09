@@ -71,7 +71,7 @@ export default function AdminPage() {
         } else {
             // Connected with a non-admin wallet.
             toast({ title: "Unauthorized", description: "This wallet is not authorized for the admin dashboard.", variant: "destructive" });
-            router.push('/dashboard');
+            router.push('/');
         }
 
         // All checks are done, loading is complete.
