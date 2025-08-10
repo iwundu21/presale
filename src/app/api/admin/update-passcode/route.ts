@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+import { withLock } from '@/lib/file-lock';
 
 const dbPath = path.join(process.cwd(), 'src', 'data', 'db.json');
 
@@ -30,24 +31,32 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ message: 'Current and new passcodes are required.' }, { status: 400 });
         }
 
-        const db = await readDb();
-        const correctPasscode = db.adminPasscode || process.env.ADMIN_PASSCODE;
+        await withLock(async () => {
+            const db = await readDb();
+            const correctPasscode = db.adminPasscode || process.env.ADMIN_PASSCODE;
 
-        if (!correctPasscode) {
-            return NextResponse.json({ message: 'Admin passcode is not configured.' }, { status: 500 });
-        }
+            if (!correctPasscode) {
+                throw new Error('Admin passcode is not configured.');
+            }
 
-        if (currentPasscode !== correctPasscode) {
-            return NextResponse.json({ message: 'Incorrect current passcode.' }, { status: 403 });
-        }
+            if (currentPasscode !== correctPasscode) {
+                throw new Error('Incorrect current passcode.');
+            }
 
-        db.adminPasscode = newPasscode;
-        await writeDb(db);
+            db.adminPasscode = newPasscode;
+            await writeDb(db);
+        });
 
         return NextResponse.json({ message: 'Passcode updated successfully.' }, { status: 200 });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('API Update-Passcode Error:', error);
+        if (error.message.includes('not configured')) {
+             return NextResponse.json({ message: error.message }, { status: 500 });
+        }
+        if (error.message.includes('Incorrect current passcode')) {
+             return NextResponse.json({ message: error.message }, { status: 403 });
+        }
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }

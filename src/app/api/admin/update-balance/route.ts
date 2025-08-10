@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+import { withLock } from '@/lib/file-lock';
 
 const dbPath = path.join(process.cwd(), 'src', 'data', 'db.json');
 
@@ -30,21 +31,24 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ message: 'Wallet address and a valid new balance are required.' }, { status: 400 });
         }
 
-        const db = await readDb();
-        
-        if (!db.users || !db.users[wallet]) {
-            return NextResponse.json({ message: `User with wallet ${wallet} not found.` }, { status: 404 });
-        }
+        await withLock(async () => {
+            const db = await readDb();
+            
+            if (!db.users || !db.users[wallet]) {
+                throw new Error(`User with wallet ${wallet} not found.`);
+            }
 
-        db.users[wallet].balance = newBalance;
-        await writeDb(db);
+            db.users[wallet].balance = newBalance;
+            await writeDb(db);
+        });
 
         return NextResponse.json({ message: `Balance for wallet ${wallet} updated to ${newBalance}.` }, { status: 200 });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('API Update-Balance Error:', error);
+        if (error.message.includes('not found')) {
+            return NextResponse.json({ message: error.message }, { status: 404 });
+        }
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }
-
-  

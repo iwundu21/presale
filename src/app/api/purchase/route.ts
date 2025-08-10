@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+import { withLock } from '@/lib/file-lock';
 
 const dbPath = path.join(process.cwd(), 'src', 'data', 'db.json');
 
@@ -30,38 +31,43 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Invalid input' }, { status: 400 });
         }
 
-        const db = await readDb();
+        let responseData;
+        await withLock(async () => {
+            const db = await readDb();
 
-        if (!db.users[userKey]) {
-             db.users[userKey] = {
-                balance: 0,
-                transactions: []
+            if (!db.users[userKey]) {
+                 db.users[userKey] = {
+                    balance: 0,
+                    transactions: []
+                };
+            }
+
+            // Add or update transaction
+            const existingTxIndex = db.users[userKey].transactions.findIndex((t: any) => t.id === transaction.id);
+            if (existingTxIndex > -1) {
+                db.users[userKey].transactions[existingTxIndex] = transaction;
+            } else {
+                db.users[userKey].transactions.unshift(transaction);
+            }
+
+            // Only add to balance and total sold for new, completed transactions
+            if (existingTxIndex === -1 && transaction.status === 'Completed') {
+                db.users[userKey].balance = (db.users[userKey].balance || 0) + exnAmount;
+                db.totalExnSold = (db.totalExnSold || 0) + exnAmount;
+            }
+
+
+            await writeDb(db);
+            
+            responseData = {
+                message: 'Purchase successful',
+                newBalance: db.users[userKey].balance,
+                newTotalSold: db.totalExnSold,
+                transactions: db.users[userKey].transactions,
             };
-        }
-
-        // Add or update transaction
-        const existingTxIndex = db.users[userKey].transactions.findIndex((t: any) => t.id === transaction.id);
-        if (existingTxIndex > -1) {
-            db.users[userKey].transactions[existingTxIndex] = transaction;
-        } else {
-            db.users[userKey].transactions.unshift(transaction);
-        }
-
-        // Only add to balance and total sold for new, completed transactions
-        if (existingTxIndex === -1 && transaction.status === 'Completed') {
-            db.users[userKey].balance = (db.users[userKey].balance || 0) + exnAmount;
-            db.totalExnSold = (db.totalExnSold || 0) + exnAmount;
-        }
-
-
-        await writeDb(db);
+        });
         
-        return NextResponse.json({ 
-            message: 'Purchase successful',
-            newBalance: db.users[userKey].balance,
-            newTotalSold: db.totalExnSold,
-            transactions: db.users[userKey].transactions,
-        }, { status: 200 });
+        return NextResponse.json(responseData, { status: 200 });
 
     } catch (error) {
         console.error('API Purchase Error:', error);

@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+import { withLock } from '@/lib/file-lock';
 
 const dbPath = path.join(process.cwd(), 'src', 'data', 'db.json');
 
@@ -48,29 +49,39 @@ export async function GET() {
 export async function POST(request: Request) {
      try {
         const { presaleInfo, isPresaleActive } = await request.json();
-        const db = await readDb();
+        let updatedData;
 
-        if (presaleInfo) {
-            if (!presaleInfo.seasonName || typeof presaleInfo.tokenPrice !== 'number') {
-                 return NextResponse.json({ message: 'Invalid input for presale info' }, { status: 400 });
+        await withLock(async () => {
+            const db = await readDb();
+
+            if (presaleInfo) {
+                if (!presaleInfo.seasonName || typeof presaleInfo.tokenPrice !== 'number') {
+                     throw new Error('Invalid input for presale info');
+                }
+                db.presaleInfo = presaleInfo;
             }
-            db.presaleInfo = presaleInfo;
-        }
 
-        if (typeof isPresaleActive === 'boolean') {
-            db.isPresaleActive = isPresaleActive;
-        }
+            if (typeof isPresaleActive === 'boolean') {
+                db.isPresaleActive = isPresaleActive;
+            }
 
-        await writeDb(db);
+            await writeDb(db);
+            updatedData = {
+                presaleInfo: db.presaleInfo,
+                isPresaleActive: db.isPresaleActive,
+            };
+        });
         
         return NextResponse.json({ 
             message: 'Presale data updated successfully',
-            presaleInfo: db.presaleInfo,
-            isPresaleActive: db.isPresaleActive,
+            ...updatedData,
         }, { status: 200 });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('API Presale-Data POST Error:', error);
+        if (error.message.includes('Invalid input')) {
+            return NextResponse.json({ message: error.message }, { status: 400 });
+        }
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }

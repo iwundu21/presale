@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+import { withLock } from '@/lib/file-lock';
 
 const dbPath = path.join(process.cwd(), 'src', 'data', 'db.json');
 
@@ -43,13 +44,17 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Invalid date format provided.' }, { status: 400 });
         }
 
-        const db = await readDb();
-        db.presaleEndDate = presaleEndDate;
-        await writeDb(db);
+        let updatedEndDate;
+        await withLock(async () => {
+            const db = await readDb();
+            db.presaleEndDate = presaleEndDate;
+            await writeDb(db);
+            updatedEndDate = db.presaleEndDate;
+        });
         
         return NextResponse.json({ 
             message: 'Presale end date updated successfully',
-            presaleEndDate: db.presaleEndDate,
+            presaleEndDate: updatedEndDate,
         }, { status: 200 });
 
     } catch (error) {
