@@ -7,8 +7,10 @@ async function getPresaleEndDate() {
         where: { key: 'presaleEndDate' }
     });
     if (config && config.value) {
+        // The value is already a date string, return it directly.
         return config.value;
     }
+    // If no date is set in the DB, create a default.
     const defaultEndDate = new Date();
     defaultEndDate.setDate(defaultEndDate.getDate() + 30);
     return defaultEndDate.toISOString();
@@ -53,3 +55,4 @@ export async function POST(request: Request) {
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }
+
