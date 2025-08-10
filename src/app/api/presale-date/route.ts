@@ -14,18 +14,16 @@ async function getPresaleEndDate() {
     const config = await prisma.config.findUnique({
         where: { key: 'presaleEndDate' }
     });
+    
     if (config && config.value) {
         return config.value;
     }
-    // If no date is set in the DB, create a default.
+
+    // If no date is set in the DB, return a default without saving it.
+    // The value will be saved only when explicitly set via a POST request.
     const defaultEndDate = new Date();
     defaultEndDate.setDate(defaultEndDate.getDate() + 30);
-    const defaultEndDateString = defaultEndDate.toISOString();
-    
-    // Save the default to the DB for next time
-    await setPresaleEndDate(defaultEndDateString);
-    
-    return defaultEndDateString;
+    return defaultEndDate.toISOString();
 }
 
 export async function GET() {
