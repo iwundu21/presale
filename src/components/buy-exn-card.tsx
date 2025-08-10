@@ -94,6 +94,11 @@ export function BuyExnCard() {
       if (usdValue === null || exnPrice === 0) return "";
 
       const calculatedReceive = usdValue / exnPrice;
+      
+      // If the amount is very small, show more precision. Otherwise, round to 2 decimals.
+      if (calculatedReceive > 0 && calculatedReceive < 0.01) {
+          return calculatedReceive.toFixed(6);
+      }
       return calculatedReceive.toFixed(2);
   };
 
@@ -296,4 +301,6 @@ export function BuyExnCard() {
 }
 
     
+    
+
     
