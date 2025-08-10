@@ -1,41 +1,13 @@
 
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-
-async function setConfig(key: string, value: any) {
-     await prisma.config.upsert({
-        where: { key },
-        update: { value: JSON.stringify(value) },
-        create: { key, value: JSON.stringify(value) },
-    });
-    return value;
-}
-
-async function getConfig(key: string, defaultValue: any) {
-    const config = await prisma.config.findUnique({ where: { key }});
-    if (!config) {
-        // If the key doesn't exist, create it with the default value
-        return await setConfig(key, defaultValue);
-    }
-
-    try {
-        // The value from DB is always a string, so parse it.
-        return JSON.parse(config.value);
-    } catch {
-        // If parsing fails, it might be an old value that wasn't a string.
-        // In that case, we can probably assume it's the value itself,
-        // but it's safer to return the default.
-        return defaultValue;
-    }
-}
-
+import { db } from '@/lib/mock-db';
 
 export async function GET() {
     try {
         const [totalExnSold, presaleInfo, isPresaleActive] = await Promise.all([
-            prisma.user.aggregate({ _sum: { balance: true } }).then(res => res._sum.balance || 0),
-            getConfig('presaleInfo', { seasonName: "Early Stage", tokenPrice: 0.09 }),
-            getConfig('isPresaleActive', true)
+            db.getTotalExnSold(),
+            db.getConfig('presaleInfo', { seasonName: "Early Stage", tokenPrice: 0.09 }),
+            db.getConfig('isPresaleActive', true)
         ]);
 
         return NextResponse.json({ 
@@ -57,15 +29,15 @@ export async function POST(request: Request) {
             if (!presaleInfo.seasonName || typeof presaleInfo.tokenPrice !== 'number') {
                  return NextResponse.json({ message: 'Invalid input for presale info' }, { status: 400 });
             }
-            await setConfig('presaleInfo', presaleInfo);
+            await db.setConfig('presaleInfo', presaleInfo);
         }
 
         if (typeof isPresaleActive === 'boolean') {
-            await setConfig('isPresaleActive', isPresaleActive);
+            await db.setConfig('isPresaleActive', isPresaleActive);
         }
 
-        const updatedPresaleInfo = await getConfig('presaleInfo', { seasonName: "Early Stage", tokenPrice: 0.09 });
-        const updatedIsPresaleActive = await getConfig('isPresaleActive', true);
+        const updatedPresaleInfo = await db.getConfig('presaleInfo', { seasonName: "Early Stage", tokenPrice: 0.09 });
+        const updatedIsPresaleActive = await db.getConfig('isPresaleActive', true);
         
         return NextResponse.json({ 
             message: 'Presale data updated successfully',

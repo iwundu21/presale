@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/lib/mock-db';
 import { Transaction } from '@/components/dashboard-client-provider';
 
 type UserAdminView = {
@@ -16,34 +16,21 @@ export async function GET(request: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '0', 10);
         const searchQuery = searchParams.get('searchQuery')?.toLowerCase() || '';
 
-        const where = searchQuery 
-            ? { wallet: { contains: searchQuery, mode: 'insensitive' as const } } 
-            : {};
+        const allUsers = await db.getAllUsers();
 
-        const totalUsers = await prisma.user.count({ where });
+        const filteredUsers = searchQuery
+            ? allUsers.filter(user => user.wallet.toLowerCase().includes(searchQuery))
+            : allUsers;
+        
+        filteredUsers.sort((a, b) => b.balance - a.balance);
 
-        const usersQuery = {
-            where,
-            include: {
-                transactions: {
-                    orderBy: {
-                        date: 'desc' as const,
-                    }
-                }
-            },
-            orderBy: {
-                balance: 'desc' as const,
-            },
-        };
+        const totalUsers = filteredUsers.length;
 
-        if (limit > 0) {
-            (usersQuery as any).skip = (page - 1) * limit;
-            (usersQuery as any).take = limit;
-        }
+        const paginatedUsers = limit > 0
+            ? filteredUsers.slice((page - 1) * limit, page * limit)
+            : filteredUsers;
 
-        const users = await prisma.user.findMany(usersQuery);
-
-        const userArray: UserAdminView[] = users.map(user => ({
+        const userArray: UserAdminView[] = paginatedUsers.map(user => ({
             wallet: user.wallet,
             balance: user.balance,
             transactions: user.transactions.map(tx => ({

@@ -1,34 +1,11 @@
 
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/lib/mock-db';
 
-async function setPresaleEndDate(endDate: string): Promise<void> {
-    await prisma.config.upsert({
-        where: { key: 'presaleEndDate' },
-        update: { value: endDate },
-        create: { key: 'presaleEndDate', value: endDate }
-    });
-}
-
-async function getPresaleEndDate() {
-    const config = await prisma.config.findUnique({
-        where: { key: 'presaleEndDate' }
-    });
-    
-    if (config && config.value) {
-        return config.value;
-    }
-
-    // If no date is set in the DB, return a default without saving it.
-    // The value will be saved only when explicitly set via a POST request.
-    const defaultEndDate = new Date();
-    defaultEndDate.setDate(defaultEndDate.getDate() + 30);
-    return defaultEndDate.toISOString();
-}
 
 export async function GET() {
     try {
-        const presaleEndDate = await getPresaleEndDate();
+        const presaleEndDate = await db.getPresaleEndDate();
         return NextResponse.json({ presaleEndDate });
     } catch (error) {
         console.error('API Presale-Date GET Error:', error);
@@ -44,7 +21,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Invalid date format provided.' }, { status: 400 });
         }
         
-        await setPresaleEndDate(presaleEndDate);
+        await db.setPresaleEndDate(presaleEndDate);
         
         return NextResponse.json({ 
             message: 'Presale end date updated successfully',
