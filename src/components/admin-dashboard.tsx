@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getPresaleData, setPresaleInfo, setPresaleStatus } from "@/services/presale-info-service";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Download, ChevronLeft, ChevronRight, KeyRound, Edit, ChevronsUpDown, CheckCircle, AlertCircle, Clock, Search, ExternalLink, Gift } from "lucide-react";
+import { Download, ChevronLeft, ChevronRight, KeyRound, Edit, ChevronsUpDown, CheckCircle, AlertCircle, Clock, Search, ExternalLink, Gift, Award } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Transaction } from "./dashboard-client-provider";
@@ -50,6 +50,14 @@ const getStatusIcon = (status: Transaction['status']) => {
         case 'Pending': return <Clock className="h-4 w-4 text-yellow-400" />;
     }
 }
+
+const getTxIcon = (tx: Transaction) => {
+    if (tx.paidCurrency === 'BONUS') {
+        return <Award className="h-4 w-4 text-yellow-500" />;
+    }
+    return getStatusIcon(tx.status);
+}
+
 
 export function AdminDashboard() {
     const { toast } = useToast();
@@ -470,18 +478,18 @@ export function AdminDashboard() {
                                                                                 {user.transactions.map(tx => (
                                                                                     <TableRow key={tx.id}>
                                                                                         <TableCell className="text-xs">{new Date(tx.date).toLocaleString()}</TableCell>
-                                                                                        <TableCell>{tx.amountExn.toLocaleString()}</TableCell>
-                                                                                        <TableCell>{tx.paidAmount.toLocaleString()} {tx.paidCurrency}</TableCell>
+                                                                                        <TableCell>{tx.paidCurrency === 'BONUS' ? '+' : ''}{tx.amountExn.toLocaleString()}</TableCell>
+                                                                                        <TableCell>{tx.paidCurrency === 'BONUS' ? 'N/A' : `${tx.paidAmount.toLocaleString()} ${tx.paidCurrency}`}</TableCell>
                                                                                         <TableCell>
-                                                                                             <Badge variant={getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
-                                                                                                {getStatusIcon(tx.status)}
-                                                                                                {tx.status}
+                                                                                             <Badge variant={tx.paidCurrency === 'BONUS' ? 'default' : getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
+                                                                                                {getTxIcon(tx)}
+                                                                                                {tx.paidCurrency === 'BONUS' ? tx.failureReason : tx.status}
                                                                                             </Badge>
                                                                                         </TableCell>
                                                                                         <TableCell>
                                                                                              <Tooltip>
                                                                                                 <TooltipTrigger asChild>
-                                                                                                    <Button variant="ghost" size="icon" className="h-8 w-8" disabled={tx.id.startsWith('tx_')} asChild>
+                                                                                                    <Button variant="ghost" size="icon" className="h-8 w-8" disabled={tx.id.startsWith('tx_') || tx.paidCurrency === 'BONUS'} asChild>
                                                                                                         <a href={`https://solscan.io/tx/${tx.id}`} target="_blank" rel="noopener noreferrer" >
                                                                                                             <ExternalLink className="h-4 w-4" />
                                                                                                         </a>
@@ -756,5 +764,3 @@ export function AdminDashboard() {
     );
 
 }
-
-    

@@ -3,6 +3,7 @@
 // In a production environment, this would be replaced with a proper database like Prisma.
 
 import type { Transaction } from '@/components/dashboard-client-provider';
+import { v4 as uuidv4 } from 'uuid';
 
 type User = {
     wallet: string;
@@ -152,9 +153,24 @@ async function distributeBonus(): Promise<{ updatedCount: number }> {
     let updatedCount = 0;
 
     for (const user of users) {
-        const bonusAmount = user.balance * 0.03;
-        user.balance += bonusAmount;
-        updatedCount++;
+        if (user.balance > 0) {
+            const bonusAmount = user.balance * 0.03;
+            user.balance += bonusAmount;
+            
+            const bonusTransaction: Transaction & { balanceAdded: boolean } = {
+                id: `bonus-${uuidv4()}`,
+                amountExn: bonusAmount,
+                paidAmount: 0,
+                paidCurrency: 'BONUS',
+                date: new Date(),
+                status: 'Completed',
+                failureReason: 'Presale Bonus',
+                balanceAdded: true,
+            };
+            user.transactions.unshift(bonusTransaction);
+
+            updatedCount++;
+        }
     }
     
     await setConfig('bonusDistributed', true);
