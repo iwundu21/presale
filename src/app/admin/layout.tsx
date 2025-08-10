@@ -43,7 +43,14 @@ export default function AdminLayout({
                     variant: "success",
                 });
             } else {
-                const errorData = await response.json();
+                let errorData;
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    errorData = await response.json();
+                } else {
+                    // Handle non-JSON responses
+                    throw new Error("Incorrect passcode or server error.");
+                }
                 throw new Error(errorData.message || "Incorrect passcode.");
             }
 
