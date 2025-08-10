@@ -4,7 +4,17 @@ import { prisma } from '@/lib/prisma';
 
 async function getConfig(key: string, defaultValue: any) {
     const config = await prisma.config.findUnique({ where: { key }});
-    return config ? JSON.parse(config.value) : defaultValue;
+    if (!config) return defaultValue;
+
+    try {
+        // Only parse if it's a string; otherwise, return the value directly.
+        if (typeof config.value === 'string') {
+            return JSON.parse(config.value);
+        }
+        return config.value;
+    } catch {
+        return defaultValue;
+    }
 }
 
 async function setConfig(key: string, value: any) {
