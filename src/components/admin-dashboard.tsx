@@ -11,13 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getPresaleData, setPresaleInfo, setPresaleStatus } from "@/services/presale-info-service";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Download, ChevronLeft, ChevronRight, KeyRound, Edit, ChevronsUpDown, CheckCircle, AlertCircle, Clock, Search, ExternalLink } from "lucide-react";
+import { Download, ChevronLeft, ChevronRight, KeyRound, Edit, ChevronsUpDown, CheckCircle, AlertCircle, Clock, Search, ExternalLink, Gift } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Transaction } from "./dashboard-client-provider";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
 import { Badge } from "./ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 
 const SEASON_PRICES: { [key: string]: number } = {
     "Early Stage": 0.09,
@@ -81,6 +82,10 @@ export function AdminDashboard() {
     const [newBalance, setNewBalance] = useState('');
     const [isUpdatingBalance, setIsUpdatingBalance] = useState(false);
 
+    // Bonus Distribution State
+    const [isBonusDistributed, setIsBonusDistributed] = useState(false);
+    const [isDistributing, setIsDistributing] = useState(false);
+
     const fetchUsers = useCallback(async (page: number, query: string) => {
         setIsLoadingUsers(true);
         try {
@@ -111,17 +116,27 @@ export function AdminDashboard() {
 
 
     useEffect(() => {
-        const fetchInfo = async () => {
+        const fetchInitialData = async () => {
             setIsLoading(true);
             try {
-                const data = await getPresaleData();
-                if (data) {
-                    setSeason(data.presaleInfo.seasonName);
-                    setPrice(data.presaleInfo.tokenPrice);
-                    setIsPresaleActive(data.isPresaleActive);
+                const [presaleDataRes, bonusStatusRes] = await Promise.all([
+                    getPresaleData(),
+                    fetch('/api/admin/distribute-bonus')
+                ]);
+                
+                if (presaleDataRes) {
+                    setSeason(presaleDataRes.presaleInfo.seasonName);
+                    setPrice(presaleDataRes.presaleInfo.tokenPrice);
+                    setIsPresaleActive(presaleDataRes.isPresaleActive);
                 }
+
+                if (bonusStatusRes.ok) {
+                    const bonusData = await bonusStatusRes.json();
+                    setIsBonusDistributed(bonusData.isBonusDistributed);
+                }
+
             } catch (error) {
-                console.error("Failed to fetch presale info", error);
+                console.error("Failed to fetch initial admin data", error);
                 toast({
                     title: "Load Failed",
                     description: "Could not load current presale data.",
@@ -131,7 +146,7 @@ export function AdminDashboard() {
                 setIsLoading(false);
             }
         };
-        fetchInfo();
+        fetchInitialData();
     }, [toast]);
     
     useEffect(() => {
@@ -351,6 +366,32 @@ export function AdminDashboard() {
         }
     }
 
+    const handleDistributeBonus = async () => {
+        setIsDistributing(true);
+        try {
+            const response = await fetch('/api/admin/distribute-bonus', { method: 'POST' });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || "Failed to distribute bonus.");
+            }
+            toast({
+                title: "Bonus Distributed!",
+                description: data.message,
+                variant: "success",
+            });
+            setIsBonusDistributed(true);
+            fetchUsers(1, ''); // Refresh user list
+        } catch (error: any) {
+            toast({
+                title: "Distribution Failed",
+                description: error.message,
+                variant: "destructive",
+            });
+        } finally {
+            setIsDistributing(false);
+        }
+    };
+
     return (
         <main className="container mx-auto p-4 sm:p-6 lg:p-8">
             <div className="grid gap-8">
@@ -553,6 +594,38 @@ export function AdminDashboard() {
                             <Download className="mr-2 h-4 w-4"/>
                             {isDownloading ? "Downloading..." : "Download All User Data (CSV)"}
                         </Button>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Distribute Presale Bonus</CardTitle>
+                        <CardDescription>
+                            Distribute a 3% EXN token bonus to all participants. This action can only be performed once.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button disabled={isDistributing || isBonusDistributed || isLoading}>
+                                    <Gift className="mr-2 h-4 w-4"/>
+                                    {isDistributing ? "Distributing..." : isBonusDistributed ? "Bonus Already Distributed" : "Distribute 3% Bonus"}
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action will permanently add a 3% bonus to every user's current EXN balance. This action cannot be undone and can only be performed once.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDistributeBonus}>
+                                        Yes, distribute bonus
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </CardContent>
                 </Card>
                 <Card>

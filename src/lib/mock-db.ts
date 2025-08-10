@@ -30,6 +30,7 @@ let inMemoryDb: MockDb = {
             d.setDate(d.getDate() + 30);
             return d.toISOString();
         })(),
+        bonusDistributed: false,
     }
 };
 
@@ -133,7 +134,9 @@ async function setAdminPasscode(passcode: string): Promise<void> {
 }
 
 async function getPresaleEndDate(): Promise<string> {
-    return getConfig('presaleEndDate', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString());
+    const defaultDate = new Date();
+    defaultDate.setDate(defaultDate.getDate() + 30);
+    return getConfig('presaleEndDate', defaultDate.toISOString());
 }
 
 async function setPresaleEndDate(endDate: string): Promise<void> {
@@ -142,6 +145,21 @@ async function setPresaleEndDate(endDate: string): Promise<void> {
 
 async function getTotalExnSold(): Promise<number> {
     return Object.values(inMemoryDb.users).reduce((sum, user) => sum + user.balance, 0);
+}
+
+async function distributeBonus(): Promise<{ updatedCount: number }> {
+    const users = await getAllUsers();
+    let updatedCount = 0;
+
+    for (const user of users) {
+        const bonusAmount = user.balance * 0.03;
+        user.balance += bonusAmount;
+        updatedCount++;
+    }
+    
+    await setConfig('bonusDistributed', true);
+
+    return { updatedCount };
 }
 
 
@@ -158,4 +176,5 @@ export const db = {
     getPresaleEndDate,
     setPresaleEndDate,
     getTotalExnSold,
+    distributeBonus,
 };
