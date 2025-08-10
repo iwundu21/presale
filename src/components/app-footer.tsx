@@ -35,7 +35,7 @@ export function AppFooter() {
                     <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
                 </div>
                 <div className="flex items-center gap-6">
-                    <a href="#" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-muted-foreground hover:text-white transition-colors">
+                    <a href="https://x.com/exnusprotocol?s=09" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-muted-foreground hover:text-white transition-colors">
                         <X className="h-5 w-5" />
                         <span className="text-xs">X</span>
                     </a>
