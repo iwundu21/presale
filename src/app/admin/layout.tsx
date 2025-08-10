@@ -44,14 +44,12 @@ export default function AdminLayout({
                 });
             } else {
                 let errorData;
-                const contentType = response.headers.get("content-type");
-                if (contentType && contentType.indexOf("application/json") !== -1) {
+                try {
                     errorData = await response.json();
-                } else {
-                    // Handle non-JSON responses
-                    throw new Error("Incorrect passcode or server error.");
+                } catch (e) {
+                     throw new Error("An unexpected server error occurred.");
                 }
-                throw new Error(errorData.message || "Incorrect passcode.");
+                throw new Error(errorData.message || "Incorrect passcode or server error.");
             }
 
         } catch (error: any) {

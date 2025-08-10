@@ -3,11 +3,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 async function getAdminPasscode(): Promise<string | null> {
-    const config = await prisma.config.findUnique({
-        where: { key: 'adminPasscode' }
-    });
-    // Fallback to env var, but also allow a default for first-time setup
-    return config ? config.value : (process.env.ADMIN_PASSCODE || '203020');
+    try {
+        const config = await prisma.config.findUnique({
+            where: { key: 'adminPasscode' }
+        });
+        // Fallback to env var, but also allow a default for first-time setup
+        return config ? config.value : (process.env.ADMIN_PASSCODE || '203020');
+    } catch (error) {
+        console.error("Prisma error fetching admin passcode:", error);
+        // If DB is not available, fallback to env or default
+        return process.env.ADMIN_PASSCODE || '203020';
+    }
 }
 
 
@@ -17,8 +23,8 @@ export async function POST(request: NextRequest) {
         const correctPasscode = await getAdminPasscode();
         
         if (!correctPasscode) {
-            console.error("ADMIN_PASSCODE is not set in DB or environment variables.");
-            return NextResponse.json({ message: 'Server configuration error.' }, { status: 500 });
+            console.error("FATAL: Admin passcode is not set in DB, environment, or as a default.");
+            return NextResponse.json({ message: 'Server configuration error: No passcode set.' }, { status: 500 });
         }
 
         if (passcode === correctPasscode) {
