@@ -18,13 +18,15 @@ const SOL_GAS_BUFFER = 0.0009; // Reserve 0.0009 SOL for gas fees
 const MIN_PURCHASE_USD = 0.001;
 const MAX_PURCHASE_USD = 10000;
 
+type Currency = "USDC" | "USDT" | "SOL";
+
 export function BuyExnCard() {
-  const { connected: isConnected, handlePurchase, solPrice, isLoadingPrice, presaleInfo, isPresaleActive, isLoadingPurchase } = useDashboard();
+  const { connected: isConnected, handlePurchase, tokenPrices, isLoadingPrices, presaleInfo, isPresaleActive, isLoadingPurchase } = useDashboard();
   const { publicKey } = useWallet();
   const { connection } = useConnection();
   const [payAmount, setPayAmount] = useState("1.00");
   const [receiveAmount, setReceiveAmount] = useState("");
-  const [currency, setCurrency] = useState("USDC");
+  const [currency, setCurrency] = useState<Currency>("USDC");
   const [balances, setBalances] = useState({ SOL: 0, USDC: 0, USDT: 0 });
   const [isFetchingBalance, setIsFetchingBalance] = useState(false);
   const [balanceError, setBalanceError] = useState("");
@@ -78,50 +80,49 @@ export function BuyExnCard() {
     fetchBalances();
   }, [isConnected, publicKey, connection]);
 
-  const getUsdValue = (amount: string, curr: string, priceOfSol: number | null): number | null => {
+  const getUsdValue = (amount: string, curr: Currency): number | null => {
     const numericAmount = parseFloat(amount);
     if (isNaN(numericAmount) || numericAmount <= 0) return null;
+    
+    const price = tokenPrices[curr];
+    if (price === null) return null;
 
-    if (curr === 'SOL') {
-      if (!priceOfSol) return null;
-      return numericAmount * priceOfSol;
-    }
-    return numericAmount;
+    return numericAmount * price;
   }
 
-  const calculateReceiveAmount = (pay: string, curr: string, priceOfSol: number | null) => {
-      const usdValue = getUsdValue(pay, curr, priceOfSol);
+  const calculateReceiveAmount = (pay: string, curr: Currency) => {
+      const usdValue = getUsdValue(pay, curr);
       if (usdValue === null || exnPrice === 0) return "";
 
       const calculatedReceive = usdValue / exnPrice;
       
-      // If the amount is very small, show more precision. Otherwise, round to 2 decimals.
       if (calculatedReceive > 0 && calculatedReceive < 0.01) {
           return calculatedReceive.toFixed(6);
       }
       return calculatedReceive.toFixed(2);
   };
 
-  const calculatePayAmount = (receive: string, curr: string, priceOfSol: number | null) => {
+  const calculatePayAmount = (receive: string, curr: Currency) => {
     const numericReceiveAmount = parseFloat(receive);
     if (isNaN(numericReceiveAmount) || numericReceiveAmount <= 0) {
       return "";
     }
     
     const usdValue = numericReceiveAmount * exnPrice;
+    const price = tokenPrices[curr];
+    if (price === null || price === 0) return "";
     
     if (curr === 'SOL') {
-      if (!priceOfSol || priceOfSol === 0) return "";
-      return (usdValue / priceOfSol).toFixed(5);
+      return (usdValue / price).toFixed(5);
     }
     
-    return usdValue.toFixed(2);
+    return (usdValue / price).toFixed(2);
   };
 
   useEffect(() => {
-    const newReceiveAmount = calculateReceiveAmount(payAmount, currency, solPrice);
+    const newReceiveAmount = calculateReceiveAmount(payAmount, currency);
     setReceiveAmount(newReceiveAmount);
-  }, [payAmount, currency, solPrice, exnPrice]);
+  }, [payAmount, currency, tokenPrices, exnPrice]);
 
 
   useEffect(() => {
@@ -143,7 +144,7 @@ export function BuyExnCard() {
   }, [payAmount, currency, balances]);
 
   useEffect(() => {
-    const usdValue = getUsdValue(payAmount, currency, solPrice);
+    const usdValue = getUsdValue(payAmount, currency);
     if (usdValue === null) {
         setLimitError("");
         return;
@@ -156,7 +157,7 @@ export function BuyExnCard() {
     } else {
         setLimitError("");
     }
-  }, [payAmount, currency, solPrice]);
+  }, [payAmount, currency, tokenPrices]);
 
 
   const handlePayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,7 +171,7 @@ export function BuyExnCard() {
     const value = e.target.value;
      if (value === "" || /^[0-9]*\.?[0-9]*$/.test(value)) {
         setReceiveAmount(value);
-        const newPayAmount = calculatePayAmount(value, currency, solPrice) || "";
+        const newPayAmount = calculatePayAmount(value, currency) || "";
         setPayAmount(newPayAmount);
     }
   };
@@ -185,17 +186,19 @@ export function BuyExnCard() {
 
   const currentBalance = balances[currency as keyof typeof balances];
   const maxSpend = currency === 'SOL' ? currentBalance - SOL_GAS_BUFFER : currentBalance;
-  const isPurchaseDisabled = !isConnected || !parseFloat(payAmount) || parseFloat(payAmount) <= 0 || (currency === 'SOL' && isLoadingPrice) || !!balanceError || !!limitError || !isPresaleActive || isLoadingPurchase;
+  const isPurchaseDisabled = !isConnected || !parseFloat(payAmount) || parseFloat(payAmount) <= 0 || isLoadingPrices || !!balanceError || !!limitError || !isPresaleActive || isLoadingPurchase;
 
   const getButtonText = () => {
     if (!isPresaleActive) return "Presale is currently closed";
-    if (isLoadingPrice && currency === 'SOL') return 'Loading Price...';
+    if (isLoadingPrices) return 'Loading Prices...';
     if (!isConnected) return "Connect Wallet to Buy";
     if (limitError) return limitError;
     if (balanceError) return balanceError;
     if (isLoadingPurchase) return "Processing...";
     return "Buy EXN";
   }
+
+  const currentPrice = tokenPrices[currency];
 
   return (
     <div className="w-full rounded-lg border border-border p-6 space-y-4">
@@ -232,9 +235,9 @@ export function BuyExnCard() {
                   onChange={handlePayChange} 
                   placeholder="0.00" 
                   className="text-2xl font-bold bg-transparent border-none h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0 flex-grow"
-                  disabled={currency === 'SOL' && isLoadingPrice || !isPresaleActive || isLoadingPurchase}
+                  disabled={isLoadingPrices || !isPresaleActive || isLoadingPurchase}
               />
-               <Select value={currency} onValueChange={setCurrency} disabled={!isPresaleActive || isLoadingPurchase}>
+               <Select value={currency} onValueChange={(val) => setCurrency(val as Currency)} disabled={!isPresaleActive || isLoadingPurchase}>
                   <SelectTrigger className="w-[120px] h-auto bg-secondary border-secondary text-white font-medium focus:ring-0">
                     <SelectValue placeholder="Coin" />
                   </SelectTrigger>
@@ -263,7 +266,7 @@ export function BuyExnCard() {
               <span className="text-sm text-muted-foreground">You Receive</span>
               <span className="text-white font-medium">EXN</span>
             </div>
-            {isLoadingPrice && currency === 'SOL' ? (
+            {isLoadingPrices ? (
                 <Skeleton className="h-8 w-1/2" />
             ) : (
                 <Input 
@@ -273,15 +276,15 @@ export function BuyExnCard() {
                     onChange={handleReceiveChange} 
                     placeholder="0.00" 
                     className="text-2xl font-bold bg-transparent border-none h-auto p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                    disabled={currency === 'SOL' && isLoadingPrice || !isPresaleActive || isLoadingPurchase}
+                    disabled={isLoadingPrices || !isPresaleActive || isLoadingPurchase}
                 />
             )}
           </div>
         </div>
 
-        {currency === 'SOL' && solPrice && (
+        {currentPrice && !isLoadingPrices && (
             <p className="text-xs text-muted-foreground text-center mt-2">
-                Current SOL Price: ~${solPrice.toFixed(2)}
+                Current {currency} Price: ~${currentPrice.toFixed(2)}
             </p>
         )}
         
@@ -299,8 +302,3 @@ export function BuyExnCard() {
     </div>
   );
 }
-
-    
-    
-
-    

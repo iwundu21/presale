@@ -10,8 +10,6 @@ import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedT
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, HARD_CAP } from "@/config";
 import type { PresaleInfo } from "@/services/presale-info-service";
-import { v4 as uuidv4 } from 'uuid';
-
 
 export type Transaction = {
   id: string; // Signature or temp ID
@@ -25,6 +23,12 @@ export type Transaction = {
   lastValidBlockHeight?: number;
 };
 
+type TokenPrices = {
+    SOL: number | null;
+    USDC: number | null;
+    USDT: number | null;
+};
+
 type DashboardContextType = {
     exnBalance: number;
     transactions: Transaction[];
@@ -32,8 +36,8 @@ type DashboardContextType = {
     connected: boolean;
     handlePurchase: (exnAmount: number, paidAmount: number, currency: string) => Promise<void>;
     retryTransaction: (tx: Transaction) => Promise<void>;
-    solPrice: number | null;
-    isLoadingPrice: boolean;
+    tokenPrices: TokenPrices;
+    isLoadingPrices: boolean;
     isLoadingPurchase: boolean;
     presaleInfo: PresaleInfo | null;
     isPresaleActive: boolean;
@@ -64,8 +68,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
   const [totalExnSold, setTotalExnSold] = useState(0);
-  const [solPrice, setSolPrice] = useState<number | null>(null);
-  const [isLoadingPrice, setIsLoadingPrice] = useState(true);
+  const [tokenPrices, setTokenPrices] = useState<TokenPrices>({ SOL: null, USDC: null, USDT: null });
+  const [isLoadingPrices, setIsLoadingPrices] = useState(true);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
   const [isLoadingPurchase, setIsLoadingPurchase] = useState(false);
   const [presaleInfo, setPresaleInfo] = useState<PresaleInfo | null>(null);
@@ -85,15 +89,15 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     if (!connected || !publicKey) return;
 
     setIsLoadingDashboard(true);
-    setIsLoadingPrice(true);
+    setIsLoadingPrices(true);
 
     try {
         const userKey = publicKey.toBase58();
 
-        const [userDataRes, presaleDataRes, solPriceRes] = await Promise.allSettled([
+        const [userDataRes, presaleDataRes, pricesRes] = await Promise.allSettled([
             fetch(`/api/user-data?userKey=${userKey}`),
             fetch('/api/presale-data'),
-            fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd')
+            fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana,usd-coin,tether&vs_currencies=usd')
         ]);
 
         if (userDataRes.status === 'fulfilled' && userDataRes.value.ok) {
@@ -118,15 +122,19 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             throw new Error('Could not load presale progress.');
         }
         
-        if (solPriceRes.status === 'fulfilled' && solPriceRes.value.ok) {
-            const solPriceData = await solPriceRes.value.json();
-            setSolPrice(solPriceData.solana.usd);
+        if (pricesRes.status === 'fulfilled' && pricesRes.value.ok) {
+            const pricesData = await pricesRes.value.json();
+            setTokenPrices({
+                SOL: pricesData.solana?.usd || null,
+                USDC: pricesData['usd-coin']?.usd || null,
+                USDT: pricesData.tether?.usd || null,
+            });
         } else {
-            console.error('Failed to fetch SOL price:', solPriceRes.status === 'rejected' ? solPriceRes.reason : 'API request failed');
-            setSolPrice(150); 
+            console.error('Failed to fetch token prices:', pricesRes.status === 'rejected' ? pricesRes.reason : 'API request failed');
+            setTokenPrices({ SOL: 150, USDC: 1, USDT: 1 }); // Fallback prices
             toast({
-              title: "Could not fetch SOL price",
-              description: "Using a fallback price. SOL conversions may be approximate.",
+              title: "Could not fetch token prices",
+              description: "Using fallback prices. Conversions may be approximate.",
               variant: "destructive"
             });
         }
@@ -139,7 +147,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             variant: "destructive"
         });
     } finally {
-        setIsLoadingPrice(false);
+        setIsLoadingPrices(false);
         setIsLoadingDashboard(false);
     }
   }, [connected, publicKey, toast]);
@@ -153,12 +161,23 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   
   const updateTransactionInState = useCallback((tx: Transaction) => {
      setTransactions(prev => {
-        const newTxs = prev.filter(t => t.id !== tx.id);
-        newTxs.unshift(tx);
+        const txId = tx.id.startsWith('temp_') ? tx.id : tx.id; // Use consistent ID
+        // Find if a transaction with a temp ID exists, and replace it with the one with the real signature.
+        const existingIndex = prev.findIndex(t => t.id === txId || (tx.id.startsWith('temp_') && t.id.startsWith('temp_') && t.id.split('_')[1] === tx.id.split('_')[1]));
+
+        let newTxs;
+        if (existingIndex !== -1) {
+            newTxs = [...prev];
+            newTxs[existingIndex] = tx;
+        } else {
+            newTxs = [tx, ...prev];
+        }
+
         newTxs.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         return newTxs;
     });
   }, []);
+
 
   const persistTransaction = useCallback(async (transaction: Transaction) => {
     if (!publicKey) return;
@@ -204,7 +223,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             throw new Error(`Transaction failed to confirm: ${JSON.stringify(confirmation.value.err)}`);
         }
 
-        const completedTx: Transaction = { ...tx, status: 'Completed' };
+        const completedTx: Transaction = { ...tx, id: signature, status: 'Completed' };
         updateTransactionInState(completedTx);
         await persistTransaction(completedTx);
 
@@ -217,7 +236,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     } catch (error: any) {
         console.error("Transaction finalization failed:", error);
         
-        const failedTx: Transaction = { ...tx, status: 'Failed', failureReason: "Failed to confirm on-chain." };
+        const failedTx: Transaction = { ...tx, id: signature, status: 'Failed', failureReason: "Failed to confirm on-chain." };
         updateTransactionInState(failedTx);
         await persistTransaction(failedTx);
         
@@ -241,9 +260,9 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     
     setIsLoadingPurchase(true);
 
-    const txId = `${publicKey.toBase58()}-${Date.now()}`;
+    const tempId = `temp_${publicKey.toBase58()}_${Date.now()}`;
     let newTx: Transaction = { 
-        id: txId,
+        id: tempId,
         amountExn: exnAmount, 
         paidAmount, 
         paidCurrency: currency, 
@@ -315,8 +334,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         signature = await sendTransaction(transaction, connection);
         
         newTx = {...newTx, blockhash, lastValidBlockHeight};
-        updateTransactionInState(newTx); // Visually update with blockhash info
-        await persistTransaction(newTx); // Persist pending transaction immediately
+        const pendingTxWithSig: Transaction = { ...newTx, id: signature };
+        
+        updateTransactionInState(pendingTxWithSig);
+        await persistTransaction(pendingTxWithSig); 
 
         toast({
             title: "Transaction Sent!",
@@ -325,7 +346,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         });
 
         // Start polling for confirmation without blocking UI
-        confirmAndFinalizeTransaction(newTx, signature);
+        confirmAndFinalizeTransaction(pendingTxWithSig, signature);
         
     } catch (error: any) {
         console.error("Transaction failed:", error);
@@ -359,7 +380,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, persistTransaction, confirmAndFinalizeTransaction]);
   
   const retryTransaction = useCallback(async (tx: Transaction) => {
-    if (tx.status !== 'Pending' || tx.id.startsWith('tx_')) {
+    if (tx.status !== 'Pending' || tx.id.startsWith('temp_')) {
         toast({ title: "Retry Unavailable", description: "This transaction cannot be retried.", variant: "destructive" });
         return;
     }
@@ -409,8 +430,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     connected,
     handlePurchase,
     retryTransaction,
-    solPrice,
-    isLoadingPrice,
+    tokenPrices,
+    isLoadingPrices,
     isLoadingPurchase,
     presaleInfo,
     isPresaleActive,
@@ -422,5 +443,3 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
-
-    
