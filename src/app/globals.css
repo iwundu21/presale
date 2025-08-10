@@ -71,8 +71,11 @@ body {
     @apply bg-background text-foreground;
   }
   .landing-hero {
-    background-color: hsl(var(--background));
-    background-image: radial-gradient(ellipse 80% 50% at 50% -20%,rgba(120,119,198,0.3),hsla(0,0%,100%,0));
+    background-image: url('/bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     position: relative;
     isolation: isolate;
   }
@@ -81,8 +84,7 @@ body {
     content: '';
     position: absolute;
     inset: 0;
-    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPgo8ZmlsdGVyIGlkPSJub2lzZSI+CiAgPGZlVHVyYnVsZW5jZSAKICAgIHR5cGU9ImZyYWN0YWxOb2lzZSIKICAgIGJhc2VGcmVxdWVuY3k9IjAuOCIgCiAgICBudW1PY3RhdmVzPSIxIgogICAgc3RpdGNoVGlsZXM9InN0aXRjaCIgLz4KICA8ZmVDb2xvck1hdHJpeCB0eXBlPSJzYXR1cmF0ZSIgdmFsdWVzPSIwIiAvPgo8L2ZpbHRlcj4KPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsdGVyPSJ1cmwoI25vaXNlKSIgLz4KPC9zdmc+');
-    opacity: 0.15;
+    background-color: rgba(0,0,0,0.5);
     z-index: -1;
   }
   .dashboard-bg {
