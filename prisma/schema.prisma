@@ -2,7 +2,8 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["accelerate"]
 }
 
 datasource db {
@@ -11,13 +12,14 @@ datasource db {
 }
 
 model User {
-  wallet       String        @id
+  id           Int           @id @default(autoincrement())
+  wallet       String        @unique
   balance      Float
   transactions Transaction[]
 }
 
 model Transaction {
-  id                   String    @id
+  id                   String   @id @unique
   amountExn            Float
   paidAmount           Float
   paidCurrency         String
@@ -26,11 +28,12 @@ model Transaction {
   failureReason        String?
   blockhash            String?
   lastValidBlockHeight Int?
-  user                 User      @relation(fields: [userWallet], references: [wallet])
+  user                 User     @relation(fields: [userWallet], references: [wallet])
   userWallet           String
 }
 
 model Config {
-  key   String @id
+  id    Int    @id @default(autoincrement())
+  key   String @unique
   value String
 }
