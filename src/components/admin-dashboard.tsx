@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getPresaleData, setPresaleInfo, setPresaleStatus } from "@/services/presale-info-service";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Download, ChevronLeft, ChevronRight, KeyRound, Edit, ChevronsUpDown, CheckCircle, AlertCircle, Clock, Search, ExternalLink, Gift, Award } from "lucide-react";
+import { Download, ChevronLeft, ChevronRight, KeyRound, Edit, ChevronsUpDown, CheckCircle, AlertCircle, Clock, Search, ExternalLink, Gift, Award, Copy, View } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Transaction } from "./dashboard-client-provider";
@@ -167,6 +167,15 @@ export function AdminDashboard() {
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchQuery(e.target.value);
         setCurrentPage(1); // Reset to first page on new search
+    };
+    
+    const handleCopyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        toast({
+            title: "Copied!",
+            description: "Wallet address copied to clipboard.",
+            variant: "success",
+        });
     };
 
     const handleUpdateDate = async () => {
@@ -407,7 +416,7 @@ export function AdminDashboard() {
                     <CardHeader>
                         <CardTitle>User Balances</CardTitle>
                         <CardDescription>
-                           A list of all users who have participated in the presale. Click to expand and see transaction history.
+                           A list of all users who have participated in the presale. Click 'View' to expand and see transaction history.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -429,7 +438,7 @@ export function AdminDashboard() {
                                     <TableRow>
                                         <TableHead>User</TableHead>
                                         <TableHead className="text-right">EXN Balance</TableHead>
-                                        <TableHead className="w-[100px] text-center">History</TableHead>
+                                        <TableHead className="w-[100px] text-center">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -447,13 +456,25 @@ export function AdminDashboard() {
                                                 <TooltipProvider>
                                                  <>
                                                     <TableRow>
-                                                        <TableCell className="font-mono text-xs max-w-xs truncate">{user.wallet}</TableCell>
+                                                        <TableCell className="font-mono text-xs max-w-xs truncate">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="truncate">{user.wallet}</span>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopyToClipboard(user.wallet)}>
+                                                                            <Copy className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent><p>Copy Address</p></TooltipContent>
+                                                                </Tooltip>
+                                                            </div>
+                                                        </TableCell>
                                                         <TableCell className="text-right font-semibold">{user.balance.toLocaleString()}</TableCell>
                                                         <TableCell className="text-center">
                                                             <CollapsibleTrigger asChild>
-                                                                <Button variant="ghost" size="sm" disabled={user.transactions.length === 0}>
-                                                                    <ChevronsUpDown className="h-4 w-4" />
-                                                                    <span className="sr-only">Toggle history</span>
+                                                                <Button variant="outline" size="sm" disabled={user.transactions.length === 0}>
+                                                                    <View className="h-4 w-4 mr-2" />
+                                                                    View
                                                                 </Button>
                                                             </CollapsibleTrigger>
                                                         </TableCell>
@@ -764,3 +785,5 @@ export function AdminDashboard() {
     );
 
 }
+
+    
