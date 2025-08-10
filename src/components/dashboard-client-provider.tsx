@@ -10,6 +10,8 @@ import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedT
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, HARD_CAP } from "@/config";
 import type { PresaleInfo } from "@/services/presale-info-service";
+import { v4 as uuidv4 } from 'uuid';
+
 
 export type Transaction = {
   id: string; // Signature or temp ID
@@ -188,12 +190,12 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
   }, [publicKey, toast]);
 
-  const confirmAndFinalizeTransaction = useCallback(async (tx: Transaction) => {
+  const confirmAndFinalizeTransaction = useCallback(async (tx: Transaction, signature: string) => {
     if (!tx.blockhash || !tx.lastValidBlockHeight) return;
 
     try {
         const confirmation = await connection.confirmTransaction({
-            signature: tx.id,
+            signature: signature,
             blockhash: tx.blockhash,
             lastValidBlockHeight: tx.lastValidBlockHeight
         }, 'confirmed');
@@ -239,9 +241,9 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     
     setIsLoadingPurchase(true);
 
-    const tempId = `tx_${Date.now()}`;
+    const txId = `${publicKey.toBase58()}-${Date.now()}`;
     let newTx: Transaction = { 
-        id: tempId,
+        id: txId,
         amountExn: exnAmount, 
         paidAmount, 
         paidCurrency: currency, 
@@ -250,11 +252,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     };
     
     updateTransactionInState(newTx);
+    await persistTransaction(newTx);
 
     let signature: TransactionSignature | null = null;
-    let blockhash: string | null = null;
-    let lastValidBlockHeight: number | null = null;
-
+    
     try {
         const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
         const instructions: TransactionInstruction[] = [];
@@ -295,8 +296,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         }
         
         const latestBlockhash = await connection.getLatestBlockhash();
-        blockhash = latestBlockhash.blockhash;
-        lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
+        const blockhash = latestBlockhash.blockhash;
+        const lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
 
         const message = new TransactionMessage({
             payerKey: publicKey,
@@ -313,8 +314,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         signature = await sendTransaction(transaction, connection);
         
-        newTx = {...newTx, id: signature, blockhash, lastValidBlockHeight};
-        updateTransactionInState(newTx);
+        newTx = {...newTx, blockhash, lastValidBlockHeight};
+        updateTransactionInState(newTx); // Visually update with blockhash info
         await persistTransaction(newTx); // Persist pending transaction immediately
 
         toast({
@@ -324,7 +325,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         });
 
         // Start polling for confirmation without blocking UI
-        confirmAndFinalizeTransaction(newTx);
+        confirmAndFinalizeTransaction(newTx, signature);
         
     } catch (error: any) {
         console.error("Transaction failed:", error);
@@ -341,9 +342,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         } else if (error.message) {
              failureReason = error.message;
         }
-
-        const finalId = signature || tempId;
-        const failedTx: Transaction = { ...newTx, id: finalId, status: 'Failed', failureReason, blockhash: blockhash, lastValidBlockHeight: lastValidBlockHeight };
+        
+        const failedTx: Transaction = { ...newTx, status: 'Failed', failureReason };
         
         updateTransactionInState(failedTx);
         await persistTransaction(failedTx);
@@ -359,52 +359,18 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, persistTransaction, confirmAndFinalizeTransaction]);
   
   const retryTransaction = useCallback(async (tx: Transaction) => {
-    if (tx.id.startsWith('tx_') || !tx.blockhash || !tx.lastValidBlockHeight) {
-        toast({ title: "Retry Unavailable", description: "This transaction cannot be retried yet.", variant: "destructive" });
+    if (tx.status !== 'Pending' || tx.id.startsWith('tx_')) {
+        toast({ title: "Retry Unavailable", description: "This transaction cannot be retried.", variant: "destructive" });
         return;
     }
-
-    setIsLoadingPurchase(true);
-    toast({ title: "Retrying Transaction...", description: "Re-checking confirmation status..."});
     
-    try {
-        const confirmationPromise = connection.confirmTransaction({
-          signature: tx.id,
-          blockhash: tx.blockhash,
-          lastValidBlockHeight: tx.lastValidBlockHeight
-        }, 'confirmed');
+    // We can't know the signature if it wasn't captured, but we can re-check our db record
+    // This will mostly be for checking confirmation status. The actual on-chain retry isn't feasible here.
+    toast({ title: "Checking status...", description: "Re-checking latest status of your transaction."});
+    await fetchDashboardData();
 
-        // Shorter timeout for retry
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Retry confirmation timed out.")), 30000));
 
-        const confirmation = await Promise.race([confirmationPromise, timeoutPromise]);
-        
-        if ((confirmation as any).value.err) {
-            throw new Error(`Transaction failed to confirm on retry: ${JSON.stringify((confirmation as any).value.err)}`);
-        }
-
-        const completedTx: Transaction = { ...tx, status: 'Completed' };
-        updateTransactionInState(completedTx);
-        await persistTransaction(completedTx);
-        
-        toast({ title: "Retry Successful!", description: "Your transaction has been confirmed.", variant: "success" });
-
-    } catch (error: any) {
-        console.error("Retry failed:", error);
-        // Don't immediately fail the transaction on retry timeout, just inform the user
-        if (error.message.includes("timed out")) {
-             toast({ title: "Retry Timed Out", description: "Still pending. Please check Solscan or try again in a moment.", variant: "destructive" });
-        } else {
-            const failedTx: Transaction = { ...tx, status: 'Failed', failureReason: error.message };
-            updateTransactionInState(failedTx);
-            await persistTransaction(failedTx);
-            toast({ title: "Transaction Failed", description: error.message, variant: "destructive" });
-        }
-    } finally {
-        setIsLoadingPurchase(false);
-    }
-
-  }, [connection, toast, updateTransactionInState, persistTransaction]);
+  }, [toast, fetchDashboardData]);
   
    // Effect to auto-fail pending transactions after 5 minutes
   useEffect(() => {
@@ -421,7 +387,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
                 persistTransaction(failedTx);
                  toast({
                     title: "Transaction Timed Out",
-                    description: `Transaction ${tx.id.substring(0,8)}... has been marked as failed.`,
+                    description: `Transaction has been marked as failed.`,
                     variant: "destructive",
                 });
             }
@@ -456,3 +422,5 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
+
+    

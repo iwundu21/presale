@@ -6,7 +6,7 @@ export async function POST(request: Request) {
     try {
         const { userKey, exnAmount, transaction } = await request.json();
 
-        if (!userKey || typeof exnAmount !== 'number' || exnAmount <= 0 || !transaction) {
+        if (!userKey || !transaction || !transaction.id) {
             return NextResponse.json({ message: 'Invalid input' }, { status: 400 });
         }
 
@@ -17,11 +17,14 @@ export async function POST(request: Request) {
                 create: { wallet: userKey, balance: 0 }
             });
 
+            // Use upsert to handle both creation of new pending tx and update of its status
             await tx.transaction.upsert({
                 where: { id: transaction.id },
                 update: {
                     status: transaction.status,
                     failureReason: transaction.failureReason,
+                    blockhash: transaction.blockhash,
+                    lastValidBlockHeight: transaction.lastValidBlockHeight,
                 },
                 create: {
                     id: transaction.id,
@@ -39,15 +42,25 @@ export async function POST(request: Request) {
             
             let updatedBalance = user.balance;
             if (transaction.status === 'Completed') {
-                const updatedUser = await tx.user.update({
-                    where: { wallet: userKey },
-                    data: {
-                        balance: {
-                            increment: exnAmount
+                 // Only increment balance on completion
+                 const existingTx = await tx.transaction.findUnique({ where: { id: transaction.id }});
+
+                 // Check if balance was already added for this tx to prevent double counting
+                 if(existingTx && !existingTx.balanceAdded) {
+                    const updatedUser = await tx.user.update({
+                        where: { wallet: userKey },
+                        data: {
+                            balance: {
+                                increment: exnAmount
+                            }
                         }
-                    }
-                });
-                updatedBalance = updatedUser.balance;
+                    });
+                    await tx.transaction.update({
+                        where: { id: transaction.id },
+                        data: { balanceAdded: true }
+                    });
+                    updatedBalance = updatedUser.balance;
+                 }
             }
 
             const totalExnSold = await tx.user.aggregate({
@@ -62,7 +75,7 @@ export async function POST(request: Request) {
             });
 
             return {
-                message: 'Purchase successful',
+                message: 'Purchase recorded',
                 newBalance: updatedBalance,
                 newTotalSold: totalExnSold._sum.balance || 0,
                 transactions: userTransactions,
@@ -76,3 +89,5 @@ export async function POST(request: Request) {
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }
+
+    
