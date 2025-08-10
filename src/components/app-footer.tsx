@@ -39,7 +39,7 @@ export function AppFooter() {
                         <X className="h-5 w-5" />
                         <span className="text-xs">X</span>
                     </a>
-                    <a href="#" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-muted-foreground hover:text-white transition-colors">
+                    <a href="https://discord.gg/v8MpYYFdP8" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-muted-foreground hover:text-white transition-colors">
                         <DiscordIcon className="h-5 w-5" />
                         <span className="text-xs">Discord</span>
                     </a>
