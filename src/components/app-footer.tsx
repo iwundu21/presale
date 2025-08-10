@@ -43,7 +43,7 @@ export function AppFooter() {
                         <DiscordIcon className="h-5 w-5" />
                         <span className="text-xs">Discord</span>
                     </a>
-                    <a href="#" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-muted-foreground hover:text-white transition-colors">
+                    <a href="https://t.me/Exnusprotocol" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-muted-foreground hover:text-white transition-colors">
                         <Send className="h-5 w-5" />
                         <span className="text-xs">Telegram</span>
                     </a>
