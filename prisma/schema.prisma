@@ -2,38 +2,41 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["accelerate"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
+  id           String        @id @default(cuid())
   wallet       String        @unique
-  balance      Float
+  balance      Float         @default(0)
   transactions Transaction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 
 model Transaction {
-  id                   String   @id @unique
+  id                   String   @id
+  user                 User     @relation(fields: [userWallet], references: [wallet])
+  userWallet           String
   amountExn            Float
   paidAmount           Float
   paidCurrency         String
   date                 DateTime
-  status               String
+  status               String // "Completed", "Pending", "Failed"
   failureReason        String?
   blockhash            String?
   lastValidBlockHeight Int?
-  user                 User     @relation(fields: [userWallet], references: [wallet])
-  userWallet           String
+
+  @@index([userWallet])
 }
 
 model Config {
-  id    Int    @id @default(autoincrement())
-  key   String @unique
+  key   String @id
   value String
 }
