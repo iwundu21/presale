@@ -1,22 +1,7 @@
 
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
+import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
-
-const dbPath = path.join(process.cwd(), 'src', 'data', 'db.json');
-
-async function readDb() {
-    try {
-        const data = await fs.readFile(dbPath, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            return { totalExnSold: 0, users: {} };
-        }
-        throw error;
-    }
-}
 
 export async function GET(request: NextRequest) {
     try {
@@ -27,10 +12,27 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ message: 'User key is required' }, { status: 400 });
         }
 
-        const db = await readDb();
-        const userData = db.users[userKey] || { balance: 0, transactions: [] };
+        const user = await prisma.user.findUnique({
+            where: {
+                wallet: userKey,
+            },
+            include: {
+                transactions: {
+                    orderBy: {
+                        date: 'desc',
+                    }
+                }
+            }
+        });
+
+        if (!user) {
+            return NextResponse.json({ balance: 0, transactions: [] }, { status: 200 });
+        }
         
-        return NextResponse.json(userData, { status: 200 });
+        return NextResponse.json({
+            balance: user.balance,
+            transactions: user.transactions
+        }, { status: 200 });
 
     } catch (error) {
         console.error('API User-Data Error:', error);

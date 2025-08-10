@@ -1,35 +1,32 @@
 
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
-import { withLock } from '@/lib/file-lock';
+import { prisma } from '@/lib/prisma';
 
-const dbPath = path.join(process.cwd(), 'src', 'data', 'db.json');
-
-// Helper to read the entire DB
-async function readDb() {
-    try {
-        const data = await fs.readFile(dbPath, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            const defaultEndDate = new Date();
-            defaultEndDate.setDate(defaultEndDate.getDate() + 30);
-            return { presaleEndDate: defaultEndDate.toISOString() };
-        }
-        throw error;
+async function getPresaleEndDate() {
+    const config = await prisma.config.findUnique({
+        where: { key: 'presaleEndDate' }
+    });
+    if (config && config.value) {
+        return config.value;
     }
+    const defaultEndDate = new Date();
+    defaultEndDate.setDate(defaultEndDate.getDate() + 30);
+    return defaultEndDate.toISOString();
 }
 
-// Helper to write the entire DB
-async function writeDb(data: any) {
-    await fs.writeFile(dbPath, JSON.stringify(data, null, 2), 'utf-8');
+async function setPresaleEndDate(endDate: string) {
+    await prisma.config.upsert({
+        where: { key: 'presaleEndDate' },
+        update: { value: endDate },
+        create: { key: 'presaleEndDate', value: endDate }
+    });
 }
+
 
 export async function GET() {
     try {
-        const db = await readDb();
-        return NextResponse.json({ presaleEndDate: db.presaleEndDate });
+        const presaleEndDate = await getPresaleEndDate();
+        return NextResponse.json({ presaleEndDate });
     } catch (error) {
         console.error('API Presale-Date GET Error:', error);
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
@@ -43,18 +40,12 @@ export async function POST(request: Request) {
         if (!presaleEndDate || isNaN(new Date(presaleEndDate).getTime())) {
             return NextResponse.json({ message: 'Invalid date format provided.' }, { status: 400 });
         }
-
-        let updatedEndDate;
-        await withLock(async () => {
-            const db = await readDb();
-            db.presaleEndDate = presaleEndDate;
-            await writeDb(db);
-            updatedEndDate = db.presaleEndDate;
-        });
+        
+        await setPresaleEndDate(presaleEndDate);
         
         return NextResponse.json({ 
             message: 'Presale end date updated successfully',
-            presaleEndDate: updatedEndDate,
+            presaleEndDate,
         }, { status: 200 });
 
     } catch (error) {

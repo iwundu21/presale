@@ -1,44 +1,32 @@
 
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
-import { withLock } from '@/lib/file-lock';
+import { prisma } from '@/lib/prisma';
 
-const dbPath = path.join(process.cwd(), 'src', 'data', 'db.json');
-
-async function readDb() {
-    try {
-        const data = await fs.readFile(dbPath, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            // Default structure if db.json doesn't exist
-            return { 
-                totalExnSold: 0, 
-                users: {},
-                presaleInfo: {
-                    seasonName: "Early Stage",
-                    tokenPrice: 0.09
-                },
-                isPresaleActive: true
-            };
-        }
-        throw error;
-    }
+async function getConfig(key: string, defaultValue: any) {
+    const config = await prisma.config.findUnique({ where: { key }});
+    return config ? JSON.parse(config.value) : defaultValue;
 }
 
-async function writeDb(data: any) {
-    await fs.writeFile(dbPath, JSON.stringify(data, null, 2), 'utf-8');
+async function setConfig(key: string, value: any) {
+     await prisma.config.upsert({
+        where: { key },
+        update: { value: JSON.stringify(value) },
+        create: { key, value: JSON.stringify(value) },
+    });
 }
-
 
 export async function GET() {
     try {
-        const db = await readDb();
+        const [totalExnSold, presaleInfo, isPresaleActive] = await Promise.all([
+            prisma.user.aggregate({ _sum: { balance: true } }).then(res => res._sum.balance || 0),
+            getConfig('presaleInfo', { seasonName: "Early Stage", tokenPrice: 0.09 }),
+            getConfig('isPresaleActive', true)
+        ]);
+
         return NextResponse.json({ 
-            totalExnSold: db.totalExnSold || 0,
-            presaleInfo: db.presaleInfo || { seasonName: "Early Stage", tokenPrice: 0.09 },
-            isPresaleActive: db.isPresaleActive === undefined ? true : db.isPresaleActive,
+            totalExnSold,
+            presaleInfo,
+            isPresaleActive,
         }, { status: 200 });
     } catch (error) {
         console.error('API Presale-Data Error:', error);
@@ -49,32 +37,25 @@ export async function GET() {
 export async function POST(request: Request) {
      try {
         const { presaleInfo, isPresaleActive } = await request.json();
-        let updatedData;
-
-        await withLock(async () => {
-            const db = await readDb();
-
-            if (presaleInfo) {
-                if (!presaleInfo.seasonName || typeof presaleInfo.tokenPrice !== 'number') {
-                     throw new Error('Invalid input for presale info');
-                }
-                db.presaleInfo = presaleInfo;
+        
+        if (presaleInfo) {
+            if (!presaleInfo.seasonName || typeof presaleInfo.tokenPrice !== 'number') {
+                 return NextResponse.json({ message: 'Invalid input for presale info' }, { status: 400 });
             }
+            await setConfig('presaleInfo', presaleInfo);
+        }
 
-            if (typeof isPresaleActive === 'boolean') {
-                db.isPresaleActive = isPresaleActive;
-            }
+        if (typeof isPresaleActive === 'boolean') {
+            await setConfig('isPresaleActive', isPresaleActive);
+        }
 
-            await writeDb(db);
-            updatedData = {
-                presaleInfo: db.presaleInfo,
-                isPresaleActive: db.isPresaleActive,
-            };
-        });
+        const updatedPresaleInfo = await getConfig('presaleInfo', { seasonName: "Early Stage", tokenPrice: 0.09 });
+        const updatedIsPresaleActive = await getConfig('isPresaleActive', true);
         
         return NextResponse.json({ 
             message: 'Presale data updated successfully',
-            ...updatedData,
+            presaleInfo: updatedPresaleInfo,
+            isPresaleActive: updatedIsPresaleActive,
         }, { status: 200 });
 
     } catch (error: any) {

@@ -1,25 +1,21 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
-import { withLock } from '@/lib/file-lock';
+import { prisma } from '@/lib/prisma';
 
-const dbPath = path.join(process.cwd(), 'src', 'data', 'db.json');
 
-async function readDb() {
-    try {
-        const data = await fs.readFile(dbPath, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            return {};
-        }
-        throw error;
-    }
+async function getAdminPasscode(): Promise<string | null> {
+    const config = await prisma.config.findUnique({
+        where: { key: 'adminPasscode' }
+    });
+    return config ? config.value : process.env.ADMIN_PASSCODE || null;
 }
 
-async function writeDb(data: any) {
-    await fs.writeFile(dbPath, JSON.stringify(data, null, 2), 'utf-8');
+async function setAdminPasscode(passcode: string): Promise<void> {
+    await prisma.config.upsert({
+        where: { key: 'adminPasscode' },
+        update: { value: passcode },
+        create: { key: 'adminPasscode', value: passcode }
+    });
 }
 
 
@@ -31,32 +27,22 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ message: 'Current and new passcodes are required.' }, { status: 400 });
         }
 
-        await withLock(async () => {
-            const db = await readDb();
-            const correctPasscode = db.adminPasscode || process.env.ADMIN_PASSCODE;
+        const correctPasscode = await getAdminPasscode();
 
-            if (!correctPasscode) {
-                throw new Error('Admin passcode is not configured.');
-            }
+        if (!correctPasscode) {
+             return NextResponse.json({ message: 'Admin passcode is not configured.' }, { status: 500 });
+        }
 
-            if (currentPasscode !== correctPasscode) {
-                throw new Error('Incorrect current passcode.');
-            }
-
-            db.adminPasscode = newPasscode;
-            await writeDb(db);
-        });
+        if (currentPasscode !== correctPasscode) {
+             return NextResponse.json({ message: 'Incorrect current passcode.' }, { status: 403 });
+        }
+        
+        await setAdminPasscode(newPasscode);
 
         return NextResponse.json({ message: 'Passcode updated successfully.' }, { status: 200 });
 
     } catch (error: any) {
         console.error('API Update-Passcode Error:', error);
-        if (error.message.includes('not configured')) {
-             return NextResponse.json({ message: error.message }, { status: 500 });
-        }
-        if (error.message.includes('Incorrect current passcode')) {
-             return NextResponse.json({ message: error.message }, { status: 403 });
-        }
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }

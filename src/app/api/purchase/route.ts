@@ -1,27 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
-import { withLock } from '@/lib/file-lock';
-
-const dbPath = path.join(process.cwd(), 'src', 'data', 'db.json');
-
-async function readDb() {
-    try {
-        const data = await fs.readFile(dbPath, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        // If the file doesn't exist, start with a default structure
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            return { totalExnSold: 0, users: {} };
-        }
-        throw error;
-    }
-}
-
-async function writeDb(data: any) {
-    await fs.writeFile(dbPath, JSON.stringify(data, null, 2), 'utf-8');
-}
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: Request) {
     try {
@@ -31,43 +10,66 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Invalid input' }, { status: 400 });
         }
 
-        let responseData;
-        await withLock(async () => {
-            const db = await readDb();
+        const result = await prisma.$transaction(async (tx) => {
+            const user = await tx.user.upsert({
+                where: { wallet: userKey },
+                update: {},
+                create: { wallet: userKey, balance: 0 }
+            });
 
-            if (!db.users[userKey]) {
-                 db.users[userKey] = {
-                    balance: 0,
-                    transactions: []
-                };
-            }
-
-            // Add or update transaction
-            const existingTxIndex = db.users[userKey].transactions.findIndex((t: any) => t.id === transaction.id);
-            if (existingTxIndex > -1) {
-                db.users[userKey].transactions[existingTxIndex] = transaction;
-            } else {
-                db.users[userKey].transactions.unshift(transaction);
-            }
-
-            // Only add to balance and total sold for new, completed transactions
-            if (existingTxIndex === -1 && transaction.status === 'Completed') {
-                db.users[userKey].balance = (db.users[userKey].balance || 0) + exnAmount;
-                db.totalExnSold = (db.totalExnSold || 0) + exnAmount;
-            }
-
-
-            await writeDb(db);
+            await tx.transaction.upsert({
+                where: { id: transaction.id },
+                update: {
+                    status: transaction.status,
+                    failureReason: transaction.failureReason,
+                },
+                create: {
+                    id: transaction.id,
+                    amountExn: transaction.amountExn,
+                    paidAmount: transaction.paidAmount,
+                    paidCurrency: transaction.paidCurrency,
+                    date: new Date(transaction.date),
+                    status: transaction.status,
+                    failureReason: transaction.failureReason,
+                    blockhash: transaction.blockhash,
+                    lastValidBlockHeight: transaction.lastValidBlockHeight,
+                    userWallet: user.wallet,
+                }
+            });
             
-            responseData = {
+            let updatedBalance = user.balance;
+            if (transaction.status === 'Completed') {
+                const updatedUser = await tx.user.update({
+                    where: { wallet: userKey },
+                    data: {
+                        balance: {
+                            increment: exnAmount
+                        }
+                    }
+                });
+                updatedBalance = updatedUser.balance;
+            }
+
+            const totalExnSold = await tx.user.aggregate({
+                _sum: {
+                    balance: true
+                }
+            });
+
+            const userTransactions = await tx.transaction.findMany({
+                where: { userWallet: userKey },
+                orderBy: { date: 'desc' }
+            });
+
+            return {
                 message: 'Purchase successful',
-                newBalance: db.users[userKey].balance,
-                newTotalSold: db.totalExnSold,
-                transactions: db.users[userKey].transactions,
+                newBalance: updatedBalance,
+                newTotalSold: totalExnSold._sum.balance || 0,
+                transactions: userTransactions,
             };
         });
-        
-        return NextResponse.json(responseData, { status: 200 });
+
+        return NextResponse.json(result, { status: 200 });
 
     } catch (error) {
         console.error('API Purchase Error:', error);

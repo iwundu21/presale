@@ -1,31 +1,23 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
+import { prisma } from '@/lib/prisma';
 
-const dbPath = path.join(process.cwd(), 'src', 'data', 'db.json');
-
-async function readDb() {
-    try {
-        const data = await fs.readFile(dbPath, 'utf-8');
-        return JSON.parse(data);
-    } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            return { adminPasscode: null };
-        }
-        throw error;
-    }
+async function getAdminPasscode(): Promise<string | null> {
+    const config = await prisma.config.findUnique({
+        where: { key: 'adminPasscode' }
+    });
+    // Fallback to env var, but also allow a default for first-time setup
+    return config ? config.value : (process.env.ADMIN_PASSCODE || '203020');
 }
+
 
 export async function POST(request: NextRequest) {
     try {
         const { passcode } = await request.json();
-        const db = await readDb();
+        const correctPasscode = await getAdminPasscode();
         
-        const correctPasscode = db.adminPasscode || process.env.ADMIN_PASSCODE;
-
         if (!correctPasscode) {
-            console.error("ADMIN_PASSCODE is not set in db.json or environment variables.");
+            console.error("ADMIN_PASSCODE is not set in DB or environment variables.");
             return NextResponse.json({ message: 'Server configuration error.' }, { status: 500 });
         }
 
