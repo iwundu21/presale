@@ -10,6 +10,7 @@ import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedT
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
 import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, HARD_CAP } from "@/config";
 import type { PresaleInfo } from "@/services/presale-info-service";
+import { v4 as uuidv4 } from 'uuid';
 
 export type Transaction = {
   id: string; // Signature or temp ID
@@ -161,10 +162,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   
   const updateTransactionInState = useCallback((tx: Transaction) => {
      setTransactions(prev => {
-        const txId = tx.id.startsWith('temp_') ? tx.id : tx.id; // Use consistent ID
-        // Find if a transaction with a temp ID exists, and replace it with the one with the real signature.
-        const existingIndex = prev.findIndex(t => t.id === txId || (tx.id.startsWith('temp_') && t.id.startsWith('temp_') && t.id.split('_')[1] === tx.id.split('_')[1]));
-
+        const existingIndex = prev.findIndex(t => t.id === tx.id);
+        
         let newTxs;
         if (existingIndex !== -1) {
             newTxs = [...prev];
@@ -260,9 +259,9 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     
     setIsLoadingPurchase(true);
 
-    const tempId = `temp_${publicKey.toBase58()}_${Date.now()}`;
+    const txId = `${publicKey.toBase58().slice(0, 5)}-${uuidv4()}`;
     let newTx: Transaction = { 
-        id: tempId,
+        id: txId,
         amountExn: exnAmount, 
         paidAmount, 
         paidCurrency: currency, 
@@ -333,10 +332,20 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         signature = await sendTransaction(transaction, connection);
         
-        newTx = {...newTx, blockhash, lastValidBlockHeight};
-        const pendingTxWithSig: Transaction = { ...newTx, id: signature };
+        // Replace temp ID with real signature and update state
+        const pendingTxWithSig: Transaction = { ...newTx, id: signature, blockhash, lastValidBlockHeight };
         
-        updateTransactionInState(pendingTxWithSig);
+        // This will find the original tx by its temp ID and replace it
+        setTransactions(prev => {
+            const existingIndex = prev.findIndex(t => t.id === newTx.id);
+            if (existingIndex > -1) {
+                const updatedTxs = [...prev];
+                updatedTxs[existingIndex] = pendingTxWithSig;
+                return updatedTxs;
+            }
+            return [pendingTxWithSig, ...prev];
+        });
+
         await persistTransaction(pendingTxWithSig); 
 
         toast({
@@ -380,18 +389,21 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, persistTransaction, confirmAndFinalizeTransaction]);
   
   const retryTransaction = useCallback(async (tx: Transaction) => {
-    if (tx.status !== 'Pending' || tx.id.startsWith('temp_')) {
-        toast({ title: "Retry Unavailable", description: "This transaction cannot be retried.", variant: "destructive" });
+    if (tx.status !== 'Pending' || tx.id.startsWith('tx_')) {
+        toast({ title: "Retry Unavailable", description: "This transaction cannot be retried from here.", variant: "destructive" });
         return;
     }
     
-    // We can't know the signature if it wasn't captured, but we can re-check our db record
-    // This will mostly be for checking confirmation status. The actual on-chain retry isn't feasible here.
     toast({ title: "Checking status...", description: "Re-checking latest status of your transaction."});
-    await fetchDashboardData();
+    
+    if (tx.blockhash && tx.lastValidBlockHeight && !tx.id.startsWith('temp_')) {
+        confirmAndFinalizeTransaction(tx, tx.id);
+    } else {
+        // Fallback for older pending txs or if something went wrong
+        await fetchDashboardData();
+    }
 
-
-  }, [toast, fetchDashboardData]);
+  }, [toast, fetchDashboardData, confirmAndFinalizeTransaction]);
   
    // Effect to auto-fail pending transactions after 5 minutes
   useEffect(() => {
@@ -408,7 +420,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
                 persistTransaction(failedTx);
                  toast({
                     title: "Transaction Timed Out",
-                    description: `Transaction has been marked as failed.`,
+                    description: `A pending transaction has been marked as failed.`,
                     variant: "destructive",
                 });
             }
@@ -443,3 +455,5 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
+
+    

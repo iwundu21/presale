@@ -45,7 +45,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
         return txTime > fiveMinutesAgo;
     }
 
-    const isLinkDisabled = tx.id.startsWith('tx_');
+    const isLinkDisabled = tx.id.startsWith('tx_') || tx.id.includes('-');
 
     return (
         <TableRow key={tx.id}>
@@ -136,7 +136,7 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
         const fiveMinutesAgo = new Date().getTime() - (5 * 60 * 1000);
         return txTime > fiveMinutesAgo;
     }
-    const isLinkDisabled = tx.id.startsWith('tx_');
+    const isLinkDisabled = tx.id.startsWith('tx_') || tx.id.includes('-');
 
     return (
         <div className="p-4 bg-muted/30 rounded-lg space-y-3">
@@ -234,3 +234,5 @@ export function TransactionHistoryTable() {
         </div>
     );
 }
+
+    
