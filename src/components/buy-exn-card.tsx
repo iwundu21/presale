@@ -114,7 +114,8 @@ export function BuyExnCard() {
   };
 
   useEffect(() => {
-    setReceiveAmount(calculateReceiveAmount(payAmount, currency, solPrice));
+    const newReceiveAmount = calculateReceiveAmount(payAmount, currency, solPrice);
+    setReceiveAmount(newReceiveAmount);
   }, [payAmount, currency, solPrice, exnPrice]);
 
 
@@ -164,7 +165,8 @@ export function BuyExnCard() {
     const value = e.target.value;
      if (value === "" || /^[0-9]*\.?[0-9]*$/.test(value)) {
         setReceiveAmount(value);
-        setPayAmount(calculatePayAmount(value, currency, solPrice) || "");
+        const newPayAmount = calculatePayAmount(value, currency, solPrice) || "";
+        setPayAmount(newPayAmount);
     }
   };
   
@@ -293,4 +295,5 @@ export function BuyExnCard() {
   );
 }
 
+    
     
