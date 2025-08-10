@@ -85,4 +85,11 @@ body {
     opacity: 0.15;
     z-index: -1;
   }
+  .dashboard-bg {
+    background-image: url('/bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
 }

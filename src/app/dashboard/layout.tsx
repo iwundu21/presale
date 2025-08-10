@@ -5,7 +5,7 @@ export default function DashboardLayout({
     children: React.ReactNode
 }) {
     return (
-        <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-grow container mx-auto p-4 sm:p-6 lg:p-8 dashboard-bg">
             {children}
         </main>
     )
