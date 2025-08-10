@@ -2,28 +2,33 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-async function getConfig(key: string, defaultValue: any) {
-    const config = await prisma.config.findUnique({ where: { key }});
-    if (!config) return defaultValue;
-
-    try {
-        // Only parse if it's a string; otherwise, return the value directly.
-        if (typeof config.value === 'string') {
-            return JSON.parse(config.value);
-        }
-        return config.value;
-    } catch {
-        return defaultValue;
-    }
-}
-
 async function setConfig(key: string, value: any) {
      await prisma.config.upsert({
         where: { key },
         update: { value: JSON.stringify(value) },
         create: { key, value: JSON.stringify(value) },
     });
+    return value;
 }
+
+async function getConfig(key: string, defaultValue: any) {
+    const config = await prisma.config.findUnique({ where: { key }});
+    if (!config) {
+        // If the key doesn't exist, create it with the default value
+        return await setConfig(key, defaultValue);
+    }
+
+    try {
+        // The value from DB is always a string, so parse it.
+        return JSON.parse(config.value);
+    } catch {
+        // If parsing fails, it might be an old value that wasn't a string.
+        // In that case, we can probably assume it's the value itself,
+        // but it's safer to return the default.
+        return defaultValue;
+    }
+}
+
 
 export async function GET() {
     try {
