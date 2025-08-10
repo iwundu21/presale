@@ -452,21 +452,22 @@ export function AdminDashboard() {
                                        ))
                                     ) : users.length > 0 ? (
                                         users.map(user => (
-                                            <Collapsible asChild key={user.wallet} tag="tbody">
-                                                <TooltipProvider>
-                                                 <>
+                                            <Collapsible asChild key={user.wallet}>
+                                                <React.Fragment>
                                                     <TableRow>
                                                         <TableCell className="font-mono text-xs max-w-xs truncate">
                                                             <div className="flex items-center gap-2">
                                                                 <span className="truncate">{user.wallet}</span>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopyToClipboard(user.wallet)}>
-                                                                            <Copy className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent><p>Copy Address</p></TooltipContent>
-                                                                </Tooltip>
+                                                                <TooltipProvider>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopyToClipboard(user.wallet)}>
+                                                                                <Copy className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent><p>Copy Address</p></TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
                                                             </div>
                                                         </TableCell>
                                                         <TableCell className="text-right font-semibold">{user.balance.toLocaleString()}</TableCell>
@@ -485,6 +486,7 @@ export function AdminDashboard() {
                                                                 <div className="p-4">
                                                                     <h4 className="font-semibold mb-2">Transaction History ({user.transactions.length})</h4>
                                                                     {user.transactions.length > 0 ? (
+                                                                    <TooltipProvider>
                                                                         <Table>
                                                                             <TableHeader>
                                                                                 <TableRow>
@@ -510,7 +512,7 @@ export function AdminDashboard() {
                                                                                         <TableCell>
                                                                                              <Tooltip>
                                                                                                 <TooltipTrigger asChild>
-                                                                                                    <Button variant="ghost" size="icon" className="h-8 w-8" disabled={tx.id.startsWith('tx_') || tx.paidCurrency === 'BONUS'} asChild>
+                                                                                                    <Button variant="ghost" size="icon" className="h-8 w-8" disabled={tx.id.startsWith('tx_') || tx.paidCurrency === 'BONUS' || tx.id.startsWith('bonus-')} asChild>
                                                                                                         <a href={`https://solscan.io/tx/${tx.id}`} target="_blank" rel="noopener noreferrer" >
                                                                                                             <ExternalLink className="h-4 w-4" />
                                                                                                         </a>
@@ -525,6 +527,7 @@ export function AdminDashboard() {
                                                                                 ))}
                                                                             </TableBody>
                                                                         </Table>
+                                                                    </TooltipProvider>
                                                                     ) : (
                                                                         <p className="text-sm text-muted-foreground text-center p-4">No transactions recorded for this user.</p>
                                                                     )}
@@ -532,8 +535,7 @@ export function AdminDashboard() {
                                                             </TableCell>
                                                         </tr>
                                                     </CollapsibleContent>
-                                                </>
-                                                </TooltipProvider>
+                                                </React.Fragment>
                                             </Collapsible>
                                         ))
                                     ) : (
