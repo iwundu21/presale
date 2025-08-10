@@ -2,7 +2,6 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { Bot, BrainCircuit, Rocket, ArrowRight, BadgePercent, Info, ChevronsRight } from "lucide-react";
-import Image from "next/image";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useState } from "react";
 import { PresaleCountdown } from "./presale-countdown";
@@ -136,11 +135,20 @@ export function LandingPage({ onConnect, isConnecting, presaleEndDate, presaleIn
           </div>
       </section>
       
-      {/* Image section */}
+      {/* Video section */}
       <section className="py-20">
-            <div className="container mx-auto">
-                <Image src="https://placehold.co/1200x500.png" alt="Exnus Vision" width={1200} height={500} className="rounded-lg shadow-2xl mx-auto" data-ai-hint="futuristic digital landscape" />
-            </div>
+        <div className="container mx-auto">
+          <video 
+              src="/bum.mp4" 
+              autoPlay 
+              loop 
+              muted 
+              playsInline
+              className="rounded-lg shadow-2xl mx-auto w-full max-w-[1200px]"
+          >
+              Your browser does not support the video tag.
+          </video>
+        </div>
       </section>
 
     </main>
