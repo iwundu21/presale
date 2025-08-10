@@ -1,12 +1,13 @@
 
 "use client";
 
-import { Flame } from "lucide-react";
+import { Flame, Gift } from "lucide-react";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
 import { HARD_CAP, SOFT_CAP } from "@/config";
 import { useDashboard } from "./dashboard-client-provider";
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 
 const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
     return new Intl.NumberFormat('en-US', {
@@ -88,6 +89,13 @@ export function PresaleProgressCard() {
                         Once the Soft Cap is reached, the token launch is guaranteed, regardless of the roadmap progress.
                     </p>
                  </div>
+                 <Alert className="border-accent/30 bg-accent/10 text-accent-foreground">
+                    <Gift className="h-5 w-5 text-accent" />
+                    <AlertTitle className="font-bold text-accent">Presale Bonus!</AlertTitle>
+                    <AlertDescription className="text-accent/90">
+                       All presale participants will receive a 3% bonus of their total purchased EXN tokens during the final token distribution.
+                    </AlertDescription>
+                </Alert>
             </div>
         </div>
     );
