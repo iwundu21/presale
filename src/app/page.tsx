@@ -6,49 +6,24 @@ import { useRouter } from 'next/navigation';
 import { useWallet } from "@solana/wallet-adapter-react";
 import { LandingPage } from "@/components/landing-page";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { getPresaleData, PresaleInfo } from "@/services/presale-info-service";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getPresaleEndDate } from "@/services/presale-date-service";
 
 export default function Home() {
   const { connected, connecting } = useWallet();
   const { setVisible } = useWalletModal();
   const router = useRouter();
-  const [presaleEndDate, setPresaleEndDate] = useState<Date | null>(null);
-  const [presaleInfo, setPresaleInfo] = useState<PresaleInfo | null>(null);
-  const [isPresaleActive, setIsPresaleActive] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Use static default data for the landing page to prevent fetching errors on initial load.
+  // The dynamic data will be fetched on the dashboard after wallet connection.
+  const presaleEndDate = new Date();
+  presaleEndDate.setDate(presaleEndDate.getDate() + 30);
+  const presaleInfo = { seasonName: "Early Stage", tokenPrice: 0.09 };
+  const isPresaleActive = true;
 
   useEffect(() => {
     document.title = "Exnus Presale";
-    setIsLoading(true);
-    
-    const fetchInitialData = async () => {
-        try {
-            const [date, data] = await Promise.all([
-              getPresaleEndDate(),
-              getPresaleData()
-            ]);
-            setPresaleEndDate(date);
-            setPresaleInfo(data.presaleInfo);
-            setIsPresaleActive(data.isPresaleActive);
-        } catch (error) {
-            console.error("Failed to load presale data", error);
-            // Set defaults on error
-             if (!presaleEndDate) {
-                const defaultEndDate = new Date();
-                defaultEndDate.setDate(defaultEndDate.getDate() + 30);
-                setPresaleEndDate(defaultEndDate);
-            }
-            if (!presaleInfo) {
-                setPresaleInfo({ seasonName: "Early Stage", tokenPrice: 0.09 });
-            }
-        } finally {
-             setIsLoading(false);
-        }
-    };
-
-    fetchInitialData();
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -61,7 +36,7 @@ export default function Home() {
     setVisible(true);
   };
   
-  if (isLoading || !presaleEndDate || !presaleInfo) {
+  if (isLoading) {
     return (
       <div className="flex-grow container mx-auto text-center py-20 lg:py-32 space-y-8">
           <Skeleton className="h-16 w-3/4 mx-auto" />
