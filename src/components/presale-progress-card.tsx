@@ -18,10 +18,8 @@ const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
 
 export function PresaleProgressCard() {
     const { totalExnSold, presaleInfo } = useDashboard();
-
     const exnPrice = presaleInfo?.tokenPrice || 0.09;
 
-    // Calculate derived values directly for instant updates
     const progress = totalExnSold > 0 && HARD_CAP > 0 ? Math.min((totalExnSold / HARD_CAP) * 100, 100) : 0;
     const totalSoldValue = totalExnSold * exnPrice;
     const softCapPosition = HARD_CAP > 0 ? (SOFT_CAP / HARD_CAP) * 100 : 0;
@@ -42,8 +40,8 @@ export function PresaleProgressCard() {
             <div className="space-y-4 pt-4">
                 <div className="relative pt-4">
                     <div className="flex items-center gap-3">
-                        <Progress value={progress} className="w-full h-3" />
-                        <span className="text-sm font-bold text-primary">{progress.toFixed(5)}%</span>
+                        <Progress value={progress} className="flex-grow h-3" />
+                        <span className="text-sm font-bold text-primary shrink-0">{progress.toFixed(5)}%</span>
                     </div>
                      {softCapPosition > 0 && (
                         <div className="absolute top-0" style={{ left: `${softCapPosition}%` }}>
