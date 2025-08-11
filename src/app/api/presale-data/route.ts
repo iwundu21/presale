@@ -1,27 +1,23 @@
 
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { firestoreAdmin } from '@/lib/firebase';
 
 const defaultPresaleInfo = { seasonName: "Early Stage", tokenPrice: 0.09 };
 
 export async function GET() {
     try {
-        const totalExnSoldResult = await prisma.user.aggregate({
-            _sum: { balance: true }
+        const usersSnapshot = await firestoreAdmin.collection('users').get();
+        let totalExnSold = 0;
+        usersSnapshot.forEach(doc => {
+            totalExnSold += doc.data().balance || 0;
         });
-        const totalExnSold = totalExnSoldResult._sum.balance || 0;
         
-        const presaleInfoConfig = await prisma.config.findUnique({
-            where: { key: 'presaleInfo' },
-        });
-        const presaleInfo = presaleInfoConfig ? (presaleInfoConfig.value as typeof defaultPresaleInfo) : defaultPresaleInfo;
-        
-        const isPresaleActiveConfig = await prisma.config.findUnique({
-             where: { key: 'isPresaleActive' },
-        });
-        const isPresaleActive = isPresaleActiveConfig ? (isPresaleActiveConfig.value as boolean) : true;
-        
+        const configRef = firestoreAdmin.collection('config');
+        const presaleInfoDoc = await configRef.doc('presaleInfo').get();
+        const isPresaleActiveDoc = await configRef.doc('isPresaleActive').get();
+
+        const presaleInfo = presaleInfoDoc.exists ? presaleInfoDoc.data() : defaultPresaleInfo;
+        const isPresaleActive = isPresaleActiveDoc.exists ? isPresaleActiveDoc.data()?.value : true;
 
         return NextResponse.json({ 
             totalExnSold,
@@ -38,32 +34,26 @@ export async function POST(request: Request) {
      try {
         const { presaleInfo, isPresaleActive } = await request.json();
         
+        const configRef = firestoreAdmin.collection('config');
+
         if (presaleInfo) {
             if (!presaleInfo.seasonName || typeof presaleInfo.tokenPrice !== 'number') {
                  return NextResponse.json({ message: 'Invalid input for presale info' }, { status: 400 });
             }
-            await prisma.config.upsert({
-                where: { key: 'presaleInfo' },
-                update: { value: presaleInfo as any },
-                create: { key: 'presaleInfo', value: presaleInfo as any }
-            });
+            await configRef.doc('presaleInfo').set(presaleInfo);
         }
 
         if (typeof isPresaleActive === 'boolean') {
-             await prisma.config.upsert({
-                where: { key: 'isPresaleActive' },
-                update: { value: isPresaleActive },
-                create: { key: 'isPresaleActive', value: isPresaleActive }
-            });
+             await configRef.doc('isPresaleActive').set({ value: isPresaleActive });
         }
 
-        const updatedPresaleInfoConfig = await prisma.config.findUnique({ where: { key: 'presaleInfo' } });
-        const updatedIsPresaleActiveConfig = await prisma.config.findUnique({ where: { key: 'isPresaleActive' } });
+        const updatedPresaleInfoDoc = await configRef.doc('presaleInfo').get();
+        const updatedIsPresaleActiveDoc = await configRef.doc('isPresaleActive').get();
         
         return NextResponse.json({ 
             message: 'Presale data updated successfully',
-            presaleInfo: updatedPresaleInfoConfig?.value || defaultPresaleInfo,
-            isPresaleActive: updatedIsPresaleActiveConfig?.value === undefined ? true : updatedIsPresaleActiveConfig.value,
+            presaleInfo: updatedPresaleInfoDoc.exists ? updatedPresaleInfoDoc.data() : defaultPresaleInfo,
+            isPresaleActive: updatedIsPresaleActiveDoc.exists ? updatedIsPresaleActiveDoc.data()?.value : true,
         }, { status: 200 });
 
     } catch (error: any) {

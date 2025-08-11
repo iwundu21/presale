@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { firestoreAdmin } from '@/lib/firebase';
 import { NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -11,33 +11,31 @@ export async function GET(request: NextRequest) {
         if (!userKey) {
             return NextResponse.json({ message: 'User key is required' }, { status: 400 });
         }
+        
+        const userRef = firestoreAdmin.collection('users').doc(userKey);
+        const userDoc = await userRef.get();
 
-        const user = await prisma.user.findUnique({
-            where: { wallet: userKey },
-            include: {
-                transactions: {
-                    orderBy: { date: 'desc' }
-                }
-            }
-        });
-
-        if (!user) {
-            // If user doesn't exist, create a new one to ensure consistency
-            const newUser = await prisma.user.create({
-                data: {
-                    wallet: userKey,
-                    balance: 0,
-                },
-            });
+        if (!userDoc.exists) {
+            await userRef.set({ balance: 0 });
             return NextResponse.json({
-                balance: newUser.balance,
+                balance: 0,
                 transactions: []
             }, { status: 200 });
         }
+
+        const transactionsSnapshot = await userRef.collection('transactions').orderBy('date', 'desc').get();
+        const transactions = transactionsSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                date: data.date.toDate(), // Convert Firestore Timestamp to JS Date
+            };
+        });
         
         return NextResponse.json({
-            balance: user.balance,
-            transactions: user.transactions
+            balance: userDoc.data()?.balance || 0,
+            transactions: transactions
         }, { status: 200 });
 
     } catch (error) {

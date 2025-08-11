@@ -1,22 +1,19 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { firestoreAdmin } from '@/lib/firebase';
 
 export async function POST(request: NextRequest) {
     try {
         const { passcode } = await request.json();
         
-        const passcodeConfig = await prisma.config.findUnique({
-            where: { key: 'adminPasscode' }
-        });
+        const passcodeRef = firestoreAdmin.collection('config').doc('adminPasscode');
+        const passcodeDoc = await passcodeRef.get();
 
-        const correctPasscode = passcodeConfig ? String(passcodeConfig.value) : process.env.ADMIN_PASSCODE || '203020';
-        
-        if (!correctPasscode) {
-            console.error("FATAL: Admin passcode is not set in DB, environment, or as a default.");
-            return NextResponse.json({ message: 'Server configuration error: No passcode set.' }, { status: 500 });
+        let correctPasscode = process.env.ADMIN_PASSCODE || '203020';
+        if (passcodeDoc.exists) {
+            correctPasscode = passcodeDoc.data()?.value;
         }
-
+        
         if (passcode === correctPasscode) {
             return NextResponse.json({ message: 'Verification successful' }, { status: 200 });
         } else {

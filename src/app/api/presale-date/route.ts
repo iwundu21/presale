@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { firestoreAdmin } from '@/lib/firebase';
 
 const getDefaultEndDate = () => {
     const d = new Date();
@@ -10,10 +10,8 @@ const getDefaultEndDate = () => {
 
 export async function GET() {
     try {
-        const presaleEndDateConfig = await prisma.config.findUnique({
-            where: { key: 'presaleEndDate' }
-        });
-        const presaleEndDate = presaleEndDateConfig ? (presaleEndDateConfig.value as string) : getDefaultEndDate();
+        const doc = await firestoreAdmin.collection('config').doc('presaleEndDate').get();
+        const presaleEndDate = doc.exists ? doc.data()?.value : getDefaultEndDate();
         
         return NextResponse.json({ presaleEndDate });
     } catch (error) {
@@ -30,11 +28,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Invalid date format provided.' }, { status: 400 });
         }
         
-        await prisma.config.upsert({
-            where: { key: 'presaleEndDate' },
-            update: { value: presaleEndDate },
-            create: { key: 'presaleEndDate', value: presaleEndDate }
-        });
+        await firestoreAdmin.collection('config').doc('presaleEndDate').set({ value: presaleEndDate });
         
         return NextResponse.json({ 
             message: 'Presale end date updated successfully',
