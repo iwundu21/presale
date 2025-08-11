@@ -43,7 +43,7 @@ export function PresaleProgressCard() {
                 <div className="relative pt-4">
                     <div className="flex items-center gap-3">
                         <Progress value={progress} className="w-full h-3" />
-                        <span className="text-sm font-bold text-primary">{progress.toFixed(2)}%</span>
+                        <span className="text-sm font-bold text-primary">{progress.toFixed(5)}%</span>
                     </div>
                      {softCapPosition > 0 && (
                         <div className="absolute top-0" style={{ left: `${softCapPosition}%` }}>
@@ -81,7 +81,7 @@ export function PresaleProgressCard() {
                     <AlertTitle className="font-bold text-accent">Presale Bonus!</AlertTitle>
                     <AlertDescription className="text-accent/90">
                        All presale participants will receive a 3% bonus of their total purchased EXN tokens during the final token distribution.
-                    </AlertDescription>
+                    </d/AlertDescription>
                 </Alert>
             </div>
         </div>
