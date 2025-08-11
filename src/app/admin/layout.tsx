@@ -34,6 +34,8 @@ export default function AdminLayout({
                 body: JSON.stringify({ passcode }),
             });
 
+            const data = await response.json();
+
             if (response.ok) {
                 setIsAuthenticated(true);
                 sessionStorage.setItem('isAdminAuthenticated', 'true');
@@ -43,19 +45,13 @@ export default function AdminLayout({
                     variant: "success",
                 });
             } else {
-                let errorData;
-                try {
-                    errorData = await response.json();
-                } catch (e) {
-                     throw new Error("An unexpected server error occurred.");
-                }
-                throw new Error(errorData.message || "Incorrect passcode or server error.");
+                throw new Error(data.message || "Incorrect passcode or server error.");
             }
 
         } catch (error: any) {
             toast({
                 title: "Authentication Failed",
-                description: error.message,
+                description: error.message || "An unexpected error occurred. Please try again.",
                 variant: "destructive",
             });
         } finally {
