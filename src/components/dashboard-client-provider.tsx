@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect, useCallback, createContext, useContext } from "react";
@@ -198,7 +197,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
 
   const persistTransaction = useCallback(async (transaction: Transaction) => {
-    if (!publicKey) return;
+    if (!publicKey) return null;
     try {
         const userKey = publicKey.toBase58();
         const response = await fetch('/api/purchase', {
@@ -210,15 +209,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         if (!response.ok) {
             throw new Error(`Server-side transaction update failed: ${await response.text()}`);
         }
-        const { newBalance, newTotalSold, transactions } = await response.json();
-        
-        if (newBalance !== undefined) setExnBalance(newBalance);
-        if (newTotalSold !== undefined) setTotalExnSold(newTotalSold);
-
-        if(transactions) {
-            const parsedTxs = transactions.map((tx: any) => ({...tx, date: new Date(tx.date)}));
-            setTransactions(parsedTxs);
-        }
+        return await response.json();
 
     } catch (error) {
         console.error("Failed to persist transaction:", error);
@@ -227,6 +218,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             description: "Your transaction was successful, but we failed to update your permanent record. Please contact support if your balance seems incorrect.",
             variant: "destructive"
         });
+        return null;
     }
   }, [publicKey, toast]);
 
@@ -246,7 +238,18 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         const completedTx: Transaction = { ...tx, status: 'Completed', failureReason: "Transaction successfully confirmed on-chain.", balanceAdded: false };
         updateTransactionInState(completedTx);
-        await persistTransaction(completedTx);
+        
+        const result = await persistTransaction(completedTx);
+        if (result) {
+            const { newBalance, newTotalSold, transactions } = result;
+            if (newBalance !== undefined) setExnBalance(newBalance);
+            if (newTotalSold !== undefined) setTotalExnSold(newTotalSold);
+            if (transactions) {
+                 const parsedTxs = transactions.map((t: any) => ({...t, date: new Date(t.date)}));
+                 setTransactions(parsedTxs);
+            }
+        }
+
 
         toast({
             title: "Purchase Successful!",
@@ -465,8 +468,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         return;
     }
 
-    const { value: isBlockhashValid } = await connection.isBlockhashValid(tx.blockhash);
-    if (!isBlockhashValid) {
+    const timeSinceCreation = new Date().getTime() - new Date(tx.date).getTime();
+    if (timeSinceCreation > TRANSACTION_TIMEOUT_MS) {
         const failedTx: Transaction = {
             ...tx,
             status: 'Failed',
