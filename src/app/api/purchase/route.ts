@@ -5,7 +5,7 @@ import type { Transaction } from '@/components/dashboard-client-provider';
 
 export async function POST(request: Request) {
     try {
-        const { userKey, exnAmount, transaction } = await request.json() as { userKey: string; exnAmount: number; transaction: Transaction };
+        const { userKey, exnAmount, transaction, tempTxId } = await request.json() as { userKey: string; exnAmount: number; transaction: Transaction, tempTxId?: string };
 
         if (!userKey || !transaction || !transaction.id) {
             return NextResponse.json({ message: 'Invalid input' }, { status: 400 });
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
                 user = await tx.user.create({ data: { wallet: userKey, balance: 0 } });
             }
 
-            // Create or update transaction
+            // Prepare transaction data
             const txData = {
                 id: transaction.id,
                 amountExn: transaction.amountExn,
@@ -35,6 +35,18 @@ export async function POST(request: Request) {
                 userWallet: userKey,
             };
 
+            // If a tempId was provided, it means we are updating a pending record
+            // with its final signature and state.
+            if (tempTxId && tempTxId.startsWith('temp_')) {
+                const existingTx = await tx.transaction.findUnique({ where: { id: tempTxId } });
+                if (existingTx) {
+                     // Delete the old temp record and create the new permanent one.
+                     // This avoids unique constraint issues if the user retries and gets the same signature.
+                    await tx.transaction.delete({ where: { id: tempTxId } });
+                }
+            }
+
+            // Create or update the transaction record with its final ID (the signature)
             await tx.transaction.upsert({
                 where: { id: transaction.id },
                 update: txData,

@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Separator } from "./ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const formatTxId = (txId: string) => {
     if (txId.startsWith('temp_')) return 'Processing...';
@@ -130,9 +131,11 @@ function TransactionRow({ tx }: { tx: Transaction }) {
                                     </a>
                                 </div>
                                 {tx.failureReason && (
-                                    <p className="text-red-400 max-w-xs break-words">Reason: {tx.failureReason}</p>
+                                    <p className={cn("max-w-xs break-words", {
+                                        "text-red-400": tx.status === "Failed",
+                                        "text-green-400": tx.status === "Completed",
+                                    })}>Reason: {tx.failureReason}</p>
                                 )}
-                                {tx.status === 'Completed' && <p>Transaction successfully confirmed on-chain.</p>}
                             </div>
                         </PopoverContent>
                     </Popover>
@@ -209,7 +212,10 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
                  </div>
             </div>
              {tx.failureReason && (
-                <p className="text-xs text-red-400 break-words pt-1">
+                <p className={cn("text-xs break-words pt-1", {
+                    "text-red-400": tx.status === "Failed",
+                    "text-green-400": tx.status === "Completed",
+                })}>
                     <span className="font-semibold">Reason:</span> {tx.failureReason}
                 </p>
             )}
@@ -271,3 +277,4 @@ export function TransactionHistoryTable() {
 }
 
     
+

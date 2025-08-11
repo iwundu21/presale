@@ -204,14 +204,14 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   }, []);
 
 
-  const persistTransaction = useCallback(async (transaction: Transaction) => {
+  const persistTransaction = useCallback(async (transaction: Transaction, tempTxId?: string) => {
     if (!publicKey) return null;
     try {
         const userKey = publicKey.toBase58();
         const response = await fetch('/api/purchase', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userKey, exnAmount: transaction.amountExn, transaction }),
+            body: JSON.stringify({ userKey, exnAmount: transaction.amountExn, transaction, tempTxId }),
         });
 
         if (!response.ok) {
@@ -302,7 +302,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     // Create a pending transaction immediately
     const pendingTx: Transaction = {
         id: tempTxId,
-        amountExn: exnAmount,
+        amountExn,
         paidAmount,
         paidCurrency: currency,
         date: new Date(),
@@ -357,9 +357,9 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             if (!toTokenAccountInfo) {
                 instructions.push(
                     createAssociatedTokenAccountInstruction(
-                        publicKey, // Payer
+                        publicKey, // Payer funds the account creation
                         toTokenAccount,
-                        presaleWalletPublicKey, // Owner
+                        presaleWalletPublicKey, // Owner of the new account
                         mintPublicKey
                     )
                 );
@@ -406,21 +406,11 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             failureReason: 'Processing on-chain...' 
         };
         
-        // We need to update the state with the new ID (the signature)
-        // so we find the old temp record and replace it.
-        setTransactions(prev => {
-            const existingIndex = prev.findIndex(t => t.id === tempTxId);
-            if (existingIndex > -1) {
-                const updatedTxs = [...prev];
-                updatedTxs[existingIndex] = signedTxState;
-                return updatedTxs;
-            }
-            // Fallback in case the temp record wasn't found
-            return [signedTxState, ...prev.filter(t => t.id !== tempTxId)];
-        });
+        // Update the client state record from temp to signed
+        setTransactions(prev => prev.map(t => t.id === tempTxId ? signedTxState : t));
 
-        // Use the new state (with signature) to update the database record
-        await persistTransaction(signedTxState); 
+        // Update the database record from temp to signed
+        await persistTransaction(signedTxState, tempTxId); 
 
         toast({
             title: "Transaction Sent!",
@@ -457,7 +447,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         };
         
         updateTransactionInState(failedTx);
-        await persistTransaction(failedTx);
+        await persistTransaction(failedTx, signature ? undefined : tempTxId);
         
         toast({
             title: toastTitle,
