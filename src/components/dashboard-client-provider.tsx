@@ -267,21 +267,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     
     setIsLoadingPurchase(true);
 
-    const txId = `temp_${uuidv4()}`;
-    let newTx: Transaction = { 
-        id: txId,
-        amountExn: exnAmount, 
-        paidAmount, 
-        paidCurrency: currency, 
-        date: new Date(),
-        status: "Pending",
-        balanceAdded: false,
-    };
-    
-    updateTransactionInState(newTx);
-    await persistTransaction(newTx);
-
+    const tempTxId = `temp_${uuidv4()}`;
     let signature: TransactionSignature | null = null;
+    let blockhash: string;
+    let lastValidBlockHeight: number;
     
     try {
         const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
@@ -295,13 +284,12 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             }));
         } else {
             const mintPublicKey = currency === "USDC" ? USDC_MINT : USDT_MINT;
-            const decimals = 6; // Standard for USDC/USDT
+            const decimals = 6;
             const integerAmount = Math.round(paidAmount * (10 ** decimals));
 
             const fromTokenAccount = await getAssociatedTokenAddress(mintPublicKey, publicKey);
             const toTokenAccount = await getAssociatedTokenAddress(mintPublicKey, presaleWalletPublicKey);
             
-            // Check if the sender has a token account
             const fromTokenAccountInfo = await connection.getAccountInfo(fromTokenAccount);
             if (!fromTokenAccountInfo) {
                  throw new Error(`You do not have a ${currency} token account. Please create one to proceed.`);
@@ -311,10 +299,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             if (!toTokenAccountInfo) {
                 instructions.push(
                     createAssociatedTokenAccountInstruction(
-                        publicKey, // Payer
-                        toTokenAccount, // ATA
-                        presaleWalletPublicKey, // Owner
-                        mintPublicKey // Mint
+                        publicKey,
+                        toTokenAccount,
+                        presaleWalletPublicKey,
+                        mintPublicKey
                     )
                 );
             }
@@ -330,8 +318,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         }
         
         const latestBlockhash = await connection.getLatestBlockhash();
-        const blockhash = latestBlockhash.blockhash;
-        const lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
+        blockhash = latestBlockhash.blockhash;
+        lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
 
         const message = new TransactionMessage({
             payerKey: publicKey,
@@ -348,12 +336,22 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         signature = await sendTransaction(transaction, connection);
         
-        // Replace temp ID with real signature and update state
+        const newTx: Transaction = {
+            id: tempTxId,
+            amountExn,
+            paidAmount,
+            paidCurrency: currency,
+            date: new Date(),
+            status: "Pending",
+            balanceAdded: false,
+        };
+        updateTransactionInState(newTx);
+        await persistTransaction(newTx);
+
         const pendingTxWithSig: Transaction = { ...newTx, id: signature, blockhash, lastValidBlockHeight };
         
-        // This will find the original tx by its temp ID and replace it
         setTransactions(prev => {
-            const existingIndex = prev.findIndex(t => t.id === newTx.id);
+            const existingIndex = prev.findIndex(t => t.id === tempTxId);
             if (existingIndex > -1) {
                 const updatedTxs = [...prev];
                 updatedTxs[existingIndex] = pendingTxWithSig;
@@ -370,7 +368,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             variant: "success",
         });
 
-        // Start polling for confirmation without blocking UI
         confirmAndFinalizeTransaction(pendingTxWithSig, signature);
         
     } catch (error: any) {
@@ -382,14 +379,22 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         if (error.name === 'WalletSendTransactionError' || (error.message && error.message.includes("User rejected the request"))) {
             failureReason = "Transaction was rejected in the wallet.";
             toastTitle = "Transaction Cancelled";
-        } else if (error.message.includes("timed out")) {
+        } else if (error.message.includes("timed out") || error.message.includes("Request is not recent enough")) {
              failureReason = "Confirmation timed out. The transaction might have succeeded or failed. Please check the transaction on Solscan or try retrying.";
              toastTitle = "Transaction Timed Out";
         } else if (error.message) {
              failureReason = error.message;
         }
         
-        const failedTx: Transaction = { ...newTx, status: 'Failed', failureReason };
+        const failedTx: Transaction = {
+            id: signature || tempTxId,
+            amountExn,
+            paidAmount,
+            paidCurrency: currency,
+            date: new Date(),
+            status: 'Failed',
+            failureReason
+        };
         
         updateTransactionInState(failedTx);
         await persistTransaction(failedTx);
@@ -415,13 +420,11 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     if (tx.blockhash && tx.lastValidBlockHeight && !tx.id.startsWith('temp_')) {
         confirmAndFinalizeTransaction(tx, tx.id);
     } else {
-        // Fallback for older pending txs or if something went wrong
         await fetchDashboardData();
     }
 
   }, [toast, fetchDashboardData, confirmAndFinalizeTransaction]);
   
-   // Effect to auto-fail pending transactions after 5 minutes
   useEffect(() => {
     const interval = setInterval(() => {
         const now = new Date().getTime();
@@ -472,11 +475,3 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
-
-    
-
-    
-
-
-
-    
