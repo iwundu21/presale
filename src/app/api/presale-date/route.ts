@@ -10,8 +10,17 @@ const getDefaultEndDate = () => {
 
 export async function GET() {
     try {
-        const doc = await firestoreAdmin.collection('config').doc('presaleEndDate').get();
-        const presaleEndDate = doc.exists ? doc.data()?.value : getDefaultEndDate();
+        const docRef = firestoreAdmin.collection('config').doc('presaleEndDate');
+        const doc = await docRef.get();
+        let presaleEndDate;
+
+        if (doc.exists) {
+            presaleEndDate = doc.data()?.value;
+        } else {
+            // Document doesn't exist, so create it with a default value
+            presaleEndDate = getDefaultEndDate();
+            await docRef.set({ value: presaleEndDate });
+        }
         
         return NextResponse.json({ presaleEndDate });
     } catch (error) {
