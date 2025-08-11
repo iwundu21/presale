@@ -20,7 +20,7 @@ export function PresaleProgressCard() {
     const { totalExnSold, presaleInfo } = useDashboard();
     const exnPrice = presaleInfo?.tokenPrice || 0.09;
 
-    const progress = totalExnSold > 0 && HARD_CAP > 0 ? Math.min((totalExnSold / HARD_CAP) * 100, 100) : 0;
+    const progress = totalExnSold > 0 && HARD_CAP > 0 ? (totalExnSold / HARD_CAP) * 100 : 0;
     const totalSoldValue = totalExnSold * exnPrice;
     const softCapPosition = HARD_CAP > 0 ? (SOFT_CAP / HARD_CAP) * 100 : 0;
 
@@ -39,7 +39,7 @@ export function PresaleProgressCard() {
             </div>
             <div className="space-y-4 pt-4">
                 <div className="flex items-center gap-3">
-                    <div className="relative pt-4 flex-grow">
+                    <div className="relative flex-grow pt-4">
                         <Progress value={progress} className="h-3 w-full" />
                         {softCapPosition > 0 && (
                             <div className="absolute top-0" style={{ left: `${softCapPosition}%` }}>
@@ -50,7 +50,7 @@ export function PresaleProgressCard() {
                             </div>
                         )}
                     </div>
-                    <span className="text-sm font-bold text-primary shrink-0">{progress.toFixed(5)}%</span>
+                    <span className="text-sm font-bold text-primary shrink-0 pt-4">{progress.toFixed(5)}%</span>
                 </div>
                 <div className="grid grid-cols-3 gap-4 text-center">
                     <div>
@@ -79,9 +79,4 @@ export function PresaleProgressCard() {
                     <AlertTitle className="font-bold text-accent">Presale Bonus!</AlertTitle>
                     <AlertDescription className="text-accent/90">
                        All presale participants will receive a 3% bonus of their total purchased EXN tokens during the final token distribution.
-                    </AlertDescription>
-                </Alert>
-            </div>
-        </div>
-    );
-}
+                    </Aler
