@@ -302,7 +302,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     // Create a pending transaction immediately
     const pendingTx: Transaction = {
         id: tempTxId,
-        amountExn,
+        amountExn: exnAmount,
         paidAmount,
         paidCurrency: currency,
         date: new Date(),
