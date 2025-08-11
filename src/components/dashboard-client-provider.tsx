@@ -162,19 +162,27 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     if (connected && publicKey) {
         fetchDashboardData();
         
+        const abortController = new AbortController();
+        const signal = abortController.signal;
+
         const intervalId = setInterval(async () => {
             try {
-                const res = await fetch('/api/presale-data');
-                if (res.ok) {
+                const res = await fetch('/api/presale-data', { signal });
+                if (!signal.aborted && res.ok) {
                     const data = await res.json();
                     setTotalExnSold(data.totalExnSold || 0);
                 }
-            } catch (error) {
-                console.error("Failed to poll presale data:", error);
+            } catch (error: any) {
+                 if (error.name !== 'AbortError') {
+                    console.error("Failed to poll presale data:", error);
+                }
             }
         }, 30000); // Poll every 30 seconds
 
-        return () => clearInterval(intervalId);
+        return () => {
+            abortController.abort();
+            clearInterval(intervalId);
+        };
     }
   }, [connected, publicKey, fetchDashboardData]);
   
