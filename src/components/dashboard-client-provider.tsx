@@ -465,8 +465,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         return;
     }
 
-    const isExpired = await connection.isBlockhashValid(tx.blockhash);
-    if (!isExpired) {
+    const { value: isBlockhashValid } = await connection.isBlockhashValid(tx.blockhash);
+    if (!isBlockhashValid) {
         const failedTx: Transaction = {
             ...tx,
             status: 'Failed',
