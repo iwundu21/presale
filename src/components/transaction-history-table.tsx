@@ -6,7 +6,7 @@ import { CardDescription, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge, BadgeProps } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { List, CheckCircle, AlertCircle, Clock, ExternalLink, TrendingUp, HelpCircle, RefreshCw, Copy, Award } from "lucide-react";
+import { List, CheckCircle, AlertCircle, Clock, ExternalLink, TrendingUp, HelpCircle, RefreshCw, Copy, Award, ChevronLeft, ChevronRight } from "lucide-react";
 import { useDashboard, Transaction, TRANSACTION_TIMEOUT_MS } from "./dashboard-client-provider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Button } from "./ui/button";
@@ -15,6 +15,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Separator } from "./ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+
+const TRANSACTIONS_PER_PAGE = 10;
 
 const formatTxId = (txId: string) => {
     if (txId.startsWith('temp_')) return 'Processing...';
@@ -249,9 +252,16 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
 export function TransactionHistoryTable() {
     const { transactions } = useDashboard();
     const isMobile = useIsMobile();
+    const [currentPage, setCurrentPage] = useState(1);
+
+    const totalPages = Math.ceil(transactions.length / TRANSACTIONS_PER_PAGE);
+    const paginatedTransactions = transactions.slice(
+        (currentPage - 1) * TRANSACTIONS_PER_PAGE,
+        currentPage * TRANSACTIONS_PER_PAGE
+    );
     
     return (
-        <div className="w-full rounded-lg border border-border p-6 space-y-4">
+        <div className="w-full rounded-lg border border-border p-6 space-y-4 flex flex-col">
             <div className="space-y-1.5">
                 <div className="flex items-center gap-3">
                      <div className="p-2 bg-primary/20 rounded-md">
@@ -263,15 +273,15 @@ export function TransactionHistoryTable() {
                     Your recent presale contributions.
                 </CardDescription>
             </div>
-            <div className="pt-4">
-                <ScrollArea className="h-[350px] w-full">
+            <div className="pt-4 flex-grow">
+                <ScrollArea className="h-[400px] w-full">
                    {transactions.length === 0 ? (
                         <div className="flex items-center justify-center h-full text-muted-foreground">
                             You have no transactions yet.
                         </div>
                    ) : isMobile ? (
                        <div className="space-y-4 pr-4">
-                           {transactions.map((tx) => (
+                           {paginatedTransactions.map((tx) => (
                                <TransactionMobileCard tx={tx} key={tx.id} />
                            ))}
                        </div>
@@ -286,7 +296,7 @@ export function TransactionHistoryTable() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {transactions.map((tx) => (
+                                {paginatedTransactions.map((tx) => (
                                    <TransactionRow tx={tx} key={tx.id} />
                                 ))}
                             </TableBody>
@@ -295,10 +305,36 @@ export function TransactionHistoryTable() {
                    )}
                 </ScrollArea>
             </div>
+             {totalPages > 1 && (
+                <div className="flex items-center justify-end space-x-2 pt-4 border-t border-border">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                        Previous
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                        Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                    >
+                        Next
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }
 
     
+
 
 
