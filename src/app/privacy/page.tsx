@@ -18,7 +18,7 @@ export default function PrivacyPage() {
                 <p>We may collect certain information automatically when You use our Service, including:</p>
                 <ul>
                     <li><strong>Wallet Information:</strong> We collect your public wallet address when you connect to our Service. We do not collect or store your private keys.</li>
-                    <li><strong>Transaction Data:</strong> We may collect public data related to your transactions on the Solana blockchain, such as transaction IDs, amounts, and timestamps, as it pertains to your interaction with our presale contract.</li>
+                    <li><strong>Transaction Data:</strong> We may collect public data related to your transactions on the Solana blockchain, such as transaction IDs, amounts, and timestamps, as it pertains to your interaction with our presale contract. This data, along with your token balance, is stored in our secure Firebase Firestore database.</li>
                     <li><strong>Usage Data:</strong> We may collect information about how you access and use the Service for analytics purposes to improve user experience.</li>
                 </ul>
 
@@ -32,7 +32,7 @@ export default function PrivacyPage() {
                 </ul>
 
                 <h2 className="text-2xl font-semibold text-white">Data Security</h2>
-                <p>The security of Your data is important to Us. We use a local JSON file for data persistence during the presale phase. While we strive to use commercially acceptable means to protect your information, we cannot guarantee its absolute security as no method of transmission over the Internet, or method of electronic storage is 100% secure. All blockchain transactions are public by nature.</p>
+                <p>The security of Your data is important to Us. We use Firebase Firestore to securely store user and transaction data. While we strive to use commercially acceptable means to protect your information, we cannot guarantee its absolute security as no method of transmission over the Internet, or method of electronic storage is 100% secure. All blockchain transactions are public by nature.</p>
 
                 <h2 className="text-2xl font-semibold text-white">Third-Party Services</h2>
                 <p>Our Service may use third-party services, such as wallet providers (e.g., Phantom, Solflare) and blockchain explorers (e.g., Solscan). We do not control and are not responsible for the privacy practices of these third parties. We encourage you to review their privacy policies.</p>

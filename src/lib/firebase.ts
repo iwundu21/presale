@@ -1,5 +1,5 @@
 
-import { initializeApp, getApps, getApp } from "firebase/app";
+import { initializeApp, getApps, getApp, FirebaseOptions } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import * as admin from 'firebase-admin';
 
@@ -22,7 +22,7 @@ const firestoreAdmin = admin.firestore();
 // Initialize Firebase Client SDK
 // This is used for client-side operations (if any)
 // It's safe to expose this to the client
-const firebaseConfig = {
+const firebaseConfig: FirebaseOptions = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
