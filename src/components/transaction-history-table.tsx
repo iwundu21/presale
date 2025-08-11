@@ -6,7 +6,7 @@ import { CardDescription, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge, BadgeProps } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { List, CheckCircle, AlertCircle, Clock, ExternalLink, TrendingUp, HelpCircle, RefreshCw, Copy } from "lucide-react";
+import { List, CheckCircle, AlertCircle, Clock, ExternalLink, TrendingUp, HelpCircle, RefreshCw, Copy, Award } from "lucide-react";
 import { useDashboard, Transaction, TRANSACTION_TIMEOUT_MS } from "./dashboard-client-provider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Button } from "./ui/button";
@@ -38,6 +38,13 @@ const getStatusIcon = (status: Transaction['status']) => {
     }
 }
 
+const getTxIcon = (tx: Transaction) => {
+    if (tx.paidCurrency === 'BONUS') {
+        return <Award className="h-5 w-5 text-yellow-500"/>;
+    }
+    return <TrendingUp className="h-5 w-5 text-primary"/>;
+}
+
 function TransactionRow({ tx }: { tx: Transaction }) {
     const { retryTransaction, isLoadingPurchase } = useDashboard();
     const { toast } = useToast();
@@ -66,14 +73,20 @@ function TransactionRow({ tx }: { tx: Transaction }) {
             <TableCell>
                 <div className="font-medium text-white flex items-center gap-4">
                      <div className="p-2 bg-muted/50 rounded-md">
-                        <TrendingUp className="h-5 w-5 text-primary"/>
+                        {getTxIcon(tx)}
                     </div>
                     <div>
                         <p>
-                            {`Purchased ${tx.amountExn.toLocaleString()} EXN`}
+                           {tx.paidCurrency === 'BONUS' 
+                                ? `+${tx.amountExn.toLocaleString()} EXN (Bonus)` 
+                                : `Purchased ${tx.amountExn.toLocaleString()} EXN`
+                            }
                         </p>
                          <p className="text-xs text-muted-foreground">
-                            {`Paid ${tx.paidAmount.toLocaleString()} ${tx.paidCurrency}`}
+                            {tx.paidCurrency === 'BONUS'
+                                ? 'Complimentary distribution'
+                                : `Paid ${tx.paidAmount.toLocaleString()} ${tx.paidCurrency}`
+                            }
                         </p>
                     </div>
                 </div>
@@ -111,9 +124,9 @@ function TransactionRow({ tx }: { tx: Transaction }) {
                             </TooltipContent>
                         </Tooltip>
                     )}
-                    <Badge variant={getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
-                        {getStatusIcon(tx.status)}
-                        {tx.status}
+                    <Badge variant={tx.paidCurrency === 'BONUS' ? 'default' : getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
+                        {tx.paidCurrency === 'BONUS' ? <Award className="h-4 w-4" /> : getStatusIcon(tx.status)}
+                        {tx.paidCurrency === 'BONUS' ? 'Bonus' : tx.status}
                     </Badge>
                      <Popover>
                         <PopoverTrigger asChild>
@@ -171,13 +184,23 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
         <div className="p-4 bg-muted/30 rounded-lg space-y-3">
             <div className="flex justify-between items-start">
                 <div className="font-medium text-white">
-                    <p>{`Purchased ${tx.amountExn.toLocaleString()} EXN`}</p>
-                    <p className="text-xs text-muted-foreground">{`Paid ${tx.paidAmount.toLocaleString()} ${tx.paidCurrency}`}</p>
+                    <p>
+                        {tx.paidCurrency === 'BONUS' 
+                            ? `+${tx.amountExn.toLocaleString()} EXN (Bonus)` 
+                            : `Purchased ${tx.amountExn.toLocaleString()} EXN`
+                        }
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                        {tx.paidCurrency === 'BONUS'
+                            ? 'Complimentary distribution'
+                            : `Paid ${tx.paidAmount.toLocaleString()} ${tx.paidCurrency}`
+                        }
+                    </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Badge variant={getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
-                        {getStatusIcon(tx.status)}
-                        {tx.status}
+                    <Badge variant={tx.paidCurrency === 'BONUS' ? 'default' : getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
+                        {tx.paidCurrency === 'BONUS' ? <Award className="h-4 w-4" /> : getStatusIcon(tx.status)}
+                        {tx.paidCurrency === 'BONUS' ? 'Bonus' : tx.status}
                     </Badge>
                 </div>
             </div>
@@ -277,4 +300,5 @@ export function TransactionHistoryTable() {
 }
 
     
+
 
