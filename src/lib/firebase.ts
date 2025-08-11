@@ -3,6 +3,8 @@ import { initializeApp, getApps, getApp, FirebaseOptions } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import * as admin from 'firebase-admin';
 
+require('dotenv').config({ path: '.env' });
+
 // --- Firebase Admin SDK (Server-side) ---
 
 const initializeAdminApp = () => {
