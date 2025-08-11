@@ -442,111 +442,113 @@ export function AdminDashboard() {
                                         <TableHead className="w-[100px] text-center">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
-                                <TableBody>
-                                     {isLoadingUsers ? (
-                                       Array.from({ length: 5 }).map((_, i) => (
-                                           <TableRow key={i}>
-                                               <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
-                                               <TableCell><Skeleton className="h-5 w-1/4 ml-auto" /></TableCell>
-                                               <TableCell><Skeleton className="h-5 w-3/4 mx-auto" /></TableCell>
-                                           </TableRow>
-                                       ))
-                                    ) : users.length > 0 ? (
-                                        users.map(user => (
-                                            <Collapsible asChild key={user.wallet}>
-                                                <React.Fragment>
-                                                    <TableRow>
-                                                        <TableCell className="font-mono text-xs max-w-xs truncate">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="truncate">{user.wallet}</span>
+                                {isLoadingUsers ? (
+                                    <TableBody>
+                                        {Array.from({ length: 5 }).map((_, i) => (
+                                            <TableRow key={i}>
+                                                <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                                                <TableCell><Skeleton className="h-5 w-1/4 ml-auto" /></TableCell>
+                                                <TableCell><Skeleton className="h-5 w-3/4 mx-auto" /></TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                ) : users.length > 0 ? (
+                                    users.map(user => (
+                                        <Collapsible asChild key={user.wallet} tagName="tbody">
+                                            <>
+                                                <TableRow>
+                                                    <TableCell className="font-mono text-xs max-w-xs truncate">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="truncate">{user.wallet}</span>
+                                                            <TooltipProvider>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopyToClipboard(user.wallet)}>
+                                                                            <Copy className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent><p>Copy Address</p></TooltipContent>
+                                                                </Tooltip>
+                                                            </TooltipProvider>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-semibold">{user.balance.toLocaleString()}</TableCell>
+                                                    <TableCell className="text-center">
+                                                        <CollapsibleTrigger asChild>
+                                                            <Button variant="outline" size="sm" disabled={user.transactions.length === 0}>
+                                                                <View className="h-4 w-4 mr-2" />
+                                                                View
+                                                            </Button>
+                                                        </CollapsibleTrigger>
+                                                    </TableCell>
+                                                </TableRow>
+                                                <CollapsibleContent asChild>
+                                                    <tr className="bg-muted/50">
+                                                        <TableCell colSpan={3} className="p-0">
+                                                            <div className="p-4">
+                                                                <h4 className="font-semibold mb-2">Transaction History ({user.transactions.length})</h4>
+                                                                {user.transactions.length > 0 ? (
                                                                 <TooltipProvider>
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopyToClipboard(user.wallet)}>
-                                                                                <Copy className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent><p>Copy Address</p></TooltipContent>
-                                                                    </Tooltip>
+                                                                    <Table>
+                                                                        <TableHeader>
+                                                                            <TableRow>
+                                                                                <TableHead>Date</TableHead>
+                                                                                <TableHead>EXN Amount</TableHead>
+                                                                                <TableHead>Paid</TableHead>
+                                                                                <TableHead>Status</TableHead>
+                                                                                <TableHead>Explorer</TableHead>
+                                                                            </TableRow>
+                                                                        </TableHeader>
+                                                                        <TableBody>
+                                                                            {user.transactions.map(tx => (
+                                                                                <TableRow key={tx.id}>
+                                                                                    <TableCell className="text-xs">{new Date(tx.date).toLocaleString()}</TableCell>
+                                                                                    <TableCell>{tx.paidCurrency === 'BONUS' ? '+' : ''}{tx.amountExn.toLocaleString()}</TableCell>
+                                                                                    <TableCell>{tx.paidCurrency === 'BONUS' ? 'N/A' : `${tx.paidAmount.toLocaleString()} ${tx.paidCurrency}`}</TableCell>
+                                                                                    <TableCell>
+                                                                                        <Badge variant={tx.paidCurrency === 'BONUS' ? 'default' : getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
+                                                                                            {getTxIcon(tx)}
+                                                                                            {tx.paidCurrency === 'BONUS' ? tx.failureReason : tx.status}
+                                                                                        </Badge>
+                                                                                    </TableCell>
+                                                                                    <TableCell>
+                                                                                        <Tooltip>
+                                                                                            <TooltipTrigger asChild>
+                                                                                                <Button variant="ghost" size="icon" className="h-8 w-8" disabled={tx.id.startsWith('tx_') || tx.paidCurrency === 'BONUS' || tx.id.startsWith('bonus-')} asChild>
+                                                                                                    <a href={`https://solscan.io/tx/${tx.id}`} target="_blank" rel="noopener noreferrer" >
+                                                                                                        <ExternalLink className="h-4 w-4" />
+                                                                                                    </a>
+                                                                                                </Button>
+                                                                                            </TooltipTrigger>
+                                                                                            <TooltipContent>
+                                                                                                <p>View on Solscan</p>
+                                                                                            </TooltipContent>
+                                                                                        </Tooltip>
+                                                                                    </TableCell>
+                                                                                </TableRow>
+                                                                            ))}
+                                                                        </TableBody>
+                                                                    </Table>
                                                                 </TooltipProvider>
+                                                                ) : (
+                                                                    <p className="text-sm text-muted-foreground text-center p-4">No transactions recorded for this user.</p>
+                                                                )}
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell className="text-right font-semibold">{user.balance.toLocaleString()}</TableCell>
-                                                        <TableCell className="text-center">
-                                                            <CollapsibleTrigger asChild>
-                                                                <Button variant="outline" size="sm" disabled={user.transactions.length === 0}>
-                                                                    <View className="h-4 w-4 mr-2" />
-                                                                    View
-                                                                </Button>
-                                                            </CollapsibleTrigger>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                    <CollapsibleContent asChild>
-                                                        <tr className="bg-muted/50">
-                                                            <TableCell colSpan={3} className="p-0">
-                                                                <div className="p-4">
-                                                                    <h4 className="font-semibold mb-2">Transaction History ({user.transactions.length})</h4>
-                                                                    {user.transactions.length > 0 ? (
-                                                                    <TooltipProvider>
-                                                                        <Table>
-                                                                            <TableHeader>
-                                                                                <TableRow>
-                                                                                    <TableHead>Date</TableHead>
-                                                                                    <TableHead>EXN Amount</TableHead>
-                                                                                    <TableHead>Paid</TableHead>
-                                                                                    <TableHead>Status</TableHead>
-                                                                                    <TableHead>Explorer</TableHead>
-                                                                                </TableRow>
-                                                                            </TableHeader>
-                                                                            <TableBody>
-                                                                                {user.transactions.map(tx => (
-                                                                                    <TableRow key={tx.id}>
-                                                                                        <TableCell className="text-xs">{new Date(tx.date).toLocaleString()}</TableCell>
-                                                                                        <TableCell>{tx.paidCurrency === 'BONUS' ? '+' : ''}{tx.amountExn.toLocaleString()}</TableCell>
-                                                                                        <TableCell>{tx.paidCurrency === 'BONUS' ? 'N/A' : `${tx.paidAmount.toLocaleString()} ${tx.paidCurrency}`}</TableCell>
-                                                                                        <TableCell>
-                                                                                             <Badge variant={tx.paidCurrency === 'BONUS' ? 'default' : getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
-                                                                                                {getTxIcon(tx)}
-                                                                                                {tx.paidCurrency === 'BONUS' ? tx.failureReason : tx.status}
-                                                                                            </Badge>
-                                                                                        </TableCell>
-                                                                                        <TableCell>
-                                                                                             <Tooltip>
-                                                                                                <TooltipTrigger asChild>
-                                                                                                    <Button variant="ghost" size="icon" className="h-8 w-8" disabled={tx.id.startsWith('tx_') || tx.paidCurrency === 'BONUS' || tx.id.startsWith('bonus-')} asChild>
-                                                                                                        <a href={`https://solscan.io/tx/${tx.id}`} target="_blank" rel="noopener noreferrer" >
-                                                                                                            <ExternalLink className="h-4 w-4" />
-                                                                                                        </a>
-                                                                                                    </Button>
-                                                                                                </TooltipTrigger>
-                                                                                                <TooltipContent>
-                                                                                                    <p>View on Solscan</p>
-                                                                                                </TooltipContent>
-                                                                                            </Tooltip>
-                                                                                        </TableCell>
-                                                                                    </TableRow>
-                                                                                ))}
-                                                                            </TableBody>
-                                                                        </Table>
-                                                                    </TooltipProvider>
-                                                                    ) : (
-                                                                        <p className="text-sm text-muted-foreground text-center p-4">No transactions recorded for this user.</p>
-                                                                    )}
-                                                                </div>
-                                                            </TableCell>
-                                                        </tr>
-                                                    </CollapsibleContent>
-                                                </React.Fragment>
-                                            </Collapsible>
-                                        ))
-                                    ) : (
+                                                    </tr>
+                                                </CollapsibleContent>
+                                            </>
+                                        </Collapsible>
+                                    ))
+                                ) : (
+                                    <TableBody>
                                         <TableRow>
                                             <TableCell colSpan={3} className="text-center h-24">
                                                 No users found.
                                             </TableCell>
                                         </TableRow>
-                                    )}
-                                </TableBody>
+                                    </TableBody>
+                                )}
                             </Table>
                         </div>
                          {totalPages > 0 && (
@@ -788,5 +790,3 @@ export function AdminDashboard() {
     );
 
 }
-
-    
