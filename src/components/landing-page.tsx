@@ -8,10 +8,11 @@ import { PresaleCountdown } from "./presale-countdown";
 import type { PresaleInfo } from "@/services/presale-info-service";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useRouter } from "next/navigation";
+
 
 type LandingPageProps = {
-  onConnect: () => void;
-  isConnecting: boolean;
   presaleEndDate: Date;
   presaleInfo: PresaleInfo;
   isPresaleActive: boolean;
@@ -24,14 +25,27 @@ const SEASON_PRICES: { [key: string]: number } = {
 };
 const SEASON_ORDER = Object.keys(SEASON_PRICES);
 
-export function LandingPage({ onConnect, isConnecting, presaleEndDate, presaleInfo, isPresaleActive }: LandingPageProps) {
-    const { wallet } = useWallet();
+export function LandingPage({ presaleEndDate, presaleInfo, isPresaleActive }: LandingPageProps) {
+    const { wallet, connected, connecting } = useWallet();
+    const { setVisible } = useWalletModal();
+    const router = useRouter();
     const [isClient, setIsClient] = useState(false);
     const [nextSeason, setNextSeason] = useState<{ name: string; price: number } | null>(null);
 
     useEffect(() => {
         setIsClient(true);
+        document.title = "Exnus Presale";
     }, []);
+
+    useEffect(() => {
+      if (connected) {
+        router.push('/dashboard');
+      }
+    }, [connected, router]);
+
+    const handleConnect = () => {
+        setVisible(true);
+    };
 
     useEffect(() => {
       const currentSeasonIndex = SEASON_ORDER.indexOf(presaleInfo.seasonName);
@@ -88,8 +102,8 @@ export function LandingPage({ onConnect, isConnecting, presaleEndDate, presaleIn
             {isPresaleActive && <PresaleCountdown presaleEndDate={presaleEndDate} seasonName={presaleInfo.seasonName} />}
             
             {isClient && (
-                <Button size="lg" onClick={onConnect} disabled={isConnecting || !!wallet || !isPresaleActive} className="mt-8">
-                    {isConnecting ? "Entering Ecosystem..." : "Enter the Ecosystem"}
+                <Button size="lg" onClick={handleConnect} disabled={connecting || !!wallet || !isPresaleActive} className="mt-8">
+                    {connecting ? "Entering Ecosystem..." : "Enter the Ecosystem"}
                   <ArrowRight className="ml-2 h-5 w-5"/>
                 </Button>
             )}

@@ -1,5 +1,8 @@
 
-'use client';
+'use server';
+
+import prisma from "@/lib/prisma";
+import { z } from 'zod';
 
 export type PresaleInfo = {
     seasonName: string;
@@ -9,7 +12,12 @@ export type PresaleInfo = {
 export type PresaleData = {
     presaleInfo: PresaleInfo;
     isPresaleActive: boolean;
-}
+};
+
+const presaleInfoSchema = z.object({
+  seasonName: z.string(),
+  tokenPrice: z.number(),
+});
 
 const defaultData: PresaleData = {
     presaleInfo: {
@@ -19,21 +27,36 @@ const defaultData: PresaleData = {
     isPresaleActive: true
 };
 
+async function getOrCreateConfig(id: string, defaultValue: any) {
+  try {
+    let config = await prisma.config.findUnique({ where: { id } });
+    if (!config) {
+      config = await prisma.config.create({
+        data: { id, value: defaultValue },
+      });
+    }
+    return config.value;
+  } catch (error) {
+    console.error(`Error in getOrCreateConfig for id: ${id}`, error);
+    return defaultValue;
+  }
+}
+
 /**
  * Gets the current presale data (season, price, active status) from the API.
+ * This is a server-side function.
  * @returns {Promise<PresaleData>} The current presale information.
  */
 export async function getPresaleData(): Promise<PresaleData> {
   try {
-    const response = await fetch('/api/presale-data');
-    if (!response.ok) {
-        console.error("Failed to fetch presale data, using defaults.");
-        return defaultData;
-    }
-    const data = await response.json();
+    const presaleInfoValue = await getOrCreateConfig('presaleInfo', defaultData.presaleInfo);
+    const isPresaleActiveValue = await getOrCreateConfig('isPresaleActive', { value: defaultData.isPresaleActive });
+
+    const presaleInfo = presaleInfoSchema.safeParse(presaleInfoValue);
+
     return {
-        presaleInfo: data.presaleInfo || defaultData.presaleInfo,
-        isPresaleActive: data.isPresaleActive === undefined ? defaultData.isPresaleActive : data.isPresaleActive,
+        presaleInfo: presaleInfo.success ? presaleInfo.data : defaultData.presaleInfo,
+        isPresaleActive: (isPresaleActiveValue as { value: boolean })?.value ?? defaultData.isPresaleActive,
     };
   } catch (error) {
     console.error("Error fetching presale data:", error);
@@ -46,18 +69,12 @@ export async function getPresaleData(): Promise<PresaleData> {
  * @param {PresaleInfo} newInfo The new presale info object.
  */
 export async function setPresaleInfo(newInfo: PresaleInfo): Promise<void> {
-    const response = await fetch('/api/presale-data', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ presaleInfo: newInfo }),
+    const parsedInfo = presaleInfoSchema.parse(newInfo);
+    await prisma.config.upsert({
+        where: { id: 'presaleInfo' },
+        update: { value: parsedInfo },
+        create: { id: 'presaleInfo', value: parsedInfo },
     });
-
-    if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Failed to update presale info: ${errorData}`);
-    }
 }
 
 /**
@@ -65,16 +82,9 @@ export async function setPresaleInfo(newInfo: PresaleInfo): Promise<void> {
  * @param {boolean} isActive Whether the presale should be active.
  */
 export async function setPresaleStatus(isActive: boolean): Promise<void> {
-    const response = await fetch('/api/presale-data', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ isPresaleActive: isActive }),
+    await prisma.config.upsert({
+        where: { id: 'isPresaleActive' },
+        update: { value: { value: isActive } },
+        create: { id: 'isPresaleActive', value: { value: isActive } },
     });
-
-    if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Failed to update presale status: ${errorData}`);
-    }
 }

@@ -1,61 +1,59 @@
 
-'use client';
+'use server';
+
+import prisma from "@/lib/prisma";
+import { z } from 'zod';
+
+const getDefaultEndDate = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d;
+};
 
 /**
- * Gets the presale end date from the API.
+ * Gets the presale end date from the database.
+ * This is a server-side function.
  * @returns {Promise<Date>} The current presale end date.
  */
 export async function getPresaleEndDate(): Promise<Date> {
-  const fallbackDate = () => {
-      const d = new Date();
-      d.setDate(d.getDate() + 30);
-      return d;
-  };
-
   try {
-    const response = await fetch('/api/presale-date', {
-        next: { revalidate: 60 } // Revalidate every 60 seconds
-    });
-    
-    if (!response.ok) {
-      console.error('Failed to fetch presale end date, using fallback.');
-      return fallbackDate();
+    let config = await prisma.config.findUnique({ where: { id: 'presaleEndDate' } });
+    if (!config) {
+        const defaultEndDate = getDefaultEndDate().toISOString();
+        config = await prisma.config.create({
+            data: { id: 'presaleEndDate', value: { value: defaultEndDate } },
+        });
+        return new Date(defaultEndDate);
     }
-    
-    const data = await response.json();
-    const date = new Date(data.presaleEndDate);
-    
+    const endDateString = (config.value as { value: string }).value;
+    const date = new Date(endDateString);
     if (isNaN(date.getTime())) {
-       console.error('Invalid date format from API, using fallback.');
-       return fallbackDate();
+       console.error('Invalid date format from DB, using fallback.');
+       return getDefaultEndDate();
     }
-    
     return date;
-
   } catch (error) {
     console.error("Error fetching presale end date:", error);
-    return fallbackDate();
+    return getDefaultEndDate();
   }
 }
 
 /**
- * (Admin) Updates the presale end date via the API.
+ * (Admin) Updates the presale end date in the database.
+ * This is a server-side function.
  * @param {Date} newDate The new end date for the presale.
  */
 export async function setPresaleEndDate(newDate: Date | null): Promise<void> {
     if (!newDate || isNaN(newDate.getTime())) {
         throw new Error("Invalid date provided.");
     }
-    const response = await fetch('/api/presale-date', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ presaleEndDate: newDate.toISOString() }),
-    });
 
-    if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Failed to update presale date: ${errorData}`);
-    }
+    const dateSchema = z.string().datetime();
+    const parsedDate = dateSchema.parse(newDate.toISOString());
+
+    await prisma.config.upsert({
+        where: { id: 'presaleEndDate' },
+        update: { value: { value: parsedDate } },
+        create: { id: 'presaleEndDate', value: { value: parsedDate } },
+    });
 }
