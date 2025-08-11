@@ -1,11 +1,12 @@
 
 import { NextResponse } from 'next/server';
-import { firestoreAdmin } from '@/lib/firebase';
+import { getFirestoreAdmin } from '@/lib/firebase';
 
 const defaultPresaleInfo = { seasonName: "Early Stage", tokenPrice: 0.09 };
 
 export async function GET() {
     try {
+        const firestoreAdmin = getFirestoreAdmin();
         const usersSnapshot = await firestoreAdmin.collection('users').get();
         let totalExnSold = 0;
         usersSnapshot.forEach(doc => {
@@ -55,6 +56,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
      try {
+        const firestoreAdmin = getFirestoreAdmin();
         const { presaleInfo, isPresaleActive } = await request.json();
         
         const configRef = firestoreAdmin.collection('config');

@@ -1,10 +1,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { firestoreAdmin } from '@/lib/firebase';
+import { getFirestoreAdmin } from '@/lib/firebase';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: NextRequest) {
     try {
+        const firestoreAdmin = getFirestoreAdmin();
         const configRef = firestoreAdmin.collection('config').doc('bonusDistributed');
         const bonusConfig = await configRef.get();
 
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
     try {
+        const firestoreAdmin = getFirestoreAdmin();
         const configRef = firestoreAdmin.collection('config').doc('bonusDistributed');
         const bonusConfig = await configRef.get();
         

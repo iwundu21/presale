@@ -1,9 +1,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { firestoreAdmin } from '@/lib/firebase';
+import { getFirestoreAdmin } from '@/lib/firebase';
 
 export async function POST(request: NextRequest) {
     try {
+        const firestoreAdmin = getFirestoreAdmin();
         const { passcode } = await request.json();
         
         const passcodeRef = firestoreAdmin.collection('config').doc('adminPasscode');
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ message: 'Incorrect passcode.' }, { status: 401 });
         }
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('API Verify-Passcode Error:', error);
         return NextResponse.json({ message: 'An internal server error occurred during verification.' }, { status: 500 });
     }

@@ -1,9 +1,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { firestoreAdmin } from '@/lib/firebase';
+import { getFirestoreAdmin } from '@/lib/firebase';
 
 export async function POST(request: NextRequest) {
     try {
+        const firestoreAdmin = getFirestoreAdmin();
         const { wallet, newBalance } = await request.json();
         
         if (!wallet || typeof newBalance !== 'number' || newBalance < 0) {

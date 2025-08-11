@@ -1,11 +1,12 @@
 
 import { NextResponse } from 'next/server';
-import { firestoreAdmin } from '@/lib/firebase';
+import { getFirestoreAdmin } from '@/lib/firebase';
 import type { Transaction } from '@/components/dashboard-client-provider';
 import { FieldValue } from 'firebase-admin/firestore';
 
 export async function POST(request: Request) {
     try {
+        const firestoreAdmin = getFirestoreAdmin();
         const { userKey, exnAmount, transaction } = await request.json() as { userKey: string; exnAmount: number; transaction: Transaction };
 
         if (!userKey || !transaction || !transaction.id) {

@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { firestoreAdmin } from '@/lib/firebase';
+import { getFirestoreAdmin } from '@/lib/firebase';
 
 const getDefaultEndDate = () => {
     const d = new Date();
@@ -10,6 +10,7 @@ const getDefaultEndDate = () => {
 
 export async function GET() {
     try {
+        const firestoreAdmin = getFirestoreAdmin();
         const docRef = firestoreAdmin.collection('config').doc('presaleEndDate');
         const doc = await docRef.get();
         let presaleEndDate;
@@ -34,6 +35,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
      try {
+        const firestoreAdmin = getFirestoreAdmin();
         const { presaleEndDate } = await request.json();
 
         if (!presaleEndDate || isNaN(new Date(presaleEndDate).getTime())) {

@@ -3,48 +3,43 @@ import { initializeApp, getApps, getApp, FirebaseOptions } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import * as admin from 'firebase-admin';
 
+// This line ensures .env variables are available server-side.
 require('dotenv').config({ path: '.env' });
 
 // --- Firebase Admin SDK (Server-side) ---
 
-const initializeAdminApp = () => {
-    // If the app is already initialized, return it.
-    if (admin.apps.length > 0) {
-        return admin.app();
+let firestoreAdmin: admin.firestore.Firestore;
+
+function getFirestoreAdmin() {
+    if (firestoreAdmin) {
+        return firestoreAdmin;
+    }
+
+    // Check if the admin app is already initialized
+    if (admin.apps.length === 0) {
+        const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+        
+        if (!serviceAccountKey) {
+            // This case should ideally not be hit if .env is configured correctly
+            console.error("FIREBASE_SERVICE_ACCOUNT_KEY is not set. Server-side Firebase services will fail.");
+        } else {
+            try {
+                const serviceAccount = JSON.parse(serviceAccountKey);
+                admin.initializeApp({
+                    credential: admin.credential.cert(serviceAccount),
+                });
+            } catch (e: any) {
+                console.error("Failed to parse Firebase service account key. Ensure it's a valid JSON string.", e);
+            }
+        }
     }
     
-    // Otherwise, initialize a new one.
-    const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-    
-    if (!serviceAccountKey) {
-        throw new Error("FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set. Please check your .env file.");
-    }
+    firestoreAdmin = admin.firestore();
+    return firestoreAdmin;
+}
 
-    try {
-        const serviceAccount = JSON.parse(serviceAccountKey);
-        return admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
-        });
-    } catch (e: any) {
-        console.error("Failed to parse Firebase service account key. Ensure it's a valid JSON string.", e);
-        throw new Error(`Failed to initialize Firebase Admin SDK. Original error: ${e.message}`);
-    }
-};
-
-
-let firestoreAdminInstance: admin.firestore.Firestore;
-
-// Getter function for the admin firestore instance
-const getFirestoreAdmin = () => {
-    if (!firestoreAdminInstance) {
-        initializeAdminApp();
-        firestoreAdminInstance = admin.firestore();
-    }
-    return firestoreAdminInstance;
-};
-
-// Export the singleton instance
-export const firestoreAdmin = getFirestoreAdmin();
+// Export a getter function instead of the instance itself
+export { getFirestoreAdmin };
 
 
 // --- Firebase Client SDK (Client-side) ---

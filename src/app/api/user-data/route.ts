@@ -1,10 +1,11 @@
 
 import { NextResponse } from 'next/server';
-import { firestoreAdmin } from '@/lib/firebase';
+import { getFirestoreAdmin } from '@/lib/firebase';
 import { NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
     try {
+        const firestoreAdmin = getFirestoreAdmin();
         const { searchParams } = new URL(request.url);
         const userKey = searchParams.get('userKey');
 

@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { firestoreAdmin } from '@/lib/firebase';
+import { getFirestoreAdmin } from '@/lib/firebase';
 import type { Transaction } from '@/components/dashboard-client-provider';
 
 type UserAdminView = {
@@ -11,6 +11,7 @@ type UserAdminView = {
 
 export async function GET(request: NextRequest) {
     try {
+        const firestoreAdmin = getFirestoreAdmin();
         const { searchParams } = new URL(request.url);
         let page = parseInt(searchParams.get('page') || '1', 10);
         let limit = parseInt(searchParams.get('limit') || '10', 10);
