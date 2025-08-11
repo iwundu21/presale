@@ -4,7 +4,6 @@
 import { Flame, Gift } from "lucide-react";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { useState, useEffect } from "react";
 import { HARD_CAP, SOFT_CAP } from "@/config";
 import { useDashboard } from "./dashboard-client-provider";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
@@ -19,25 +18,13 @@ const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
 
 export function PresaleProgressCard() {
     const { totalExnSold, presaleInfo } = useDashboard();
-    const [progress, setProgress] = useState(0);
-    const [totalSoldValue, setTotalSoldValue] = useState(0);
-    const [softCapPosition, setSoftCapPosition] = useState(0);
 
     const exnPrice = presaleInfo?.tokenPrice || 0.09;
 
-    // Effect for updating progress bar
-    useEffect(() => {
-        const percentage = totalExnSold > 0 && HARD_CAP > 0 ? (totalExnSold / HARD_CAP) * 100 : 0;
-        const soldValue = totalExnSold * exnPrice;
-        setTotalSoldValue(soldValue);
-        
-        if (HARD_CAP > 0) {
-            setSoftCapPosition((SOFT_CAP / HARD_CAP) * 100);
-        }
-
-        // Clamp progress to a max of 100
-        setProgress(Math.min(percentage, 100));
-    }, [totalExnSold, exnPrice]);
+    // Calculate derived values directly for instant updates
+    const progress = totalExnSold > 0 && HARD_CAP > 0 ? Math.min((totalExnSold / HARD_CAP) * 100, 100) : 0;
+    const totalSoldValue = totalExnSold * exnPrice;
+    const softCapPosition = HARD_CAP > 0 ? (SOFT_CAP / HARD_CAP) * 100 : 0;
 
     return (
         <div className="w-full rounded-lg border border-border p-6 space-y-4">
