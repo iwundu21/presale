@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowDown, Zap } from "lucide-react";
+import { ArrowDown, Zap, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { getAssociatedTokenAddress } from "@solana/spl-token";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { USDC_MINT, USDT_MINT } from "@/config";
 import { useDashboard } from "./dashboard-client-provider";
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 
 const SOL_GAS_BUFFER = 0.0009; // Reserve 0.0009 SOL for gas fees
 const MIN_PURCHASE_USD = 1;
@@ -221,7 +222,21 @@ export function BuyExnCard() {
         <div>
           <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-2">
             <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">You Pay</span>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                    <span>You Pay</span>
+                     <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <HelpCircle className="h-4 w-4 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p className="max-w-xs">
+                                    All transactions on the Solana network, including token purchases, require a small network fee paid in SOL.
+                                </p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
                 {isConnected && (
                   <button onClick={() => setPayAmount(maxSpend > 0 ? maxSpend.toFixed(currency === 'SOL' ? 5 : 2) : "0")} className="text-muted-foreground hover:text-white transition-colors">
                     Balance: {isFetchingBalance 
@@ -306,5 +321,7 @@ export function BuyExnCard() {
     </div>
   );
 }
+
+    
 
     
