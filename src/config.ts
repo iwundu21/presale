@@ -7,9 +7,6 @@ export const RPC_URL = "https://mainnet.helius-rpc.com/?api-key=ef62b792-793e-4e
 export const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // Mainnet
 export const USDT_MINT = new PublicKey("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"); // Mainnet
 
-export const MEMO_PROGRAM_ID = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcVtrp5Gysu6or9s6AB");
-
-
 // EXN Token does not have a mint address yet. Distribution will be done later.
 // We will track contributions and calculate balances off-chain (client-side).
 
