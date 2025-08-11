@@ -1,73 +1,81 @@
 
 import { NextResponse } from 'next/server';
-import { getFirestoreAdmin } from '@/lib/firebase';
+import prisma from '@/lib/prisma';
 import type { Transaction } from '@/components/dashboard-client-provider';
-import { FieldValue } from 'firebase-admin/firestore';
 
 export async function POST(request: Request) {
     try {
-        const firestoreAdmin = getFirestoreAdmin();
         const { userKey, exnAmount, transaction } = await request.json() as { userKey: string; exnAmount: number; transaction: Transaction };
 
         if (!userKey || !transaction || !transaction.id) {
             return NextResponse.json({ message: 'Invalid input' }, { status: 400 });
         }
         
-        const userRef = firestoreAdmin.collection('users').doc(userKey);
-        const txRef = userRef.collection('transactions').doc(transaction.id);
-
-        const txData = {
-            amountExn: transaction.amountExn,
-            paidAmount: transaction.paidAmount,
-            paidCurrency: transaction.paidCurrency,
-            date: transaction.date, // Firestore will convert this to a Timestamp
-            status: transaction.status,
-            failureReason: transaction.failureReason || null,
-            blockhash: transaction.blockhash || null,
-            lastValidBlockHeight: transaction.lastValidBlockHeight || null,
-            balanceAdded: transaction.status === 'Completed'
-        };
-
-        const userDoc = await userRef.get();
-        if (!userDoc.exists) {
-            await userRef.set({ wallet: userKey, balance: 0 });
-        }
-        
-        await txRef.set(txData, { merge: true });
-        
-        let newBalance = userDoc.data()?.balance || 0;
-
-        if (transaction.status === 'Completed') {
-            const txDoc = await txRef.get();
-            // Ensure balance is only added once
-            if (txDoc.exists && !txDoc.data()?.balanceAdded) {
-                await userRef.update({ balance: FieldValue.increment(exnAmount) });
-                await txRef.update({ balanceAdded: true });
-                newBalance += exnAmount;
+        await prisma.$transaction(async (tx) => {
+             // Create or find user
+            let user = await tx.user.findUnique({ where: { wallet: userKey } });
+            if (!user) {
+                user = await tx.user.create({ data: { wallet: userKey, balance: 0 } });
             }
-        }
-        
-        const usersSnapshot = await firestoreAdmin.collection('users').get();
-        let newTotalSold = 0;
-        usersSnapshot.forEach(doc => {
-            newTotalSold += doc.data().balance || 0;
+
+            // Create or update transaction
+            const txData = {
+                id: transaction.id,
+                amountExn: transaction.amountExn,
+                paidAmount: transaction.paidAmount,
+                paidCurrency: transaction.paidCurrency,
+                date: transaction.date,
+                status: transaction.status,
+                failureReason: transaction.failureReason,
+                blockhash: transaction.blockhash,
+                lastValidBlockHeight: transaction.lastValidBlockHeight,
+                balanceAdded: transaction.status === 'Completed',
+                userWallet: userKey,
+            };
+
+            await tx.transaction.upsert({
+                where: { id: transaction.id },
+                update: txData,
+                create: txData,
+            });
+
+            // Update balance if completed and not already added
+            if (transaction.status === 'Completed') {
+                const existingTx = await tx.transaction.findUnique({ where: { id: transaction.id } });
+                if (existingTx && !existingTx.balanceAdded) {
+                    await tx.user.update({
+                        where: { wallet: userKey },
+                        data: {
+                            balance: {
+                                increment: exnAmount,
+                            },
+                        },
+                    });
+                    await tx.transaction.update({
+                        where: { id: transaction.id },
+                        data: { balanceAdded: true },
+                    });
+                }
+            }
         });
 
-        const updatedTransactionsSnapshot = await userRef.collection('transactions').orderBy('date', 'desc').get();
-        const updatedTransactions = updatedTransactionsSnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data,
-                date: data.date.toDate(),
-            };
+        // Fetch updated data to return
+        const updatedUser = await prisma.user.findUnique({
+            where: { wallet: userKey },
+            include: {
+                transactions: { orderBy: { date: 'desc' } }
+            }
+        });
+
+        const totalSoldResult = await prisma.user.aggregate({
+            _sum: { balance: true }
         });
 
         return NextResponse.json({
             message: 'Purchase recorded',
-            newBalance: newBalance,
-            newTotalSold: newTotalSold,
-            transactions: updatedTransactions,
+            newBalance: updatedUser?.balance || 0,
+            newTotalSold: totalSoldResult._sum.balance || 0,
+            transactions: updatedUser?.transactions || [],
         }, { status: 200 });
 
     } catch (error) {

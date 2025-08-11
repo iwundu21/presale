@@ -1,34 +1,42 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getFirestoreAdmin } from '@/lib/firebase';
+import prisma from '@/lib/prisma';
+import { z } from 'zod';
+
+const updatePasscodeSchema = z.object({
+    currentPasscode: z.string(),
+    newPasscode: z.string().min(6),
+});
 
 export async function POST(request: NextRequest) {
     try {
-        const firestoreAdmin = getFirestoreAdmin();
-        const { currentPasscode, newPasscode } = await request.json();
-        
-        if (!currentPasscode || !newPasscode) {
-            return NextResponse.json({ message: 'Current and new passcodes are required.' }, { status: 400 });
-        }
-        
-        const passcodeRef = firestoreAdmin.collection('config').doc('adminPasscode');
-        const passcodeDoc = await passcodeRef.get();
+        const body = await request.json();
+        const { currentPasscode, newPasscode } = updatePasscodeSchema.parse(body);
+
+        const configDoc = await prisma.config.findUnique({ where: { id: 'adminPasscode' } });
 
         let correctPasscode = process.env.ADMIN_PASSCODE || '203020';
-        if (passcodeDoc.exists) {
-            correctPasscode = passcodeDoc.data()?.value;
+        if (configDoc) {
+            correctPasscode = (configDoc.value as { value: string }).value;
         }
 
         if (currentPasscode !== correctPasscode) {
              return NextResponse.json({ message: 'Incorrect current passcode.' }, { status: 403 });
         }
         
-        await passcodeRef.set({ value: newPasscode });
+        await prisma.config.upsert({
+            where: { id: 'adminPasscode' },
+            update: { value: { value: newPasscode } },
+            create: { id: 'adminPasscode', value: { value: newPasscode } },
+        });
 
         return NextResponse.json({ message: 'Passcode updated successfully.' }, { status: 200 });
 
     } catch (error: any) {
         console.error('API Update-Passcode Error:', error);
+        if (error instanceof z.ZodError) {
+            return NextResponse.json({ message: 'Invalid input.', details: error.errors }, { status: 400 });
+        }
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }

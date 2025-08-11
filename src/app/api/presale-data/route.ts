@@ -1,51 +1,45 @@
 
 import { NextResponse } from 'next/server';
-import { getFirestoreAdmin } from '@/lib/firebase';
+import prisma from '@/lib/prisma';
+import { z } from 'zod';
 
 const defaultPresaleInfo = { seasonName: "Early Stage", tokenPrice: 0.09 };
 
+const presaleInfoSchema = z.object({
+  seasonName: z.string(),
+  tokenPrice: z.number(),
+});
+
+async function getOrCreateConfig(id: string, defaultValue: any) {
+  let config = await prisma.config.findUnique({ where: { id } });
+  if (!config) {
+    config = await prisma.config.create({
+      data: { id, value: defaultValue },
+    });
+  }
+  return config.value;
+}
+
 export async function GET() {
     try {
-        const firestoreAdmin = getFirestoreAdmin();
-        const usersSnapshot = await firestoreAdmin.collection('users').get();
-        let totalExnSold = 0;
-        usersSnapshot.forEach(doc => {
-            totalExnSold += doc.data().balance || 0;
+        const totalSoldResult = await prisma.user.aggregate({
+            _sum: { balance: true },
         });
-        
-        const configRef = firestoreAdmin.collection('config');
-        const presaleInfoDocRef = configRef.doc('presaleInfo');
-        const isPresaleActiveDocRef = configRef.doc('isPresaleActive');
+        const totalExnSold = totalSoldResult._sum.balance || 0;
 
-        let presaleInfoDoc = await presaleInfoDocRef.get();
-        let isPresaleActiveDoc = await isPresaleActiveDocRef.get();
+        const presaleInfoValue = await getOrCreateConfig('presaleInfo', defaultPresaleInfo);
+        const isPresaleActiveValue = await getOrCreateConfig('isPresaleActive', { value: true });
 
-        let presaleInfo, isPresaleActive;
+        const presaleInfo = presaleInfoSchema.safeParse(presaleInfoValue);
 
-        if (!presaleInfoDoc.exists) {
-            await presaleInfoDocRef.set(defaultPresaleInfo);
-            presaleInfo = defaultPresaleInfo;
-        } else {
-            presaleInfo = presaleInfoDoc.data();
-        }
-
-        if (!isPresaleActiveDoc.exists) {
-            await isPresaleActiveDocRef.set({ value: true });
-            isPresaleActive = true;
-        } else {
-            isPresaleActive = isPresaleActiveDoc.data()?.value;
-        }
-
-
-        return NextResponse.json({ 
+        return NextResponse.json({
             totalExnSold,
-            presaleInfo,
-            isPresaleActive,
+            presaleInfo: presaleInfo.success ? presaleInfo.data : defaultPresaleInfo,
+            isPresaleActive: (isPresaleActiveValue as { value: boolean })?.value ?? true,
         }, { status: 200 });
 
     } catch (error) {
         console.error('API Presale-Data Error:', error);
-        // This is a fallback in case of a critical error like Firestore service being down.
         return NextResponse.json({
             totalExnSold: 0,
             presaleInfo: defaultPresaleInfo,
@@ -56,39 +50,39 @@ export async function GET() {
 
 export async function POST(request: Request) {
      try {
-        const firestoreAdmin = getFirestoreAdmin();
         const { presaleInfo, isPresaleActive } = await request.json();
-        
-        const configRef = firestoreAdmin.collection('config');
 
         if (presaleInfo) {
-            if (!presaleInfo.seasonName || typeof presaleInfo.tokenPrice !== 'number') {
-                 return NextResponse.json({ message: 'Invalid input for presale info' }, { status: 400 });
-            }
-            await configRef.doc('presaleInfo').set(presaleInfo);
+            const parsedInfo = presaleInfoSchema.parse(presaleInfo);
+            await prisma.config.upsert({
+                where: { id: 'presaleInfo' },
+                update: { value: parsedInfo },
+                create: { id: 'presaleInfo', value: parsedInfo },
+            });
         }
 
         if (typeof isPresaleActive === 'boolean') {
-             await configRef.doc('isPresaleActive').set({ value: isPresaleActive });
+             await prisma.config.upsert({
+                where: { id: 'isPresaleActive' },
+                update: { value: { value: isPresaleActive } },
+                create: { id: 'isPresaleActive', value: { value: isPresaleActive } },
+            });
         }
 
-        const updatedPresaleInfoDoc = await configRef.doc('presaleInfo').get();
-        const updatedIsPresaleActiveDoc = await configRef.doc('isPresaleActive').get();
-        
-        const updatedInfo = updatedPresaleInfoDoc.exists() && updatedPresaleInfoDoc.data() ? updatedPresaleInfoDoc.data() : defaultPresaleInfo;
-        const updatedStatus = updatedIsPresaleActiveDoc.exists() && updatedIsPresaleActiveDoc.data()?.value !== undefined ? updatedIsPresaleActiveDoc.data()?.value : true;
+        const updatedPresaleInfoValue = await getOrCreateConfig('presaleInfo', defaultPresaleInfo);
+        const updatedIsPresaleActiveValue = await getOrCreateConfig('isPresaleActive', { value: true });
+        const updatedInfo = presaleInfoSchema.safeParse(updatedPresaleInfoValue);
 
-
-        return NextResponse.json({ 
+        return NextResponse.json({
             message: 'Presale data updated successfully',
-            presaleInfo: updatedInfo,
-            isPresaleActive: updatedStatus,
+            presaleInfo: updatedInfo.success ? updatedInfo.data : defaultPresaleInfo,
+            isPresaleActive: (updatedIsPresaleActiveValue as { value: boolean })?.value ?? true,
         }, { status: 200 });
 
     } catch (error: any) {
         console.error('API Presale-Data POST Error:', error);
-        if (error.message.includes('Invalid input')) {
-            return NextResponse.json({ message: error.message }, { status: 400 });
+        if (error instanceof z.ZodError) {
+             return NextResponse.json({ message: 'Invalid input for presale info', details: error.errors }, { status: 400 });
         }
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }

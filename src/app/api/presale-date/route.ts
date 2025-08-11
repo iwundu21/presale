@@ -1,6 +1,7 @@
 
 import { NextResponse } from 'next/server';
-import { getFirestoreAdmin } from '@/lib/firebase';
+import prisma from '@/lib/prisma';
+import { z } from 'zod';
 
 const getDefaultEndDate = () => {
     const d = new Date();
@@ -8,26 +9,23 @@ const getDefaultEndDate = () => {
     return d.toISOString();
 };
 
+async function getOrCreateEndDate() {
+    let config = await prisma.config.findUnique({ where: { id: 'presaleEndDate' } });
+    if (!config) {
+        const defaultEndDate = getDefaultEndDate();
+        config = await prisma.config.create({
+            data: { id: 'presaleEndDate', value: { value: defaultEndDate } },
+        });
+    }
+    return (config.value as { value: string }).value;
+}
+
 export async function GET() {
     try {
-        const firestoreAdmin = getFirestoreAdmin();
-        const docRef = firestoreAdmin.collection('config').doc('presaleEndDate');
-        const doc = await docRef.get();
-        let presaleEndDate;
-
-        if (doc.exists) {
-            presaleEndDate = doc.data()?.value;
-        } else {
-            // Document doesn't exist, so create it with a default value
-            presaleEndDate = getDefaultEndDate();
-            await docRef.set({ value: presaleEndDate });
-        }
-        
+        const presaleEndDate = await getOrCreateEndDate();
         return NextResponse.json({ presaleEndDate }, { status: 200 });
     } catch (error) {
         console.error('API Presale-Date GET Error:', error);
-        // Fallback to a default value but still return a 200 OK
-        // This prevents the client-side from throwing an error and allows the app to function
         const presaleEndDate = getDefaultEndDate();
         return NextResponse.json({ presaleEndDate }, { status: 200 });
     }
@@ -35,22 +33,27 @@ export async function GET() {
 
 export async function POST(request: Request) {
      try {
-        const firestoreAdmin = getFirestoreAdmin();
         const { presaleEndDate } = await request.json();
 
-        if (!presaleEndDate || isNaN(new Date(presaleEndDate).getTime())) {
-            return NextResponse.json({ message: 'Invalid date format provided.' }, { status: 400 });
-        }
+        const dateSchema = z.string().datetime();
+        const parsedDate = dateSchema.parse(presaleEndDate);
+
+        await prisma.config.upsert({
+            where: { id: 'presaleEndDate' },
+            update: { value: { value: parsedDate } },
+            create: { id: 'presaleEndDate', value: { value: parsedDate } },
+        });
         
-        await firestoreAdmin.collection('config').doc('presaleEndDate').set({ value: presaleEndDate });
-        
-        return NextResponse.json({ 
+        return NextResponse.json({
             message: 'Presale end date updated successfully',
-            presaleEndDate,
+            presaleEndDate: parsedDate,
         }, { status: 200 });
 
     } catch (error) {
         console.error('API Presale-Date POST Error:', error);
+        if (error instanceof z.ZodError) {
+            return NextResponse.json({ message: 'Invalid date format provided.', details: error.errors }, { status: 400 });
+        }
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }

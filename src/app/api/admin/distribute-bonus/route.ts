@@ -1,57 +1,61 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getFirestoreAdmin } from '@/lib/firebase';
+import prisma from '@/lib/prisma';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: NextRequest) {
     try {
-        const firestoreAdmin = getFirestoreAdmin();
-        const configRef = firestoreAdmin.collection('config').doc('bonusDistributed');
-        const bonusConfig = await configRef.get();
+        const bonusConfig = await prisma.config.findUnique({ where: { id: 'bonusDistributed' } });
 
-        if (bonusConfig.exists && bonusConfig.data()?.value === true) {
+        if (bonusConfig && (bonusConfig.value as { value: boolean })?.value === true) {
             return NextResponse.json({ message: 'Bonus has already been distributed.' }, { status: 400 });
         }
         
-        const usersToUpdateSnapshot = await firestoreAdmin.collection('users').where('balance', '>', 0).get();
+        const usersToUpdate = await prisma.user.findMany({ where: { balance: { gt: 0 } } });
 
-        if (usersToUpdateSnapshot.empty) {
+        if (usersToUpdate.length === 0) {
              return NextResponse.json({ 
                 message: `No users with a balance to distribute bonus to.`,
                 updatedCount: 0 
             }, { status: 200 });
         }
         
-        let updatedCount = 0;
-        const batch = firestoreAdmin.batch();
-        
-        for (const userDoc of usersToUpdateSnapshot.docs) {
-            const user = userDoc.data();
+        const updates = usersToUpdate.map(user => {
             const bonusAmount = user.balance * 0.03;
             const newBalance = user.balance + bonusAmount;
-            
-            batch.update(userDoc.ref, { balance: newBalance });
-            
-            const newTxRef = userDoc.ref.collection('transactions').doc(`bonus-${uuidv4()}`);
-            batch.set(newTxRef, {
-                amountExn: bonusAmount,
-                paidAmount: 0,
-                paidCurrency: 'BONUS',
-                date: new Date(),
-                status: 'Completed',
-                failureReason: 'Presale Bonus',
-                balanceAdded: true
+
+            const updateUser = prisma.user.update({
+                where: { wallet: user.wallet },
+                data: { balance: newBalance },
             });
-            updatedCount++;
-        }
 
-        await batch.commit();
+            const createTx = prisma.transaction.create({
+                data: {
+                    id: `bonus-${uuidv4()}`,
+                    amountExn: bonusAmount,
+                    paidAmount: 0,
+                    paidCurrency: 'BONUS',
+                    date: new Date(),
+                    status: 'Completed',
+                    failureReason: 'Presale Bonus',
+                    balanceAdded: true,
+                    userWallet: user.wallet,
+                },
+            });
+            return [updateUser, createTx];
+        }).flat();
 
-        await configRef.set({ value: true });
+        await prisma.$transaction(updates);
+
+        await prisma.config.upsert({
+            where: { id: 'bonusDistributed' },
+            update: { value: { value: true } },
+            create: { id: 'bonusDistributed', value: { value: true } },
+        });
 
         return NextResponse.json({ 
-            message: `Successfully distributed 3% bonus to ${updatedCount} users.`,
-            updatedCount: updatedCount 
+            message: `Successfully distributed 3% bonus to ${usersToUpdate.length} users.`,
+            updatedCount: usersToUpdate.length
         }, { status: 200 });
 
     } catch (error: any) {
@@ -62,11 +66,10 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
     try {
-        const firestoreAdmin = getFirestoreAdmin();
-        const configRef = firestoreAdmin.collection('config').doc('bonusDistributed');
-        const bonusConfig = await configRef.get();
+        const bonusConfig = await prisma.config.findUnique({ where: { id: 'bonusDistributed' } });
+        const isBonusDistributed = bonusConfig ? (bonusConfig.value as { value: boolean })?.value === true : false;
         
-        return NextResponse.json({ isBonusDistributed: bonusConfig.exists && bonusConfig.data()?.value === true }, { status: 200 });
+        return NextResponse.json({ isBonusDistributed }, { status: 200 });
     } catch (error) {
         console.error('API Distribute-Bonus GET Error:', error);
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });

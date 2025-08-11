@@ -1,22 +1,25 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getFirestoreAdmin } from '@/lib/firebase';
+import prisma from '@/lib/prisma';
+import { z } from 'zod';
+
+const verifyPasscodeSchema = z.object({
+    passcode: z.string(),
+});
 
 export async function POST(request: NextRequest) {
     try {
-        const firestoreAdmin = getFirestoreAdmin();
-        const { passcode } = await request.json();
+        const body = await request.json();
+        const { passcode } = verifyPasscodeSchema.parse(body);
         
-        const passcodeRef = firestoreAdmin.collection('config').doc('adminPasscode');
-        const passcodeDoc = await passcodeRef.get();
+        const configDoc = await prisma.config.findUnique({ where: { id: 'adminPasscode' } });
 
-        // Fallback to environment variable if not in DB.
         let correctPasscode = process.env.ADMIN_PASSCODE || '203020';
-        if (passcodeDoc.exists) {
-            const docData = passcodeDoc.data();
-            if (docData && docData.value) {
-                correctPasscode = docData.value;
-            }
+        if (configDoc) {
+             const docValue = (configDoc.value as { value?: string }).value;
+             if (docValue) {
+                correctPasscode = docValue;
+             }
         }
         
         if (passcode === correctPasscode) {
@@ -27,6 +30,9 @@ export async function POST(request: NextRequest) {
 
     } catch (error: any) {
         console.error('API Verify-Passcode Error:', error);
+        if (error instanceof z.ZodError) {
+            return NextResponse.json({ message: 'Invalid input.', details: error.errors }, { status: 400 });
+        }
         return NextResponse.json({ message: 'An internal server error occurred during verification.' }, { status: 500 });
     }
 }
