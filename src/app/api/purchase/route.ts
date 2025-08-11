@@ -29,7 +29,7 @@ export async function POST(request: Request) {
                 failureReason: transaction.failureReason,
                 blockhash: transaction.blockhash,
                 lastValidBlockHeight: transaction.lastValidBlockHeight,
-                balanceAdded: transaction.status === 'Completed',
+                balanceAdded: transaction.balanceAdded,
                 userWallet: userKey,
             };
 
@@ -40,22 +40,33 @@ export async function POST(request: Request) {
             });
 
             // Update balance if completed and not already added
-            if (transaction.status === 'Completed') {
-                const existingTx = await tx.transaction.findUnique({ where: { id: transaction.id } });
-                if (existingTx && !existingTx.balanceAdded) {
-                    await tx.user.update({
-                        where: { wallet: userKey },
-                        data: {
-                            balance: {
-                                increment: exnAmount,
-                            },
+            if (transaction.status === 'Completed' && !transaction.balanceAdded) {
+                await tx.user.update({
+                    where: { wallet: userKey },
+                    data: {
+                        balance: {
+                            increment: exnAmount,
                         },
-                    });
-                    await tx.transaction.update({
-                        where: { id: transaction.id },
-                        data: { balanceAdded: true },
-                    });
-                }
+                    },
+                });
+                await tx.transaction.update({
+                    where: { id: transaction.id },
+                    data: { balanceAdded: true },
+                });
+                 // Atomically update the total sold amount
+                await tx.config.upsert({
+                    where: { id: 'totalExnSold' },
+                    update: {
+                        value: {
+                            // Using prisma raw query to avoid race conditions with json manipulation
+                            increment: exnAmount,
+                        },
+                    },
+                    create: {
+                        id: 'totalExnSold',
+                        value: { value: exnAmount },
+                    },
+                });
             }
         });
 
@@ -67,14 +78,15 @@ export async function POST(request: Request) {
             }
         });
 
-        const totalSoldResult = await prisma.user.aggregate({
-            _sum: { balance: true }
+        const totalSoldConfig = await prisma.config.findUnique({
+            where: { id: 'totalExnSold' }
         });
+        const newTotalSold = (totalSoldConfig?.value as { value: number })?.value || 0;
 
         return NextResponse.json({
             message: 'Purchase recorded',
             newBalance: updatedUser?.balance || 0,
-            newTotalSold: totalSoldResult._sum.balance || 0,
+            newTotalSold: newTotalSold,
             transactions: updatedUser?.transactions || [],
         }, { status: 200 });
 

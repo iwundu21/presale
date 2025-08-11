@@ -22,6 +22,7 @@ export type Transaction = {
   failureReason?: string;
   blockhash?: string;
   lastValidBlockHeight?: number;
+  balanceAdded?: boolean;
 };
 
 type TokenPrices = {
@@ -222,7 +223,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             throw new Error(`Transaction failed to confirm: ${JSON.stringify(confirmation.value.err)}`);
         }
 
-        const completedTx: Transaction = { ...tx, id: signature, status: 'Completed' };
+        const completedTx: Transaction = { ...tx, id: signature, status: 'Completed', balanceAdded: false };
         updateTransactionInState(completedTx);
         await persistTransaction(completedTx);
 
@@ -259,7 +260,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     
     setIsLoadingPurchase(true);
 
-    const txId = `${publicKey.toBase58().slice(0, 5)}-${uuidv4()}`;
+    const txId = `temp_${uuidv4()}`;
     let newTx: Transaction = { 
         id: txId,
         amountExn: exnAmount, 
@@ -267,6 +268,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         paidCurrency: currency, 
         date: new Date(),
         status: "Pending",
+        balanceAdded: false,
     };
     
     updateTransactionInState(newTx);
@@ -389,7 +391,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, persistTransaction, confirmAndFinalizeTransaction]);
   
   const retryTransaction = useCallback(async (tx: Transaction) => {
-    if (tx.status !== 'Pending' || tx.id.startsWith('tx_')) {
+    if (tx.status !== 'Pending' || tx.id.startsWith('temp_')) {
         toast({ title: "Retry Unavailable", description: "This transaction cannot be retried from here.", variant: "destructive" });
         return;
     }

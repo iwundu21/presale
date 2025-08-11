@@ -22,10 +22,8 @@ async function getOrCreateConfig(id: string, defaultValue: any) {
 
 export async function GET() {
     try {
-        const totalSoldResult = await prisma.user.aggregate({
-            _sum: { balance: true },
-        });
-        const totalExnSold = totalSoldResult._sum.balance || 0;
+        const totalSoldConfig = await getOrCreateConfig('totalExnSold', { value: 0 });
+        const totalExnSold = (totalSoldConfig as { value: number })?.value || 0;
 
         const presaleInfoValue = await getOrCreateConfig('presaleInfo', defaultPresaleInfo);
         const isPresaleActiveValue = await getOrCreateConfig('isPresaleActive', { value: true });
