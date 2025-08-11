@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { CardDescription, CardTitle } from "@/components/ui/card";
@@ -6,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge, BadgeProps } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { List, CheckCircle, AlertCircle, Clock, ExternalLink, TrendingUp, HelpCircle, RefreshCw, Copy } from "lucide-react";
-import { useDashboard, Transaction } from "./dashboard-client-provider";
+import { useDashboard, Transaction, TRANSACTION_TIMEOUT_MS } from "./dashboard-client-provider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
@@ -50,7 +51,11 @@ function TransactionRow({ tx }: { tx: Transaction }) {
     };
 
     const canRetry = (tx: Transaction) => {
-       return tx.status === 'Pending' && !tx.id.startsWith('temp_');
+       if (tx.status !== 'Pending' || tx.id.startsWith('temp_')) {
+           return false;
+       }
+       const timeSinceCreation = new Date().getTime() - new Date(tx.date).getTime();
+       return timeSinceCreation < TRANSACTION_TIMEOUT_MS;
     }
 
     const isLinkDisabled = tx.id.startsWith('temp_') || tx.id.includes('bonus-');
@@ -151,7 +156,11 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
     };
 
     const canRetry = (tx: Transaction) => {
-        return tx.status === 'Pending' && !tx.id.startsWith('temp_');
+        if (tx.status !== 'Pending' || tx.id.startsWith('temp_')) {
+            return false;
+        }
+        const timeSinceCreation = new Date().getTime() - new Date(tx.date).getTime();
+        return timeSinceCreation < TRANSACTION_TIMEOUT_MS;
     }
     const isLinkDisabled = tx.id.startsWith('temp_') || tx.id.includes('bonus-');
 

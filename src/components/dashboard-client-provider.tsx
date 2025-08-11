@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useCallback, createContext, useContext } from "react";
@@ -60,7 +61,7 @@ type DashboardClientProviderProps = {
     children: React.ReactNode;
 };
 
-const TRANSACTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes for on-chain confirmation
+export const TRANSACTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes for on-chain confirmation
 
 export function DashboardClientProvider({ children }: DashboardClientProviderProps) {
   const { connected, publicKey, connecting, sendTransaction, wallet } = useWallet();
@@ -277,7 +278,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     // Create a pending transaction immediately
     const pendingTx: Transaction = {
         id: tempTxId,
-        amountExn,
+        amountExn: exnAmount,
         paidAmount,
         paidCurrency: currency,
         date: new Date(),
@@ -286,7 +287,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         balanceAdded: false,
     };
     updateTransactionInState(pendingTx);
-    await persistTransaction(pendingTx); // Persist initial pending state
+    await persistTransaction(pendingTx);
     
     // Set a timeout to handle user inaction
     confirmationTimeout = setTimeout(() => {
@@ -303,7 +304,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             variant: "destructive"
         });
         setIsLoadingPurchase(false);
-    }, 5 * 60 * 1000); // 5 minutes
+    }, TRANSACTION_TIMEOUT_MS);
     
     try {
         const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
@@ -445,28 +446,42 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, persistTransaction, confirmAndFinalizeTransaction, isHardCapReached]);
   
   const retryTransaction = useCallback(async (tx: Transaction) => {
-    if (tx.status !== 'Pending' || tx.id.startsWith('temp_')) {
+    if (tx.status !== 'Pending' || tx.id.startsWith('temp_') || !tx.blockhash || !tx.lastValidBlockHeight) {
         toast({ title: "Retry Unavailable", description: "This transaction cannot be retried from here.", variant: "destructive" });
+        return;
+    }
+
+    const isExpired = await connection.isBlockhashValid(tx.blockhash);
+    if (!isExpired) {
+        const failedTx: Transaction = {
+            ...tx,
+            status: 'Failed',
+            failureReason: 'Transaction expired before it could be confirmed.'
+        };
+        updateTransactionInState(failedTx);
+        persistTransaction(failedTx);
+        toast({ title: "Transaction Expired", description: "This transaction can no longer be confirmed.", variant: "destructive" });
         return;
     }
     
     toast({ title: "Checking status...", description: "Re-checking latest status of your transaction."});
     
-    if (tx.blockhash && tx.lastValidBlockHeight && !tx.id.startsWith('temp_')) {
-        confirmAndFinalizeTransaction(tx, tx.id);
-    } else {
-        await fetchDashboardData();
-    }
+    confirmAndFinalizeTransaction(tx, tx.id);
 
-  }, [toast, fetchDashboardData, confirmAndFinalizeTransaction]);
+  }, [toast, connection, updateTransactionInState, persistTransaction, confirmAndFinalizeTransaction]);
   
   useEffect(() => {
     const interval = setInterval(() => {
         const now = new Date().getTime();
         transactions.forEach(tx => {
             if (tx.status === 'Pending' && (now - new Date(tx.date).getTime()) > TRANSACTION_TIMEOUT_MS) {
-                // This handles on-chain confirmation timeouts, not user inaction timeouts
-                if (tx.blockhash) { // Only try to fail transactions that were actually sent
+                if (tx.id.startsWith('temp_')) {
+                    // This case is already handled by the user inaction timeout in handlePurchase
+                    return;
+                }
+                
+                // This handles on-chain confirmation timeouts for transactions that were sent
+                if (tx.blockhash) {
                     const failedTx: Transaction = {
                         ...tx,
                         status: 'Failed',
@@ -474,18 +489,13 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
                     };
                     updateTransactionInState(failedTx);
                     persistTransaction(failedTx);
-                     toast({
-                        title: "Transaction Timed Out",
-                        description: `A pending transaction has been marked as failed.`,
-                        variant: "destructive",
-                    });
                 }
             }
         });
     }, 60000); // Check every minute
 
     return () => clearInterval(interval);
-  }, [transactions, updateTransactionInState, persistTransaction, toast]);
+  }, [transactions, updateTransactionInState, persistTransaction]);
 
 
   if (!isClient || connecting || !publicKey || isLoadingDashboard) {
