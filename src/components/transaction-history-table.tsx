@@ -49,11 +49,8 @@ function TransactionRow({ tx }: { tx: Transaction }) {
         });
     };
 
-    const isTxPendingAndRecent = (tx: Transaction) => {
-        if (tx.status !== 'Pending') return false;
-        const txTime = new Date(tx.date).getTime();
-        const fiveMinutesAgo = new Date().getTime() - (5 * 60 * 1000);
-        return txTime > fiveMinutesAgo;
+    const canRetry = (tx: Transaction) => {
+       return tx.status === 'Pending' && !tx.id.startsWith('temp_');
     }
 
     const isLinkDisabled = tx.id.startsWith('temp_') || tx.id.includes('bonus-');
@@ -90,7 +87,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
             </TableCell>
             <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-2">
-                    {isTxPendingAndRecent(tx) && (
+                    {canRetry(tx) && (
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button 
@@ -127,12 +124,10 @@ function TransactionRow({ tx }: { tx: Transaction }) {
                                         <ExternalLink className="h-4 w-4"/>
                                     </a>
                                 </div>
-                                {tx.status === 'Failed' && tx.failureReason && (
+                                {tx.failureReason && (
                                     <p className="text-red-400 max-w-xs break-words">Reason: {tx.failureReason}</p>
                                 )}
                                 {tx.status === 'Completed' && <p>Transaction successfully confirmed on-chain.</p>}
-                                {tx.status === 'Pending' && <p>Transaction is being processed...</p>}
-                                {isTxPendingAndRecent(tx) && <p>Click the refresh icon to retry confirmation.</p>}
                             </div>
                         </PopoverContent>
                     </Popover>
@@ -155,11 +150,8 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
         });
     };
 
-    const isTxPendingAndRecent = (tx: Transaction) => {
-        if (tx.status !== 'Pending') return false;
-        const txTime = new Date(tx.date).getTime();
-        const fiveMinutesAgo = new Date().getTime() - (5 * 60 * 1000);
-        return txTime > fiveMinutesAgo;
+    const canRetry = (tx: Transaction) => {
+        return tx.status === 'Pending' && !tx.id.startsWith('temp_');
     }
     const isLinkDisabled = tx.id.startsWith('temp_') || tx.id.includes('bonus-');
 
@@ -188,7 +180,7 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
             <div className="flex justify-between items-center text-xs">
                 <p className="text-muted-foreground">{new Date(tx.date).toLocaleString()}</p>
                  <div className="flex items-center gap-2">
-                    {isTxPendingAndRecent(tx) && (
+                    {canRetry(tx) && (
                         <Button 
                             variant="outline" 
                             size="sm" 
@@ -207,7 +199,7 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
                     </Button>
                  </div>
             </div>
-             {tx.status === 'Failed' && tx.failureReason && (
+             {tx.failureReason && (
                 <p className="text-xs text-red-400 break-words pt-1">
                     <span className="font-semibold">Reason:</span> {tx.failureReason}
                 </p>
@@ -268,3 +260,5 @@ export function TransactionHistoryTable() {
         </div>
     );
 }
+
+    

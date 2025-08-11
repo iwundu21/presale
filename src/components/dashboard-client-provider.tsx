@@ -226,7 +226,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             throw new Error(`Transaction failed to confirm: ${JSON.stringify(confirmation.value.err)}`);
         }
 
-        const completedTx: Transaction = { ...tx, id: signature, status: 'Completed', balanceAdded: false };
+        const completedTx: Transaction = { ...tx, id: signature, status: 'Completed', failureReason: undefined, balanceAdded: false };
         updateTransactionInState(completedTx);
         await persistTransaction(completedTx);
 
@@ -272,6 +272,37 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     let blockhash: string;
     let lastValidBlockHeight: number;
     let confirmationTimeout: NodeJS.Timeout | null = null;
+
+    // Create a pending transaction immediately
+    const pendingTx: Transaction = {
+        id: tempTxId,
+        amountExn,
+        paidAmount,
+        paidCurrency: currency,
+        date: new Date(),
+        status: "Pending",
+        failureReason: "Awaiting confirmation from wallet...",
+        balanceAdded: false,
+    };
+    updateTransactionInState(pendingTx);
+    await persistTransaction(pendingTx); // Persist initial pending state
+    
+    // Set a timeout to handle user inaction
+    confirmationTimeout = setTimeout(() => {
+        const timedOutTx: Transaction = {
+            ...pendingTx,
+            status: 'Failed',
+            failureReason: 'User did not confirm in wallet within 5 minutes.'
+        };
+        updateTransactionInState(timedOutTx);
+        persistTransaction(timedOutTx);
+        toast({
+            title: "Transaction Timed Out",
+            description: "You did not confirm the transaction in your wallet.",
+            variant: "destructive"
+        });
+        setIsLoadingPurchase(false);
+    }, 5 * 60 * 1000); // 5 minutes
     
     try {
         const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
@@ -335,26 +366,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             description: "Please approve the transaction in your wallet.",
         });
 
-        // Set a timeout to handle user inaction
-        confirmationTimeout = setTimeout(() => {
-            const timedOutTx: Transaction = {
-                id: tempTxId,
-                amountExn,
-                paidAmount,
-                paidCurrency: currency,
-                date: new Date(),
-                status: 'Failed',
-                failureReason: 'User did not confirm in wallet within 5 minutes.'
-            };
-            updateTransactionInState(timedOutTx);
-            persistTransaction(timedOutTx);
-            toast({
-                title: "Transaction Timed Out",
-                description: "You did not confirm the transaction in your wallet.",
-                variant: "destructive"
-            });
-        }, 5 * 60 * 1000); // 5 minutes
-
         signature = await sendTransaction(transaction, connection);
         
         // If we get a signature, the user has approved. Clear the timeout.
@@ -363,19 +374,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             confirmationTimeout = null;
         }
         
-        const newTx: Transaction = {
-            id: tempTxId,
-            amountExn,
-            paidAmount,
-            paidCurrency: currency,
-            date: new Date(),
-            status: "Pending",
-            balanceAdded: false,
-        };
-        updateTransactionInState(newTx);
-        await persistTransaction(newTx);
-
-        const pendingTxWithSig: Transaction = { ...newTx, id: signature, blockhash, lastValidBlockHeight };
+        const pendingTxWithSig: Transaction = { ...pendingTx, id: signature, blockhash, lastValidBlockHeight, failureReason: 'Processing on-chain...' };
         
         setTransactions(prev => {
             const existingIndex = prev.findIndex(t => t.id === tempTxId);
@@ -395,7 +394,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             variant: "success",
         });
 
-        confirmAndFinalizeTransaction(pendingTxWithSig, signature);
+        await confirmAndFinalizeTransaction(pendingTxWithSig, signature);
         
     } catch (error: any) {
         if (confirmationTimeout) {
@@ -417,11 +416,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         }
         
         const failedTx: Transaction = {
-            id: signature || tempTxId,
-            amountExn,
-            paidAmount,
-            paidCurrency: currency,
-            date: new Date(),
+            ...pendingTx,
+            id: signature || tempTxId, // Use signature if available, otherwise tempId
             status: 'Failed',
             failureReason
         };
@@ -431,7 +427,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         
         toast({
             title: toastTitle,
-            description: "Your transaction could not be completed. Your balance has not been charged for failed transactions.",
+            description: failureReason,
             variant: "destructive",
         });
     } finally {
@@ -508,3 +504,5 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
+
+    
