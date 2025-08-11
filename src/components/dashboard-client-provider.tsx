@@ -195,7 +195,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         const { newBalance, newTotalSold, transactions } = await response.json();
 
         setExnBalance(newBalance);
-        setTotalExnSold(newTotalSold);
+        setTotalSold(newTotalSold);
         const parsedTxs = transactions.map((tx: any) => ({...tx, date: new Date(tx.date)}));
         setTransactions(parsedTxs);
 
@@ -457,5 +457,3 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
-
-    
