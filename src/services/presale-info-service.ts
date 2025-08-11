@@ -11,9 +11,12 @@ export type PresaleData = {
     isPresaleActive: boolean;
 }
 
-const defaultInfo: PresaleInfo = {
-    seasonName: "Early Stage",
-    tokenPrice: 0.09
+const defaultData: PresaleData = {
+    presaleInfo: {
+        seasonName: "Early Stage",
+        tokenPrice: 0.09
+    },
+    isPresaleActive: true
 };
 
 /**
@@ -25,16 +28,16 @@ export async function getPresaleData(): Promise<PresaleData> {
     const response = await fetch('/api/presale-data');
     if (!response.ok) {
         console.error("Failed to fetch presale data, using defaults.");
-        return { presaleInfo: defaultInfo, isPresaleActive: true };
+        return defaultData;
     }
     const data = await response.json();
     return {
-        presaleInfo: data.presaleInfo || defaultInfo,
-        isPresaleActive: data.isPresaleActive === undefined ? true : data.isPresaleActive,
+        presaleInfo: data.presaleInfo || defaultData.presaleInfo,
+        isPresaleActive: data.isPresaleActive === undefined ? defaultData.isPresaleActive : data.isPresaleActive,
     };
   } catch (error) {
     console.error("Error fetching presale data:", error);
-    return { presaleInfo: defaultInfo, isPresaleActive: true };
+    return defaultData;
   }
 }
 
