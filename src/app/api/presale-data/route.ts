@@ -16,8 +16,8 @@ export async function GET() {
         const presaleInfoDoc = await configRef.doc('presaleInfo').get();
         const isPresaleActiveDoc = await configRef.doc('isPresaleActive').get();
 
-        const presaleInfo = presaleInfoDoc.exists ? presaleInfoDoc.data() : defaultPresaleInfo;
-        const isPresaleActive = isPresaleActiveDoc.exists ? isPresaleActiveDoc.data()?.value : true;
+        const presaleInfo = presaleInfoDoc.exists && presaleInfoDoc.data() ? presaleInfoDoc.data() : defaultPresaleInfo;
+        const isPresaleActive = isPresaleActiveDoc.exists && isPresaleActiveDoc.data()?.value !== undefined ? isPresaleActiveDoc.data()?.value : true;
 
         return NextResponse.json({ 
             totalExnSold,
@@ -26,7 +26,12 @@ export async function GET() {
         }, { status: 200 });
     } catch (error) {
         console.error('API Presale-Data Error:', error);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        // Fallback to default data in case of a more critical Firestore error.
+        return NextResponse.json({
+            totalExnSold: 0,
+            presaleInfo: defaultPresaleInfo,
+            isPresaleActive: true,
+        }, { status: 200 });
     }
 }
 
@@ -50,10 +55,14 @@ export async function POST(request: Request) {
         const updatedPresaleInfoDoc = await configRef.doc('presaleInfo').get();
         const updatedIsPresaleActiveDoc = await configRef.doc('isPresaleActive').get();
         
+        const updatedInfo = updatedPresaleInfoDoc.exists() && updatedPresaleInfoDoc.data() ? updatedPresaleInfoDoc.data() : defaultPresaleInfo;
+        const updatedStatus = updatedIsPresaleActiveDoc.exists() && updatedIsPresaleActiveDoc.data()?.value !== undefined ? updatedIsPresaleActiveDoc.data()?.value : true;
+
+
         return NextResponse.json({ 
             message: 'Presale data updated successfully',
-            presaleInfo: updatedPresaleInfoDoc.exists ? updatedPresaleInfoDoc.data() : defaultPresaleInfo,
-            isPresaleActive: updatedIsPresaleActiveDoc.exists ? updatedIsPresaleActiveDoc.data()?.value : true,
+            presaleInfo: updatedInfo,
+            isPresaleActive: updatedStatus,
         }, { status: 200 });
 
     } catch (error: any) {
