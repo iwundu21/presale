@@ -245,7 +245,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         }
 
         const completedTx: Transaction = { ...tx, status: 'Completed', failureReason: "Transaction successfully confirmed on-chain.", balanceAdded: false };
-        updateTransactionInState(completedTx);
         
         const result = await persistTransaction(completedTx);
         if (result) {
@@ -302,7 +301,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     // Create a pending transaction immediately
     const pendingTx: Transaction = {
         id: tempTxId,
-        amountExn,
+        amountExn: exnAmount,
         paidAmount,
         paidCurrency: currency,
         date: new Date(),
