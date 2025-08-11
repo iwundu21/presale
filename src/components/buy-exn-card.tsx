@@ -321,7 +321,3 @@ export function BuyExnCard() {
     </div>
   );
 }
-
-    
-
-    
