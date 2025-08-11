@@ -16,7 +16,11 @@ export async function GET(request: NextRequest) {
         const userDoc = await userRef.get();
 
         if (!userDoc.exists) {
-            await userRef.set({ balance: 0 });
+            // If user does not exist, create a new document for them
+            await userRef.set({ 
+                wallet: userKey,
+                balance: 0 
+            });
             return NextResponse.json({
                 balance: 0,
                 transactions: []
