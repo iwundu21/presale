@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getPresaleData, setPresaleInfo, setPresaleStatus } from "@/services/presale-info-service";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Download, ChevronLeft, ChevronRight, KeyRound, Edit, ChevronsUpDown, CheckCircle, AlertCircle, Clock, Search, ExternalLink, Gift, Award, Copy, View } from "lucide-react";
+import { Download, ChevronLeft, ChevronRight, KeyRound, Edit, ChevronsUpDown, CheckCircle, AlertCircle, Clock, Search, ExternalLink, Gift, Award, Copy, View, History } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Transaction } from "./dashboard-client-provider";
@@ -20,6 +20,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collap
 import { Badge } from "./ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
+import { Separator } from "./ui/separator";
 
 const SEASON_PRICES: { [key: string]: number } = {
     "Early Stage": 0.09,
@@ -32,6 +33,12 @@ type UserAdminView = {
     balance: number;
     transactions: Transaction[];
 }
+
+type FoundTransaction = Transaction & {
+    user: {
+        wallet: string;
+    }
+};
 
 const USERS_PER_PAGE = 20;
 
@@ -85,6 +92,12 @@ export function AdminDashboard() {
     const [totalPages, setTotalPages] = useState(0);
     const [isLoadingUsers, setIsLoadingUsers] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+
+    // Transaction Search State
+    const [txSearchQuery, setTxSearchQuery] = useState('');
+    const [isSearchingTx, setIsSearchingTx] = useState(false);
+    const [foundTx, setFoundTx] = useState<FoundTransaction | null>(null);
+    const [txSearchError, setTxSearchError] = useState('');
 
     // Update Balance State
     const [walletToUpdate, setWalletToUpdate] = useState('');
@@ -170,11 +183,11 @@ export function AdminDashboard() {
         setCurrentPage(1); // Reset to first page on new search
     };
     
-    const handleCopyToClipboard = (text: string) => {
+    const handleCopyToClipboard = (text: string, entity: string = "Wallet address") => {
         navigator.clipboard.writeText(text);
         toast({
             title: "Copied!",
-            description: "Wallet address copied to clipboard.",
+            description: `${entity} copied to clipboard.`,
             variant: "success",
         });
     };
@@ -363,7 +376,7 @@ export function AdminDashboard() {
 
         setIsUpdatingBalance(true);
         try {
-            const response = await fetch('/api/admin/update-balance', {
+            const response = await fetch(`/api/admin/update-balance`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ wallet: walletToUpdate, newBalance: balanceNum })
@@ -409,10 +422,125 @@ export function AdminDashboard() {
             setIsDistributing(false);
         }
     };
+    
+    const handleTxSearch = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!txSearchQuery) return;
+        
+        setIsSearchingTx(true);
+        setTxSearchError('');
+        setFoundTx(null);
+        try {
+            const response = await fetch(`/api/admin/find-transaction?txId=${txSearchQuery}`);
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to find transaction.');
+            }
+            setFoundTx(data);
+        } catch (error: any) {
+            setTxSearchError(error.message);
+        } finally {
+            setIsSearchingTx(false);
+        }
+    };
+
 
     return (
         <main className="container mx-auto p-4 sm:p-6 lg:p-8">
             <div className="grid gap-8">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Transaction Lookup</CardTitle>
+                        <CardDescription>
+                            Find a specific transaction by its ID to view its details and associated user.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={handleTxSearch} className="flex items-start gap-4">
+                            <div className="grid w-full max-w-lg items-center gap-1.5">
+                                <Label htmlFor="tx-search">Transaction ID</Label>
+                                <Input
+                                    id="tx-search"
+                                    type="text"
+                                    placeholder="Enter transaction signature or ID..."
+                                    value={txSearchQuery}
+                                    onChange={(e) => setTxSearchQuery(e.target.value)}
+                                    disabled={isSearchingTx}
+                                />
+                            </div>
+                            <Button type="submit" disabled={isSearchingTx} className="self-end">
+                                <Search className="mr-2 h-4 w-4"/>
+                                {isSearchingTx ? "Searching..." : "Search"}
+                            </Button>
+                        </form>
+                        {isSearchingTx && (
+                            <div className="mt-4">
+                                <Skeleton className="h-24 w-full" />
+                            </div>
+                        )}
+                        {txSearchError && (
+                            <p className="mt-4 text-center text-red-500">{txSearchError}</p>
+                        )}
+                        {foundTx && (
+                            <Card className="mt-6 bg-muted/50">
+                                <CardHeader>
+                                    <CardTitle>Transaction Found</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-muted-foreground">User Wallet</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-mono text-sm">{foundTx.user.wallet}</span>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopyToClipboard(foundTx.user.wallet, 'Wallet address')}>
+                                                    <Copy className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                         <Separator />
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-muted-foreground">Transaction ID</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-mono text-sm truncate max-w-[200px] sm:max-w-xs">{foundTx.id}</span>
+                                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopyToClipboard(foundTx.id, 'Transaction ID')}>
+                                                    <Copy className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                        <Separator />
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-muted-foreground">Details</span>
+                                            <span>Purchased {foundTx.amountExn.toLocaleString()} EXN for {foundTx.paidAmount.toLocaleString()} {foundTx.paidCurrency}</span>
+                                        </div>
+                                        <Separator />
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-muted-foreground">Date</span>
+                                            <span>{new Date(foundTx.date).toLocaleString()}</span>
+                                        </div>
+                                        <Separator />
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-muted-foreground">Status</span>
+                                            <Badge variant={getStatusBadgeVariant(foundTx.status)} className="gap-1.5 cursor-pointer">
+                                                {getTxIcon(foundTx)}
+                                                {foundTx.status}
+                                            </Badge>
+                                        </div>
+                                         {foundTx.failureReason && (
+                                            <>
+                                            <Separator />
+                                            <div className="flex justify-between items-start">
+                                                <span className="text-muted-foreground">Reason</span>
+                                                <span className="text-right text-red-400 max-w-xs break-words">{foundTx.failureReason}</span>
+                                            </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                    </CardContent>
+                </Card>
                  <Card>
                     <CardHeader>
                         <CardTitle>User Balances</CardTitle>
@@ -463,7 +591,7 @@ export function AdminDashboard() {
                                                             <TooltipProvider>
                                                                 <Tooltip>
                                                                     <TooltipTrigger asChild>
-                                                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopyToClipboard(user.wallet)}>
+                                                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopyToClipboard(user.wallet, 'Wallet address')}>
                                                                             <Copy className="h-4 w-4" />
                                                                         </Button>
                                                                     </TooltipTrigger>
@@ -476,8 +604,8 @@ export function AdminDashboard() {
                                                     <TableCell className="text-center">
                                                         <CollapsibleTrigger asChild>
                                                             <Button variant="outline" size="sm" disabled={user.transactions.length === 0}>
-                                                                <View className="h-4 w-4 mr-2" />
-                                                                View
+                                                                <History className="h-4 w-4 mr-2" />
+                                                                History
                                                             </Button>
                                                         </CollapsibleTrigger>
                                                     </TableCell>
@@ -492,9 +620,8 @@ export function AdminDashboard() {
                                                                     <Table>
                                                                         <TableHeader>
                                                                             <TableRow>
-                                                                                <TableHead>Date</TableHead>
-                                                                                <TableHead>EXN Amount</TableHead>
-                                                                                <TableHead>Paid</TableHead>
+                                                                                <TableHead>Tx ID</TableHead>
+                                                                                <TableHead>Details</TableHead>
                                                                                 <TableHead>Status</TableHead>
                                                                                 <TableHead>Explorer</TableHead>
                                                                             </TableRow>
@@ -502,9 +629,25 @@ export function AdminDashboard() {
                                                                         <TableBody>
                                                                             {user.transactions.map(tx => (
                                                                                 <TableRow key={tx.id}>
-                                                                                    <TableCell className="text-xs">{new Date(tx.date).toLocaleString()}</TableCell>
-                                                                                    <TableCell>{tx.paidCurrency === 'BONUS' ? '+' : ''}{tx.amountExn.toLocaleString()}</TableCell>
-                                                                                    <TableCell>{tx.paidCurrency === 'BONUS' ? 'N/A' : `${tx.paidAmount.toLocaleString()} ${tx.paidCurrency}`}</TableCell>
+                                                                                     <TableCell className="font-mono text-xs">
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <span className="truncate max-w-[100px]">{tx.id}</span>
+                                                                                            <Tooltip>
+                                                                                                <TooltipTrigger asChild>
+                                                                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyToClipboard(tx.id, "Transaction ID")}>
+                                                                                                        <Copy className="h-3 w-3" />
+                                                                                                    </Button>
+                                                                                                </TooltipTrigger>
+                                                                                                <TooltipContent><p>Copy Tx ID</p></TooltipContent>
+                                                                                            </Tooltip>
+                                                                                        </div>
+                                                                                    </TableCell>
+                                                                                    <TableCell>
+                                                                                        <p>{tx.paidCurrency === 'BONUS' ? '+' : ''}{tx.amountExn.toLocaleString()} EXN</p>
+                                                                                        <p className="text-xs text-muted-foreground">
+                                                                                            {new Date(tx.date).toLocaleString()}
+                                                                                        </p>
+                                                                                    </TableCell>
                                                                                     <TableCell>
                                                                                         <Badge variant={tx.paidCurrency === 'BONUS' ? 'default' : getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
                                                                                             {getTxIcon(tx)}

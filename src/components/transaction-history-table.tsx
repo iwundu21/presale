@@ -5,16 +5,17 @@ import { CardDescription, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge, BadgeProps } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { List, CheckCircle, AlertCircle, Clock, ExternalLink, TrendingUp, HelpCircle, RefreshCw } from "lucide-react";
+import { List, CheckCircle, AlertCircle, Clock, ExternalLink, TrendingUp, HelpCircle, RefreshCw, Copy } from "lucide-react";
 import { useDashboard, Transaction } from "./dashboard-client-provider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Separator } from "./ui/separator";
+import { useToast } from "@/hooks/use-toast";
 
 const formatTxId = (txId: string) => {
-    if (txId.startsWith('tx_')) return 'Processing...';
+    if (txId.startsWith('temp_')) return 'Processing...';
     return `${txId.substring(0, 4)}...${txId.substring(txId.length - 4)}`;
 }
 
@@ -37,6 +38,16 @@ const getStatusIcon = (status: Transaction['status']) => {
 
 function TransactionRow({ tx }: { tx: Transaction }) {
     const { retryTransaction, isLoadingPurchase } = useDashboard();
+    const { toast } = useToast();
+
+    const handleCopyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        toast({
+            title: "Copied!",
+            description: "Transaction ID copied to clipboard.",
+            variant: "success",
+        });
+    };
 
     const isTxPendingAndRecent = (tx: Transaction) => {
         if (tx.status !== 'Pending') return false;
@@ -45,7 +56,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
         return txTime > fiveMinutesAgo;
     }
 
-    const isLinkDisabled = tx.id.startsWith('tx_') || tx.id.includes('-');
+    const isLinkDisabled = tx.id.startsWith('temp_') || tx.id.includes('bonus-');
 
     return (
         <TableRow key={tx.id}>
@@ -64,19 +75,18 @@ function TransactionRow({ tx }: { tx: Transaction }) {
                     </div>
                 </div>
             </TableCell>
-            <TableCell className="text-center">
-                 <Tooltip>
-                    <TooltipTrigger asChild>
-                         <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isLinkDisabled} asChild>
-                            <a href={`https://solscan.io/tx/${tx.id}`} target="_blank" rel="noopener noreferrer" >
-                                <ExternalLink className="h-4 w-4" />
-                            </a>
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">
-                        <p>View on Solscan</p>
-                    </TooltipContent>
-                </Tooltip>
+            <TableCell className="text-center font-mono text-xs">
+                <div className="flex items-center justify-center gap-2">
+                    <span className="truncate max-w-[100px]">{tx.id}</span>
+                     <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyToClipboard(tx.id)}>
+                                <Copy className="h-3 w-3" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Copy Tx ID</p></TooltipContent>
+                    </Tooltip>
+                </div>
             </TableCell>
             <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-2">
@@ -111,7 +121,12 @@ function TransactionRow({ tx }: { tx: Transaction }) {
                         <PopoverContent side="top" align="end" className="w-auto max-w-xs text-sm" alignOffset={-30} sideOffset={10}>
                              <div className="space-y-2">
                                 <p className="font-bold">{new Date(tx.date).toLocaleString()}</p>
-                                <p>Tx: {formatTxId(tx.id)}</p>
+                                <div className="flex items-center gap-2">
+                                    <p className="truncate">Tx: {tx.id}</p>
+                                    <a href={`https://solscan.io/tx/${tx.id}`} target="_blank" rel="noopener noreferrer" className={isLinkDisabled ? 'pointer-events-none text-muted-foreground/50' : ''}>
+                                        <ExternalLink className="h-4 w-4"/>
+                                    </a>
+                                </div>
                                 {tx.status === 'Failed' && tx.failureReason && (
                                     <p className="text-red-400 max-w-xs break-words">Reason: {tx.failureReason}</p>
                                 )}
@@ -129,6 +144,16 @@ function TransactionRow({ tx }: { tx: Transaction }) {
 
 function TransactionMobileCard({ tx }: { tx: Transaction }) {
     const { retryTransaction, isLoadingPurchase } = useDashboard();
+    const { toast } = useToast();
+
+    const handleCopyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        toast({
+            title: "Copied!",
+            description: "Transaction ID copied to clipboard.",
+            variant: "success",
+        });
+    };
 
     const isTxPendingAndRecent = (tx: Transaction) => {
         if (tx.status !== 'Pending') return false;
@@ -136,7 +161,7 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
         const fiveMinutesAgo = new Date().getTime() - (5 * 60 * 1000);
         return txTime > fiveMinutesAgo;
     }
-    const isLinkDisabled = tx.id.startsWith('tx_') || tx.id.includes('-');
+    const isLinkDisabled = tx.id.startsWith('temp_') || tx.id.includes('bonus-');
 
     return (
         <div className="p-4 bg-muted/30 rounded-lg space-y-3">
@@ -151,6 +176,12 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
                         {tx.status}
                     </Badge>
                 </div>
+            </div>
+            <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
+                <span className="truncate">ID: {tx.id}</span>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyToClipboard(tx.id)}>
+                    <Copy className="h-3 w-3" />
+                </Button>
             </div>
             <Separator />
             <div className="flex justify-between items-center text-xs">
@@ -217,7 +248,7 @@ export function TransactionHistoryTable() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Details</TableHead>
-                                    <TableHead className="text-center">View on Chain</TableHead>
+                                    <TableHead className="text-center">Transaction ID</TableHead>
                                     <TableHead className="text-right">Status</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -234,5 +265,3 @@ export function TransactionHistoryTable() {
         </div>
     );
 }
-
-    
