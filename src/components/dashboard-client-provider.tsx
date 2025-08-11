@@ -8,7 +8,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction, TransactionSignature } from "@solana/web3.js";
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
-import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, HARD_CAP } from "@/config";
+import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, HARD_CAP, MEMO_PROGRAM_ID } from "@/config";
 import type { PresaleInfo } from "@/services/presale-info-service";
 import { v4 as uuidv4 } from 'uuid';
 
@@ -321,6 +321,16 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
                 )
             );
         }
+
+        // Add Memo Instruction
+        const memoText = `EXN Presale: ${exnAmount.toLocaleString()} EXN for ${paidAmount.toLocaleString()} ${currency}`;
+        instructions.push(
+            new TransactionInstruction({
+                keys: [{ pubkey: publicKey, isSigner: true, isWritable: false }],
+                data: Buffer.from(memoText, "utf-8"),
+                programId: MEMO_PROGRAM_ID,
+            })
+        );
         
         const latestBlockhash = await connection.getLatestBlockhash();
         const blockhash = latestBlockhash.blockhash;
@@ -465,3 +475,5 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
+
+    
