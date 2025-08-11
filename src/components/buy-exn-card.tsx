@@ -144,11 +144,14 @@ export function BuyExnCard() {
   }, [payAmount, currency, balances]);
 
   useEffect(() => {
-    const usdValue = getUsdValue(payAmount, currency);
-    if (usdValue === null) {
+    const rawUsdValue = getUsdValue(payAmount, currency);
+    if (rawUsdValue === null) {
         setLimitError("");
         return;
     }
+    
+    // Round to 2 decimal places to avoid floating point inaccuracies
+    const usdValue = parseFloat(rawUsdValue.toFixed(2));
 
     if (usdValue < MIN_PURCHASE_USD) {
         setLimitError(`Minimum purchase is $${MIN_PURCHASE_USD}.`);
@@ -303,3 +306,5 @@ export function BuyExnCard() {
     </div>
   );
 }
+
+    
