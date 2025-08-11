@@ -11,6 +11,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Invalid input' }, { status: 400 });
         }
         
+        let newTotalSold = 0;
+
         await prisma.$transaction(async (tx) => {
              // Create or find user
             let user = await tx.user.findUnique({ where: { wallet: userKey } });
@@ -40,7 +42,7 @@ export async function POST(request: Request) {
             });
 
             // Update balance if completed and not already added
-            if (transaction.status === 'Completed' && !transaction.balanceAdded) {
+            if (transaction.status === 'Completed' && transaction.balanceAdded === false) {
                 await tx.user.update({
                     where: { wallet: userKey },
                     data: {
@@ -53,20 +55,20 @@ export async function POST(request: Request) {
                     where: { id: transaction.id },
                     data: { balanceAdded: true },
                 });
-                 // Atomically update the total sold amount
+                
+                // Atomically update the total sold amount
+                const totalSoldConfig = await tx.config.findUnique({ where: { id: 'totalExnSold' } });
+                const currentTotalSold = (totalSoldConfig?.value as { value: number })?.value || 0;
+                newTotalSold = currentTotalSold + exnAmount;
+
                 await tx.config.upsert({
                     where: { id: 'totalExnSold' },
-                    update: {
-                        value: {
-                            // Using prisma raw query to avoid race conditions with json manipulation
-                            increment: exnAmount,
-                        },
-                    },
-                    create: {
-                        id: 'totalExnSold',
-                        value: { value: exnAmount },
-                    },
+                    update: { value: { value: newTotalSold } },
+                    create: { id: 'totalExnSold', value: { value: exnAmount } },
                 });
+            } else {
+                 const totalSoldConfig = await tx.config.findUnique({ where: { id: 'totalExnSold' } });
+                 newTotalSold = (totalSoldConfig?.value as { value: number })?.value || 0;
             }
         });
 
@@ -77,11 +79,6 @@ export async function POST(request: Request) {
                 transactions: { orderBy: { date: 'desc' } }
             }
         });
-
-        const totalSoldConfig = await prisma.config.findUnique({
-            where: { id: 'totalExnSold' }
-        });
-        const newTotalSold = (totalSoldConfig?.value as { value: number })?.value || 0;
 
         return NextResponse.json({
             message: 'Purchase recorded',
