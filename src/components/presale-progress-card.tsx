@@ -56,20 +56,20 @@ export function PresaleProgressCard() {
                 </div>
                 <div className="grid grid-cols-3 gap-4 text-center">
                     <div>
-                        <p className="text-lg font-bold text-white">{formatNumber(totalExnSold)}</p>
+                        <p className="text-lg font-bold text-white break-all">{formatNumber(totalExnSold)}</p>
                         <p className="text-xs text-muted-foreground">Tokens Sold</p>
                     </div>
                      <div>
-                        <p className="text-lg font-bold text-white">{formatNumber(SOFT_CAP)}</p>
+                        <p className="text-lg font-bold text-white break-all">{formatNumber(SOFT_CAP)}</p>
                         <p className="text-xs text-muted-foreground">Soft Cap</p>
                     </div>
                      <div>
-                        <p className="text-lg font-bold text-white">{formatNumber(HARD_CAP)}</p>
+                        <p className="text-lg font-bold text-white break-all">{formatNumber(HARD_CAP)}</p>
                         <p className="text-xs text-muted-foreground">Hard Cap</p>
                     </div>
                 </div>
                  <div className="text-center bg-muted/20 p-3 rounded-lg border border-border">
-                    <p className="text-sm font-semibold text-white">
+                    <p className="text-sm font-semibold text-white break-all">
                         Total Raised: ${formatNumber(totalSoldValue, { notation: 'standard', maximumFractionDigits: 0 })}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
