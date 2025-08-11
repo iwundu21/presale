@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // PUBLIC: Configuration data is readable by anyone.
+    // It should only be written to by the admin SDK.
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if false; // Only admin can write
+    }
+
+    // USER DATA:
+    match /users/{userId} {
+      // Users can read their own document (which contains their balance).
+      allow get: if request.auth != null && request.auth.uid == userId;
+      
+      // Users can create their own document when they first interact.
+      allow create: if request.auth != null && request.auth.uid == userId;
+
+      // Users cannot update their own balance directly. This must be done server-side.
+      allow update: if false;
+      
+      // No one can list all users or delete users from the client.
+      allow list, delete: if false;
+
+      // TRANSACTIONS:
+      // Users can see their own transactions.
+      // Users can create new transactions for themselves.
+      match /transactions/{transactionId} {
+        allow read, create: if request.auth != null && request.auth.uid == userId;
+        // Nobody can update or delete a transaction from the client.
+        allow update, delete: if false;
+      }
+    }
+  }
+}
