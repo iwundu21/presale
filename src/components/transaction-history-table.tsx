@@ -177,9 +177,10 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
                     </Badge>
                 </div>
             </div>
-            <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
-                <span className="truncate">ID: {tx.id}</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyToClipboard(tx.id)}>
+             <div className="flex items-start gap-2 font-mono text-xs text-muted-foreground">
+                <span className="font-sans">ID:</span>
+                <span className="break-all flex-1">{tx.id}</span>
+                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => handleCopyToClipboard(tx.id)}>
                     <Copy className="h-3 w-3" />
                 </Button>
             </div>
@@ -207,7 +208,9 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
                  </div>
             </div>
              {tx.status === 'Failed' && tx.failureReason && (
-                <p className="text-xs text-red-400 break-words pt-1">Reason: {tx.failureReason}</p>
+                <p className="text-xs text-red-400 break-words pt-1">
+                    <span className="font-semibold">Reason:</span> {tx.failureReason}
+                </p>
             )}
         </div>
     )
