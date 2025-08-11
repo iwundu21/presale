@@ -291,11 +291,12 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             instructions.push(SystemProgram.transfer({
                 fromPubkey: publicKey,
                 toPubkey: presaleWalletPublicKey,
-                lamports: paidAmount * LAMPORTS_PER_SOL,
+                lamports: Math.round(paidAmount * LAMPORTS_PER_SOL),
             }));
         } else {
             const mintPublicKey = currency === "USDC" ? USDC_MINT : USDT_MINT;
-            const decimals = 6;
+            const decimals = 6; // Standard for USDC/USDT
+            const integerAmount = Math.round(paidAmount * (10 ** decimals));
 
             const fromTokenAccount = await getAssociatedTokenAddress(mintPublicKey, publicKey);
             const toTokenAccount = await getAssociatedTokenAddress(mintPublicKey, presaleWalletPublicKey);
@@ -317,7 +318,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
                     fromTokenAccount,
                     toTokenAccount,
                     publicKey,
-                    paidAmount * (10 ** decimals)
+                    integerAmount
                 )
             );
         }
