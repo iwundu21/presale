@@ -3,25 +3,41 @@ import { initializeApp, getApps, getApp, FirebaseOptions } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import * as admin from 'firebase-admin';
 
-// Initialize Firebase Admin SDK
-// This is used for server-side operations (in API routes)
-if (!admin.apps.length) {
+// --- Firebase Admin SDK (Server-side) ---
+
+const initializeAdminApp = () => {
+    const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    if (!serviceAccountKey) {
+        throw new Error("FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set.");
+    }
+    
+    // Check if the app is already initialized
+    if (admin.apps.length > 0) {
+        return admin.app();
+    }
+
     try {
-        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY as string);
-        admin.initializeApp({
+        const serviceAccount = JSON.parse(serviceAccountKey);
+        return admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
         });
-    } catch(e) {
-        console.error('Firebase Admin initialization error', e);
+    } catch (e: any) {
+        // Throw a more informative error
+        throw new Error(`Failed to initialize Firebase Admin SDK. Please ensure your FIREBASE_SERVICE_ACCOUNT_KEY is set correctly in your .env file. Original error: ${e.message}`);
     }
-}
+};
 
-const firestoreAdmin = admin.firestore();
+// A getter for the firestoreAdmin instance.
+// This ensures initializeAdminApp() is called before firestore is accessed.
+const getFirestoreAdmin = () => {
+    initializeAdminApp();
+    return admin.firestore();
+};
 
+export const firestoreAdmin = getFirestoreAdmin();
 
-// Initialize Firebase Client SDK
-// This is used for client-side operations (if any)
-// It's safe to expose this to the client
+// --- Firebase Client SDK (Client-side) ---
+
 const firebaseConfig: FirebaseOptions = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -34,4 +50,4 @@ const firebaseConfig: FirebaseOptions = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
 
-export { db, firestoreAdmin };
+export { db };
