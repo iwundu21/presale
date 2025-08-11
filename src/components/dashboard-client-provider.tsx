@@ -60,7 +60,7 @@ type DashboardClientProviderProps = {
     children: React.ReactNode;
 };
 
-const TRANSACTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const TRANSACTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes for on-chain confirmation
 
 export function DashboardClientProvider({ children }: DashboardClientProviderProps) {
   const { connected, publicKey, connecting, sendTransaction, wallet } = useWallet();
@@ -271,6 +271,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     let signature: TransactionSignature | null = null;
     let blockhash: string;
     let lastValidBlockHeight: number;
+    let confirmationTimeout: NodeJS.Timeout | null = null;
     
     try {
         const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
@@ -299,9 +300,9 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             if (!toTokenAccountInfo) {
                 instructions.push(
                     createAssociatedTokenAccountInstruction(
-                        publicKey,
+                        publicKey, // Payer
                         toTokenAccount,
-                        presaleWalletPublicKey,
+                        presaleWalletPublicKey, // Owner
                         mintPublicKey
                     )
                 );
@@ -334,7 +335,33 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             description: "Please approve the transaction in your wallet.",
         });
 
+        // Set a timeout to handle user inaction
+        confirmationTimeout = setTimeout(() => {
+            const timedOutTx: Transaction = {
+                id: tempTxId,
+                amountExn,
+                paidAmount,
+                paidCurrency: currency,
+                date: new Date(),
+                status: 'Failed',
+                failureReason: 'User did not confirm in wallet within 5 minutes.'
+            };
+            updateTransactionInState(timedOutTx);
+            persistTransaction(timedOutTx);
+            toast({
+                title: "Transaction Timed Out",
+                description: "You did not confirm the transaction in your wallet.",
+                variant: "destructive"
+            });
+        }, 5 * 60 * 1000); // 5 minutes
+
         signature = await sendTransaction(transaction, connection);
+        
+        // If we get a signature, the user has approved. Clear the timeout.
+        if (confirmationTimeout) {
+            clearTimeout(confirmationTimeout);
+            confirmationTimeout = null;
+        }
         
         const newTx: Transaction = {
             id: tempTxId,
@@ -371,6 +398,9 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         confirmAndFinalizeTransaction(pendingTxWithSig, signature);
         
     } catch (error: any) {
+        if (confirmationTimeout) {
+            clearTimeout(confirmationTimeout);
+        }
         console.error("Transaction failed:", error);
         
         let failureReason = "An unknown error occurred.";
@@ -430,18 +460,21 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         const now = new Date().getTime();
         transactions.forEach(tx => {
             if (tx.status === 'Pending' && (now - new Date(tx.date).getTime()) > TRANSACTION_TIMEOUT_MS) {
-                const failedTx: Transaction = {
-                    ...tx,
-                    status: 'Failed',
-                    failureReason: 'Transaction timed out after 5 minutes.'
-                };
-                updateTransactionInState(failedTx);
-                persistTransaction(failedTx);
-                 toast({
-                    title: "Transaction Timed Out",
-                    description: `A pending transaction has been marked as failed.`,
-                    variant: "destructive",
-                });
+                // This handles on-chain confirmation timeouts, not user inaction timeouts
+                if (tx.blockhash) { // Only try to fail transactions that were actually sent
+                    const failedTx: Transaction = {
+                        ...tx,
+                        status: 'Failed',
+                        failureReason: 'On-chain confirmation timed out after 5 minutes.'
+                    };
+                    updateTransactionInState(failedTx);
+                    persistTransaction(failedTx);
+                     toast({
+                        title: "Transaction Timed Out",
+                        description: `A pending transaction has been marked as failed.`,
+                        variant: "destructive",
+                    });
+                }
             }
         });
     }, 60000); // Check every minute
