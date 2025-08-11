@@ -300,6 +300,15 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
             const fromTokenAccount = await getAssociatedTokenAddress(mintPublicKey, publicKey);
             const toTokenAccount = await getAssociatedTokenAddress(mintPublicKey, presaleWalletPublicKey);
+            
+            // Check if the sender has a token account
+            const fromTokenAccountInfo = await connection.getAccountInfo(fromTokenAccount);
+            if (!fromTokenAccountInfo) {
+                // This case is unlikely if the user has a balance, but it's good practice
+                // to handle it. Usually, wallets do this automatically. We can't create it for them
+                // without their signature, so we should error out.
+                 throw new Error(`You do not have a ${currency} token account. Please create one to proceed.`);
+            }
 
             const toTokenAccountInfo = await connection.getAccountInfo(toTokenAccount);
             if (!toTokenAccountInfo) {
@@ -480,3 +489,4 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     
 
     
+
