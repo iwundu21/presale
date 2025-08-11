@@ -3,15 +3,15 @@ import { initializeApp, getApps, getApp, FirebaseOptions } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import * as admin from 'firebase-admin';
 
-require('dotenv').config({ path: '.env' });
-
 // --- Firebase Admin SDK (Server-side) ---
 
 const initializeAdminApp = () => {
+    // If the app is already initialized, return it.
     if (admin.apps.length > 0) {
         return admin.app();
     }
     
+    // Otherwise, initialize a new one.
     const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
     
     if (!serviceAccountKey) {
@@ -32,6 +32,7 @@ const initializeAdminApp = () => {
 
 let firestoreAdminInstance: admin.firestore.Firestore;
 
+// Getter function for the admin firestore instance
 const getFirestoreAdmin = () => {
     if (!firestoreAdminInstance) {
         initializeAdminApp();
@@ -40,7 +41,9 @@ const getFirestoreAdmin = () => {
     return firestoreAdminInstance;
 };
 
+// Export the singleton instance
 export const firestoreAdmin = getFirestoreAdmin();
+
 
 // --- Firebase Client SDK (Client-side) ---
 
@@ -53,6 +56,7 @@ const firebaseConfig: FirebaseOptions = {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+// Initialize Firebase client app
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
 
