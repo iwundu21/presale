@@ -15,7 +15,7 @@ import { USDC_MINT, USDT_MINT } from "@/config";
 import { useDashboard } from "./dashboard-client-provider";
 
 const SOL_GAS_BUFFER = 0.0009; // Reserve 0.0009 SOL for gas fees
-const MIN_PURCHASE_USD = 0.001;
+const MIN_PURCHASE_USD = 1;
 const MAX_PURCHASE_USD = 10000;
 
 type Currency = "USDC" | "USDT" | "SOL";
