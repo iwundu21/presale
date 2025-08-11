@@ -22,10 +22,13 @@ export async function GET() {
             await docRef.set({ value: presaleEndDate });
         }
         
-        return NextResponse.json({ presaleEndDate });
+        return NextResponse.json({ presaleEndDate }, { status: 200 });
     } catch (error) {
         console.error('API Presale-Date GET Error:', error);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        // Fallback to a default value but still return a 200 OK
+        // This prevents the client-side from throwing an error and allows the app to function
+        const presaleEndDate = getDefaultEndDate();
+        return NextResponse.json({ presaleEndDate }, { status: 200 });
     }
 }
 
