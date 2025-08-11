@@ -304,9 +304,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             // Check if the sender has a token account
             const fromTokenAccountInfo = await connection.getAccountInfo(fromTokenAccount);
             if (!fromTokenAccountInfo) {
-                // This case is unlikely if the user has a balance, but it's good practice
-                // to handle it. We can't create it for them
-                // without their signature, so we should error out.
                  throw new Error(`You do not have a ${currency} token account. Please create one to proceed.`);
             }
 
@@ -314,10 +311,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             if (!toTokenAccountInfo) {
                 instructions.push(
                     createAssociatedTokenAccountInstruction(
-                        publicKey,
-                        toTokenAccount,
-                        presaleWalletPublicKey,
-                        mintPublicKey
+                        publicKey, // Payer
+                        toTokenAccount, // ATA
+                        presaleWalletPublicKey, // Owner
+                        mintPublicKey // Mint
                     )
                 );
             }
@@ -480,3 +477,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
     
 
+
+
+    
