@@ -196,11 +196,14 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             throw new Error(`Server-side transaction update failed: ${await response.text()}`);
         }
         const { newBalance, newTotalSold, transactions } = await response.json();
+        
+        if (newBalance !== undefined) setExnBalance(newBalance);
+        if (newTotalSold !== undefined) setTotalExnSold(newTotalSold);
 
-        setExnBalance(newBalance);
-        setTotalExnSold(newTotalSold);
-        const parsedTxs = transactions.map((tx: any) => ({...tx, date: new Date(tx.date)}));
-        setTransactions(parsedTxs);
+        if(transactions) {
+            const parsedTxs = transactions.map((tx: any) => ({...tx, date: new Date(tx.date)}));
+            setTransactions(parsedTxs);
+        }
 
     } catch (error) {
         console.error("Failed to persist transaction:", error);
@@ -226,7 +229,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             throw new Error(`Transaction failed to confirm: ${JSON.stringify(confirmation.value.err)}`);
         }
 
-        const completedTx: Transaction = { ...tx, id: signature, status: 'Completed', failureReason: undefined, balanceAdded: false };
+        const completedTx: Transaction = { ...tx, id: signature, status: 'Completed', failureReason: "Transaction successfully confirmed on-chain.", balanceAdded: false };
         updateTransactionInState(completedTx);
         await persistTransaction(completedTx);
 
@@ -269,14 +272,12 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
     const tempTxId = `temp_${uuidv4()}`;
     let signature: TransactionSignature | null = null;
-    let blockhash: string;
-    let lastValidBlockHeight: number;
     let confirmationTimeout: NodeJS.Timeout | null = null;
 
     // Create a pending transaction immediately
     const pendingTx: Transaction = {
         id: tempTxId,
-        amountExn: exnAmount,
+        amountExn,
         paidAmount,
         paidCurrency: currency,
         date: new Date(),
@@ -349,9 +350,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             );
         }
         
-        const latestBlockhash = await connection.getLatestBlockhash();
-        blockhash = latestBlockhash.blockhash;
-        lastValidBlockHeight = latestBlockhash.lastValidBlockHeight;
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
 
         const message = new TransactionMessage({
             payerKey: publicKey,
@@ -374,19 +373,29 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             confirmationTimeout = null;
         }
         
-        const pendingTxWithSig: Transaction = { ...pendingTx, id: signature, blockhash, lastValidBlockHeight, failureReason: 'Processing on-chain...' };
+        const signedTxState: Transaction = { 
+            ...pendingTx, 
+            id: signature, 
+            blockhash, 
+            lastValidBlockHeight, 
+            failureReason: 'Processing on-chain...' 
+        };
         
+        // We need to update the state with the new ID (the signature)
+        // so we find the old temp record and replace it.
         setTransactions(prev => {
             const existingIndex = prev.findIndex(t => t.id === tempTxId);
             if (existingIndex > -1) {
                 const updatedTxs = [...prev];
-                updatedTxs[existingIndex] = pendingTxWithSig;
+                updatedTxs[existingIndex] = signedTxState;
                 return updatedTxs;
             }
-            return [pendingTxWithSig, ...prev];
+            // Fallback in case the temp record wasn't found
+            return [signedTxState, ...prev.filter(t => t.id !== tempTxId)];
         });
 
-        await persistTransaction(pendingTxWithSig); 
+        // Use the new state (with signature) to update the database record
+        await persistTransaction(signedTxState); 
 
         toast({
             title: "Transaction Sent!",
@@ -394,7 +403,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             variant: "success",
         });
 
-        await confirmAndFinalizeTransaction(pendingTxWithSig, signature);
+        await confirmAndFinalizeTransaction(signedTxState, signature);
         
     } catch (error: any) {
         if (confirmationTimeout) {
