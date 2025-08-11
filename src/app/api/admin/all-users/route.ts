@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/mock-db';
-import { Transaction } from '@/components/dashboard-client-provider';
+import prisma from '@/lib/prisma';
+import { Transaction } from '@prisma/client';
 
 type UserAdminView = {
     wallet: string;
@@ -13,33 +13,30 @@ export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const page = parseInt(searchParams.get('page') || '1', 10);
-        const limit = parseInt(searchParams.get('limit') || '0', 10);
+        const limit = parseInt(searchParams.get('limit') || '10', 10);
         const searchQuery = searchParams.get('searchQuery')?.toLowerCase() || '';
 
-        const allUsers = await db.getAllUsers();
-
-        const filteredUsers = searchQuery
-            ? allUsers.filter(user => user.wallet.toLowerCase().includes(searchQuery))
-            : allUsers;
+        const whereCondition = searchQuery ? { wallet: { contains: searchQuery } } : {};
         
-        filteredUsers.sort((a, b) => b.balance - a.balance);
+        const totalUsers = await prisma.user.count({ where: whereCondition });
 
-        const totalUsers = filteredUsers.length;
+        const users = await prisma.user.findMany({
+            where: whereCondition,
+            take: limit > 0 ? limit : undefined,
+            skip: limit > 0 ? (page - 1) * limit : undefined,
+            orderBy: { balance: 'desc' },
+            include: {
+                transactions: {
+                    orderBy: { date: 'desc' },
+                },
+            },
+        });
 
-        const paginatedUsers = limit > 0
-            ? filteredUsers.slice((page - 1) * limit, page * limit)
-            : filteredUsers;
-
-        const userArray: UserAdminView[] = paginatedUsers.map(user => ({
+        const userArray: UserAdminView[] = users.map(user => ({
             wallet: user.wallet,
             balance: user.balance,
             transactions: user.transactions.map(tx => ({
-                id: tx.id,
-                amountExn: tx.amountExn,
-                paidAmount: tx.paidAmount,
-                paidCurrency: tx.paidCurrency,
-                date: tx.date,
-                status: tx.status as Transaction['status'],
+                ...tx,
                 failureReason: tx.failureReason || undefined,
                 blockhash: tx.blockhash || undefined,
                 lastValidBlockHeight: tx.lastValidBlockHeight || undefined,

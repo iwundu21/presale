@@ -1,14 +1,27 @@
 
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/mock-db';
+import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
+
+const defaultPresaleInfo = { seasonName: "Early Stage", tokenPrice: 0.09 };
 
 export async function GET() {
     try {
-        const [totalExnSold, presaleInfo, isPresaleActive] = await Promise.all([
-            db.getTotalExnSold(),
-            db.getConfig('presaleInfo', { seasonName: "Early Stage", tokenPrice: 0.09 }),
-            db.getConfig('isPresaleActive', true)
-        ]);
+        const totalExnSoldResult = await prisma.user.aggregate({
+            _sum: { balance: true }
+        });
+        const totalExnSold = totalExnSoldResult._sum.balance || 0;
+        
+        const presaleInfoConfig = await prisma.config.findUnique({
+            where: { key: 'presaleInfo' },
+        });
+        const presaleInfo = presaleInfoConfig ? (presaleInfoConfig.value as typeof defaultPresaleInfo) : defaultPresaleInfo;
+        
+        const isPresaleActiveConfig = await prisma.config.findUnique({
+             where: { key: 'isPresaleActive' },
+        });
+        const isPresaleActive = isPresaleActiveConfig ? (isPresaleActiveConfig.value as boolean) : true;
+        
 
         return NextResponse.json({ 
             totalExnSold,
@@ -29,20 +42,28 @@ export async function POST(request: Request) {
             if (!presaleInfo.seasonName || typeof presaleInfo.tokenPrice !== 'number') {
                  return NextResponse.json({ message: 'Invalid input for presale info' }, { status: 400 });
             }
-            await db.setConfig('presaleInfo', presaleInfo);
+            await prisma.config.upsert({
+                where: { key: 'presaleInfo' },
+                update: { value: presaleInfo as any },
+                create: { key: 'presaleInfo', value: presaleInfo as any }
+            });
         }
 
         if (typeof isPresaleActive === 'boolean') {
-            await db.setConfig('isPresaleActive', isPresaleActive);
+             await prisma.config.upsert({
+                where: { key: 'isPresaleActive' },
+                update: { value: isPresaleActive },
+                create: { key: 'isPresaleActive', value: isPresaleActive }
+            });
         }
 
-        const updatedPresaleInfo = await db.getConfig('presaleInfo', { seasonName: "Early Stage", tokenPrice: 0.09 });
-        const updatedIsPresaleActive = await db.getConfig('isPresaleActive', true);
+        const updatedPresaleInfoConfig = await prisma.config.findUnique({ where: { key: 'presaleInfo' } });
+        const updatedIsPresaleActiveConfig = await prisma.config.findUnique({ where: { key: 'isPresaleActive' } });
         
         return NextResponse.json({ 
             message: 'Presale data updated successfully',
-            presaleInfo: updatedPresaleInfo,
-            isPresaleActive: updatedIsPresaleActive,
+            presaleInfo: updatedPresaleInfoConfig?.value || defaultPresaleInfo,
+            isPresaleActive: updatedIsPresaleActiveConfig?.value === undefined ? true : updatedIsPresaleActiveConfig.value,
         }, { status: 200 });
 
     } catch (error: any) {

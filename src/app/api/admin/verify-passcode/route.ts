@@ -1,11 +1,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/mock-db';
+import prisma from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
     try {
         const { passcode } = await request.json();
-        const correctPasscode = await db.getAdminPasscode();
+        
+        const passcodeConfig = await prisma.config.findUnique({
+            where: { key: 'adminPasscode' }
+        });
+
+        const correctPasscode = passcodeConfig ? String(passcodeConfig.value) : process.env.ADMIN_PASSCODE || '203020';
         
         if (!correctPasscode) {
             console.error("FATAL: Admin passcode is not set in DB, environment, or as a default.");

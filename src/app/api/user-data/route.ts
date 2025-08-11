@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/mock-db';
+import prisma from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -12,14 +12,26 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ message: 'User key is required' }, { status: 400 });
         }
 
-        const user = await db.getUser(userKey);
+        const user = await prisma.user.findUnique({
+            where: { wallet: userKey },
+            include: {
+                transactions: {
+                    orderBy: { date: 'desc' }
+                }
+            }
+        });
 
         if (!user) {
             // If user doesn't exist, create a new one to ensure consistency
-            const newUser = await db.createUser(userKey);
+            const newUser = await prisma.user.create({
+                data: {
+                    wallet: userKey,
+                    balance: 0,
+                },
+            });
             return NextResponse.json({
                 balance: newUser.balance,
-                transactions: newUser.transactions
+                transactions: []
             }, { status: 200 });
         }
         

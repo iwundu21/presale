@@ -1,19 +1,16 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
 }
 
 model User {
-  id           String        @id @default(cuid())
-  wallet       String        @unique
+  wallet       String        @id @unique
   balance      Float         @default(0)
   transactions Transaction[]
   createdAt    DateTime      @default(now())
@@ -21,22 +18,24 @@ model User {
 }
 
 model Transaction {
-  id                   String   @id
-  user                 User     @relation(fields: [userWallet], references: [wallet])
-  userWallet           String
+  id                   String    @id @default(cuid())
   amountExn            Float
   paidAmount           Float
   paidCurrency         String
   date                 DateTime
   status               String // "Completed", "Pending", "Failed"
-  failureReason        String?
+  failureReason        String?   @db.Text
   blockhash            String?
   lastValidBlockHeight Int?
+  balanceAdded         Boolean   @default(false)
+
+  user     User   @relation(fields: [userWallet], references: [wallet])
+  userWallet String
 
   @@index([userWallet])
 }
 
 model Config {
-  key   String @id
-  value String
+  key   String @id @unique
+  value Json
 }
