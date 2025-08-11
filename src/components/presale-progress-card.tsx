@@ -81,7 +81,7 @@ export function PresaleProgressCard() {
                     <AlertTitle className="font-bold text-accent">Presale Bonus!</AlertTitle>
                     <AlertDescription className="text-accent/90">
                        All presale participants will receive a 3% bonus of their total purchased EXN tokens during the final token distribution.
-                    </d/AlertDescription>
+                    </AlertDescription>
                 </Alert>
             </div>
         </div>
