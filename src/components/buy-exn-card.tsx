@@ -137,7 +137,7 @@ export function BuyExnCard() {
     if (numericPayAmount > maxBalance) {
       setBalanceError(`Insufficient ${currency} balance.`);
     } else if (currency !== 'SOL' && balances.SOL < SOL_GAS_BUFFER) {
-      setBalanceError(`Insufficient SOL for gas. You need at least ${SOL_GAS_BUFFER} SOL.`);
+      setBalanceError("Insufficient SOL for gas fee.");
     } else {
       setBalanceError("");
     }
@@ -292,7 +292,7 @@ export function BuyExnCard() {
       <div className="flex-col gap-4 pt-4">
         <Button 
             size="lg" 
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg py-6" 
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-base py-6" 
             disabled={isPurchaseDisabled}
             onClick={handleBuyNow}
         >
