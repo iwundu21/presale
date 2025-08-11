@@ -162,6 +162,20 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   useEffect(() => {
     if (connected && publicKey) {
         fetchDashboardData();
+        
+        const intervalId = setInterval(async () => {
+            try {
+                const res = await fetch('/api/presale-data');
+                if (res.ok) {
+                    const data = await res.json();
+                    setTotalExnSold(data.totalExnSold || 0);
+                }
+            } catch (error) {
+                console.error("Failed to poll presale data:", error);
+            }
+        }, 30000); // Poll every 30 seconds
+
+        return () => clearInterval(intervalId);
     }
   }, [connected, publicKey, fetchDashboardData]);
   
@@ -230,7 +244,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             throw new Error(`Transaction failed to confirm: ${JSON.stringify(confirmation.value.err)}`);
         }
 
-        const completedTx: Transaction = { ...tx, id: signature, status: 'Completed', failureReason: "Transaction successfully confirmed on-chain.", balanceAdded: false };
+        const completedTx: Transaction = { ...tx, status: 'Completed', failureReason: "Transaction successfully confirmed on-chain.", balanceAdded: false };
         updateTransactionInState(completedTx);
         await persistTransaction(completedTx);
 
@@ -243,7 +257,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     } catch (error: any) {
         console.error("Transaction finalization failed:", error);
         
-        const failedTx: Transaction = { ...tx, id: signature, status: 'Failed', failureReason: "Failed to confirm on-chain." };
+        const failedTx: Transaction = { ...tx, status: 'Failed', failureReason: "Failed to confirm on-chain." };
         updateTransactionInState(failedTx);
         await persistTransaction(failedTx);
         
@@ -278,7 +292,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     // Create a pending transaction immediately
     const pendingTx: Transaction = {
         id: tempTxId,
-        amountExn: exnAmount,
+        amountExn,
         paidAmount,
         paidCurrency: currency,
         date: new Date(),
