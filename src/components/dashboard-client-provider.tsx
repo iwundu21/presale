@@ -250,7 +250,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             }
         }
 
-
         toast({
             title: "Purchase Successful!",
             description: `You purchased ${tx.amountExn.toLocaleString()} EXN. Your balance is updated.`,

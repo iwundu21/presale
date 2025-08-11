@@ -11,9 +11,9 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Invalid input' }, { status: 400 });
         }
         
-        let newTotalSold = 0;
+        let finalTotalSold = 0;
 
-        await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
              // Create or find user
             let user = await tx.user.findUnique({ where: { wallet: userKey } });
             if (!user) {
@@ -59,32 +59,34 @@ export async function POST(request: Request) {
                 // Atomically update the total sold amount
                 const totalSoldConfig = await tx.config.findUnique({ where: { id: 'totalExnSold' } });
                 const currentTotalSold = (totalSoldConfig?.value as { value: number })?.value || 0;
-                newTotalSold = currentTotalSold + exnAmount;
+                finalTotalSold = currentTotalSold + exnAmount;
 
                 await tx.config.upsert({
                     where: { id: 'totalExnSold' },
-                    update: { value: { value: newTotalSold } },
+                    update: { value: { value: finalTotalSold } },
                     create: { id: 'totalExnSold', value: { value: exnAmount } },
                 });
             } else {
                  const totalSoldConfig = await tx.config.findUnique({ where: { id: 'totalExnSold' } });
-                 newTotalSold = (totalSoldConfig?.value as { value: number })?.value || 0;
+                 finalTotalSold = (totalSoldConfig?.value as { value: number })?.value || 0;
             }
-        });
 
-        // Fetch updated data to return
-        const updatedUser = await prisma.user.findUnique({
-            where: { wallet: userKey },
-            include: {
-                transactions: { orderBy: { date: 'desc' } }
-            }
+            // Fetch updated data to return inside the transaction
+            const updatedUser = await tx.user.findUnique({
+                where: { wallet: userKey },
+                include: {
+                    transactions: { orderBy: { date: 'desc' } }
+                }
+            });
+
+            return { updatedUser, newTotalSold: finalTotalSold };
         });
 
         return NextResponse.json({
             message: 'Purchase recorded',
-            newBalance: updatedUser?.balance || 0,
-            newTotalSold: newTotalSold,
-            transactions: updatedUser?.transactions || [],
+            newBalance: result.updatedUser?.balance || 0,
+            newTotalSold: result.newTotalSold,
+            transactions: result.updatedUser?.transactions || [],
         }, { status: 200 });
 
     } catch (error) {
