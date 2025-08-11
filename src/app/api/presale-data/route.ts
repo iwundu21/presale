@@ -13,25 +13,43 @@ export async function GET() {
         });
         
         const configRef = firestoreAdmin.collection('config');
-        const presaleInfoDoc = await configRef.doc('presaleInfo').get();
-        const isPresaleActiveDoc = await configRef.doc('isPresaleActive').get();
+        const presaleInfoDocRef = configRef.doc('presaleInfo');
+        const isPresaleActiveDocRef = configRef.doc('isPresaleActive');
 
-        const presaleInfo = presaleInfoDoc.exists && presaleInfoDoc.data() ? presaleInfoDoc.data() : defaultPresaleInfo;
-        const isPresaleActive = isPresaleActiveDoc.exists && isPresaleActiveDoc.data()?.value !== undefined ? isPresaleActiveDoc.data()?.value : true;
+        let presaleInfoDoc = await presaleInfoDocRef.get();
+        let isPresaleActiveDoc = await isPresaleActiveDocRef.get();
+
+        let presaleInfo, isPresaleActive;
+
+        if (!presaleInfoDoc.exists) {
+            await presaleInfoDocRef.set(defaultPresaleInfo);
+            presaleInfo = defaultPresaleInfo;
+        } else {
+            presaleInfo = presaleInfoDoc.data();
+        }
+
+        if (!isPresaleActiveDoc.exists) {
+            await isPresaleActiveDocRef.set({ value: true });
+            isPresaleActive = true;
+        } else {
+            isPresaleActive = isPresaleActiveDoc.data()?.value;
+        }
+
 
         return NextResponse.json({ 
             totalExnSold,
             presaleInfo,
             isPresaleActive,
         }, { status: 200 });
+
     } catch (error) {
         console.error('API Presale-Data Error:', error);
-        // Fallback to default data in case of a more critical Firestore error.
+        // This is a fallback in case of a critical error like Firestore service being down.
         return NextResponse.json({
             totalExnSold: 0,
             presaleInfo: defaultPresaleInfo,
             isPresaleActive: true,
-        }, { status: 200 });
+        }, { status: 500 });
     }
 }
 
