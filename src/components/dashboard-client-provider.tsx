@@ -43,6 +43,7 @@ type DashboardContextType = {
     isLoadingPurchase: boolean;
     presaleInfo: PresaleInfo | null;
     isPresaleActive: boolean;
+    isHardCapReached: boolean;
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
@@ -76,6 +77,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const [isLoadingPurchase, setIsLoadingPurchase] = useState(false);
   const [presaleInfo, setPresaleInfo] = useState<PresaleInfo | null>(null);
   const [isPresaleActive, setIsPresaleActive] = useState(true);
+  
+  const isHardCapReached = totalExnSold >= HARD_CAP;
 
   useEffect(() => {
     setIsClient(true);
@@ -195,7 +198,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         const { newBalance, newTotalSold, transactions } = await response.json();
 
         setExnBalance(newBalance);
-        setTotalSold(newTotalSold);
+        setTotalExnSold(newTotalSold);
         const parsedTxs = transactions.map((tx: any) => ({...tx, date: new Date(tx.date)}));
         setTransactions(parsedTxs);
 
@@ -256,6 +259,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     if (!PRESALE_WALLET_ADDRESS) {
       toast({ title: "Presale address is not configured. Please contact support.", variant: "destructive" });
       return;
+    }
+    if (isHardCapReached) {
+        toast({ title: "Hard Cap Reached", description: "The presale has reached its hard cap. No more purchases can be made.", variant: "destructive" });
+        return;
     }
     
     setIsLoadingPurchase(true);
@@ -388,7 +395,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     } finally {
         setIsLoadingPurchase(false);
     }
-  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, persistTransaction, confirmAndFinalizeTransaction]);
+  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, persistTransaction, confirmAndFinalizeTransaction, isHardCapReached]);
   
   const retryTransaction = useCallback(async (tx: Transaction) => {
     if (tx.status !== 'Pending' || tx.id.startsWith('temp_')) {
@@ -449,6 +456,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     isLoadingPurchase,
     presaleInfo,
     isPresaleActive,
+    isHardCapReached,
   };
 
   return (

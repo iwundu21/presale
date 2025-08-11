@@ -21,7 +21,7 @@ const MAX_PURCHASE_USD = 10000;
 type Currency = "USDC" | "USDT" | "SOL";
 
 export function BuyExnCard() {
-  const { connected: isConnected, handlePurchase, tokenPrices, isLoadingPrices, presaleInfo, isPresaleActive, isLoadingPurchase } = useDashboard();
+  const { connected: isConnected, handlePurchase, tokenPrices, isLoadingPrices, presaleInfo, isPresaleActive, isLoadingPurchase, isHardCapReached } = useDashboard();
   const { publicKey } = useWallet();
   const { connection } = useConnection();
   const [payAmount, setPayAmount] = useState("1.00");
@@ -186,9 +186,10 @@ export function BuyExnCard() {
 
   const currentBalance = balances[currency as keyof typeof balances];
   const maxSpend = currency === 'SOL' ? currentBalance - SOL_GAS_BUFFER : currentBalance;
-  const isPurchaseDisabled = !isConnected || !parseFloat(payAmount) || parseFloat(payAmount) <= 0 || isLoadingPrices || !!balanceError || !!limitError || !isPresaleActive || isLoadingPurchase;
+  const isPurchaseDisabled = !isConnected || !parseFloat(payAmount) || parseFloat(payAmount) <= 0 || isLoadingPrices || !!balanceError || !!limitError || !isPresaleActive || isLoadingPurchase || isHardCapReached;
 
   const getButtonText = () => {
+    if (isHardCapReached) return "Hard Cap Reached";
     if (!isPresaleActive) return "Presale is currently closed";
     if (isLoadingPrices) return 'Loading Prices...';
     if (!isConnected) return "Connect Wallet to Buy";
