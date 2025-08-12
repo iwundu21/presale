@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
             });
             const currentTotalSold = (totalSoldConfig?.value as { value: number })?.value ?? 0;
 
-            // 3. Calculate the new total
+            // 3. Calculate the new total by adding the difference
             const newTotalSold = currentTotalSold + balanceDifference;
 
             // 4. Update the user's balance
