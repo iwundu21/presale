@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
         const { wallet, newBalance } = updateBalanceSchema.parse(body);
 
         await prisma.$transaction(async (tx) => {
-            // Find the user to get their current balance
+            // 1. Find the user to get their current balance
             const user = await tx.user.findUnique({
                 where: { wallet: wallet },
             });
@@ -26,25 +26,30 @@ export async function POST(request: NextRequest) {
             const oldBalance = user.balance;
             const balanceDifference = newBalance - oldBalance;
 
-            // Update the user's balance
+            // 2. Fetch the current total sold amount
+            const totalSoldConfig = await tx.config.findUnique({
+                where: { id: 'totalExnSold' },
+            });
+            const currentTotalSold = (totalSoldConfig?.value as { value: number })?.value ?? 0;
+
+            // 3. Calculate the new total
+            const newTotalSold = currentTotalSold + balanceDifference;
+
+            // 4. Update the user's balance
             await tx.user.update({
                 where: { wallet: wallet },
                 data: { balance: newBalance },
             });
             
-            // Update the total sold amount
+            // 5. Update the total sold amount with the new calculated value
             await tx.config.upsert({
                 where: { id: 'totalExnSold' },
                 update: {
-                    value: {
-                        // Using 'path' and 'increment' for atomic JSON field updates
-                        path: ['value'],
-                        increment: balanceDifference,
-                    },
+                    value: { value: newTotalSold },
                 },
                 create: {
                     id: 'totalExnSold',
-                    value: { value: balanceDifference },
+                    value: { value: newTotalSold },
                 },
             });
         });
@@ -56,7 +61,6 @@ export async function POST(request: NextRequest) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ message: 'Invalid input.', details: error.errors }, { status: 400 });
         }
-        // Use error.message to provide more specific feedback from the transaction
         return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
     }
 }
