@@ -296,8 +296,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
     const tempTxId = `temp_${uuidv4()}`;
     let signature: TransactionSignature | null = null;
-    let confirmationTimeout: NodeJS.Timeout | null = null;
-
+    
     // Create a pending transaction immediately
     const pendingTx: Transaction = {
         id: tempTxId,
@@ -311,23 +310,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     };
     updateTransactionInState(pendingTx);
     await persistTransaction(pendingTx);
-    
-    // Set a timeout to handle user inaction
-    confirmationTimeout = setTimeout(() => {
-        const timedOutTx: Transaction = {
-            ...pendingTx,
-            status: 'Failed',
-            failureReason: 'User did not confirm in wallet within 5 minutes.'
-        };
-        updateTransactionInState(timedOutTx);
-        persistTransaction(timedOutTx);
-        toast({
-            title: "Transaction Timed Out",
-            description: "You did not confirm the transaction in your wallet.",
-            variant: "destructive"
-        });
-        setIsLoadingPurchase(false);
-    }, TRANSACTION_TIMEOUT_MS);
     
     try {
         const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
@@ -389,13 +371,9 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             description: "Please approve the transaction in your wallet.",
         });
 
-        signature = await sendTransaction(transaction, connection);
-        
-        // If we get a signature, the user has approved. Clear the timeout.
-        if (confirmationTimeout) {
-            clearTimeout(confirmationTimeout);
-            confirmationTimeout = null;
-        }
+        signature = await sendTransaction(transaction, connection, {
+            skipPreflight: false,
+        });
         
         const signedTxState: Transaction = { 
             ...pendingTx, 
@@ -420,9 +398,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         await confirmAndFinalizeTransaction(signedTxState, signature);
         
     } catch (error: any) {
-        if (confirmationTimeout) {
-            clearTimeout(confirmationTimeout);
-        }
         console.error("Transaction failed:", error);
         
         let failureReason = "An unknown error occurred.";
@@ -446,7 +421,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         };
         
         updateTransactionInState(failedTx);
-        await persistTransaction(failedTx, signature ? undefined : tempTxId);
+        // Persist the final failed state, referencing the tempId if signature was never obtained
+        await persistTransaction(failedTx, !signature ? tempTxId : undefined);
         
         toast({
             title: toastTitle,
@@ -486,29 +462,43 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   useEffect(() => {
     const interval = setInterval(() => {
         const now = new Date().getTime();
-        transactions.forEach(tx => {
-            if (tx.status === 'Pending' && (now - new Date(tx.date).getTime()) > TRANSACTION_TIMEOUT_MS) {
-                if (tx.id.startsWith('temp_')) {
-                    // This case is already handled by the user inaction timeout in handlePurchase
-                    return;
+        setTransactions(prevTxs => {
+            const newTxs = [...prevTxs];
+            let changed = false;
+            
+            newTxs.forEach((tx, index) => {
+                if (tx.status === 'Pending' && (now - new Date(tx.date).getTime()) > TRANSACTION_TIMEOUT_MS) {
+                    // This handles transactions that were abandoned by the user before a signature was ever generated.
+                    if (tx.id.startsWith('temp_')) {
+                        const timedOutTx: Transaction = {
+                            ...tx,
+                            status: 'Failed',
+                            failureReason: 'User did not confirm in wallet within 5 minutes.'
+                        };
+                        newTxs[index] = timedOutTx;
+                        persistTransaction(timedOutTx, tx.id);
+                        changed = true;
+                    }
+                    // This handles transactions that were sent but never confirmed on-chain.
+                    else if (tx.blockhash) {
+                         const failedTx: Transaction = {
+                            ...tx,
+                            status: 'Failed',
+                            failureReason: 'On-chain confirmation timed out after 5 minutes.'
+                        };
+                        newTxs[index] = failedTx;
+                        persistTransaction(failedTx);
+                        changed = true;
+                    }
                 }
-                
-                // This handles on-chain confirmation timeouts for transactions that were sent
-                if (tx.blockhash) {
-                    const failedTx: Transaction = {
-                        ...tx,
-                        status: 'Failed',
-                        failureReason: 'On-chain confirmation timed out after 5 minutes.'
-                    };
-                    updateTransactionInState(failedTx);
-                    persistTransaction(failedTx);
-                }
-            }
+            });
+
+            return changed ? newTxs : prevTxs;
         });
     }, 60000); // Check every minute
 
     return () => clearInterval(interval);
-  }, [transactions, updateTransactionInState, persistTransaction]);
+  }, [updateTransactionInState, persistTransaction]);
 
 
   if (!isClient || connecting || !publicKey || isLoadingDashboard) {
