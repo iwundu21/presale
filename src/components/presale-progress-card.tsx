@@ -3,7 +3,6 @@
 
 import { Flame, Gift } from "lucide-react";
 import { CardDescription, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { HARD_CAP, SOFT_CAP } from "@/config";
 import { useDashboard } from "./dashboard-client-provider";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
@@ -19,10 +18,7 @@ const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
 export function PresaleProgressCard() {
     const { totalExnSold, presaleInfo } = useDashboard();
     const exnPrice = presaleInfo?.tokenPrice || 0.09;
-
-    const progress = totalExnSold > 0 && HARD_CAP > 0 ? (totalExnSold / HARD_CAP) * 100 : 0;
     const totalSoldValue = totalExnSold * exnPrice;
-    const softCapPosition = HARD_CAP > 0 ? (SOFT_CAP / HARD_CAP) * 100 : 0;
 
     return (
         <div className="w-full rounded-lg border border-border p-6 space-y-4">
@@ -38,20 +34,6 @@ export function PresaleProgressCard() {
                 </CardDescription>
             </div>
             <div className="space-y-4 pt-4">
-                <div className="flex items-center gap-3">
-                    <div className="relative flex-grow pt-4">
-                        <Progress value={progress} className="h-3 w-full" />
-                        {softCapPosition > 0 && (
-                            <div className="absolute top-0" style={{ left: `${softCapPosition}%` }}>
-                                <div className="h-3 w-0.5 bg-accent/80"></div>
-                                <div className="text-xs text-accent -translate-x-1/2 mt-1 whitespace-nowrap">
-                                    Our Goal
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                    <span className="text-sm font-bold text-primary shrink-0 pt-4">{progress.toFixed(5)}%</span>
-                </div>
                 <div className="grid grid-cols-3 gap-4 text-center">
                     <div>
                         <p className="text-lg font-bold text-white break-all">{formatNumber(totalExnSold)}</p>
