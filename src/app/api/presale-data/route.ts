@@ -48,11 +48,13 @@ export async function GET() {
 
     } catch (error) {
         console.error('API Presale-Data Error:', error);
+        // If there's an error (e.g. database down), return default values with a 200 status
+        // so the frontend can still render with fallback data.
         return NextResponse.json({
             totalExnSoldForCurrentStage: 0,
             presaleInfo: defaultPresaleInfo,
             isPresaleActive: true,
-        }, { status: 500 });
+        }, { status: 200 });
     }
 }
 
