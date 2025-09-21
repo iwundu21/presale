@@ -55,7 +55,7 @@ export async function POST(request: Request) {
             }
         });
 
-        // Fetch updated data to return (outside the main transaction block if not needed for immediate return)
+        // Fetch updated data to return (outside the main transaction block)
         const updatedUser = await prisma.user.findUnique({
             where: { wallet: userKey },
             include: {
@@ -75,5 +75,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }
+
 
 
