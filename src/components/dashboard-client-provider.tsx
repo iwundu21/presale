@@ -100,6 +100,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana,usd-coin&vs_currencies=usd')
         ]);
 
+        if (!isMounted.current) return;
+
         if (userDataRes.status === 'fulfilled' && userDataRes.value.ok) {
             const userData = await userDataRes.value.json();
             setExnBalance(userData.balance || 0);
@@ -139,6 +141,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         }
         
     } catch (error: any) {
+        if (!isMounted.current) return;
         console.error("Failed to fetch dashboard data:", error);
         toast({
             title: "Error Loading Data",
@@ -146,8 +149,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             variant: "destructive"
         });
     } finally {
-        setIsLoadingPrices(false);
-        setIsLoadingDashboard(false);
+        if (isMounted.current) {
+            setIsLoadingPrices(false);
+            setIsLoadingDashboard(false);
+        }
     }
   }, [connected, publicKey, toast]);
 
@@ -165,7 +170,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
                     setTotalExnSoldForCurrentStage(data.totalExnSoldForCurrentStage || 0);
                 }
             } catch (error: any) {
-                 if (error.name !== 'AbortError') {
+                 if (error.name !== 'AbortError' && isMounted.current) {
                     console.error("Failed to poll presale data:", error);
                 }
             }
@@ -178,7 +183,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   }, [connected, publicKey, fetchDashboardData]);
   
   useEffect(() => {
-    // If wallet is disconnected, redirect to home page.
     if (isClient && !connected && !connecting) {
         router.push('/');
     }
@@ -199,8 +203,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         }
         const result = await response.json();
 
-        // Update local state after successful persistence
-        if (result) {
+        if (isMounted.current && result) {
             const { newBalance, transactions } = result;
             if (newBalance !== undefined) setExnBalance(newBalance);
             if (transactions) {
@@ -212,11 +215,13 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
     } catch (error) {
         console.error("Failed to persist transaction:", error);
-        toast({
-            title: "Sync Error",
-            description: "Your transaction was processed, but we failed to update your permanent record. Please contact support if your balance seems incorrect.",
-            variant: "destructive"
-        });
+        if (isMounted.current) {
+            toast({
+                title: "Sync Error",
+                description: "Your transaction was processed, but we failed to update your permanent record. Please contact support if your balance seems incorrect.",
+                variant: "destructive"
+            });
+        }
         return null;
     }
   }, [publicKey, toast]);
@@ -340,12 +345,14 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         // If user rejects the transaction in the wallet, just show a toast and do nothing else.
         if (error.name === 'WalletSendTransactionError' || (error.message && error.message.includes("User rejected the request"))) {
-            toast({
-                title: "Transaction Cancelled",
-                description: "Transaction was rejected in the wallet.",
-                variant: "destructive",
-            });
-            setIsLoadingPurchase(false);
+            if (isMounted.current) {
+                toast({
+                    title: "Transaction Cancelled",
+                    description: "Transaction was rejected in the wallet.",
+                    variant: "destructive",
+                });
+                setIsLoadingPurchase(false);
+            }
             return;
         }
         
@@ -362,7 +369,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         const failedTx: Transaction = {
             id: signature || `tx_${uuidv4()}`,
-            amountExn,
+            amountExn: exnAmount,
             paidAmount,
             paidCurrency: currency,
             date: new Date(),
@@ -371,13 +378,17 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         };
         await persistTransaction(failedTx);
         
-        toast({
-            title: toastTitle,
-            description: failureReason,
-            variant: "destructive",
-        });
+        if (isMounted.current) {
+            toast({
+                title: toastTitle,
+                description: failureReason,
+                variant: "destructive",
+            });
+        }
     } finally {
-        setIsLoadingPurchase(false);
+        if (isMounted.current) {
+            setIsLoadingPurchase(false);
+        }
     }
   }, [publicKey, connection, sendTransaction, toast, wallet, persistTransaction, isHardCapReached, presaleInfo]);
   
