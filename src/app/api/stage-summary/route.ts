@@ -24,26 +24,8 @@ export async function GET() {
             return NextResponse.json([], { status: 200 });
         }
 
-        // 2. Get all historical presale info configs to find the price for each stage
-        const presaleInfoConfigs = await prisma.config.findMany({
-             where: { id: 'presaleInfo' }
-        });
-        
-        // We might have multiple configs if the admin changed it without saving, let's assume the last one per stage name is correct.
-        // A better approach would be to save snapshots of stage settings, but this is a good approximation.
-        // For this implementation, we will just use the *current* prices, which is a simplification.
-        const currentPresaleInfoValue = await prisma.config.findUnique({ where: { id: 'presaleInfo' } });
-        const allStageSettings: { [key: string]: PresaleInfo } = {};
-        if (currentPresaleInfoValue) {
-            // This is a simplification. A real-world app would store a snapshot of settings for each stage.
-            // For now, we're assuming the price we have is good enough. A more robust solution is needed for production.
-            const info = currentPresaleInfoValue.value as any;
-            if(info.seasonName) {
-                 allStageSettings[info.seasonName] = info as PresaleInfo;
-            }
-        }
-        
-        // Define default prices for stages if they aren't in the current config
+        // 2. Define fixed prices for all possible stages.
+        // This is more reliable than trying to look up historical prices from the current config.
         const stagePrices: { [key: string]: number } = {
             "Early Stage": 0.09,
             "Investors": 0.15,
