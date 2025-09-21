@@ -38,6 +38,7 @@ export async function POST(request: Request) {
                         blockhash: transaction.blockhash,
                         lastValidBlockHeight: transaction.lastValidBlockHeight,
                         userWallet: userKey,
+                        stageName: transaction.stageName,
                     }
                 });
 
@@ -62,14 +63,22 @@ export async function POST(request: Request) {
                 }
             });
             
-            const totalSoldAggregate = await tx.user.aggregate({
+             // 6. Recalculate total sold for the current stage
+            const presaleInfoConfig = await tx.config.findUnique({ where: { id: 'presaleInfo' } });
+            const currentSeasonName = (presaleInfoConfig?.value as any)?.seasonName || 'Early Stage';
+            
+            const totalSoldAggregate = await tx.transaction.aggregate({
                 _sum: {
-                    balance: true,
+                    amountExn: true,
                 },
+                where: {
+                    status: 'Completed',
+                    stageName: currentSeasonName,
+                }
             });
-            const finalTotalSold = totalSoldAggregate._sum.balance || 0;
+            const newTotalSold = totalSoldAggregate._sum.amountExn || 0;
 
-            return { updatedUser, newTotalSold: finalTotalSold };
+            return { updatedUser, newTotalSold };
         });
 
         return NextResponse.json({

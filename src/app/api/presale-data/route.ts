@@ -3,11 +3,12 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
 
-const defaultPresaleInfo = { seasonName: "Early Stage", tokenPrice: 0.09 };
+const defaultPresaleInfo = { seasonName: "Early Stage", tokenPrice: 0.09, hardCap: 700000000 };
 
 const presaleInfoSchema = z.object({
   seasonName: z.string(),
   tokenPrice: z.number(),
+  hardCap: z.number(),
 });
 
 async function getOrCreateConfig(id: string, defaultValue: any) {
@@ -22,20 +23,25 @@ async function getOrCreateConfig(id: string, defaultValue: any) {
 
 export async function GET() {
     try {
-        const totalSoldAggregate = await prisma.user.aggregate({
-            _sum: {
-                balance: true,
-            },
-        });
-        const totalExnSold = totalSoldAggregate._sum.balance || 0;
-
         const presaleInfoValue = await getOrCreateConfig('presaleInfo', defaultPresaleInfo);
         const isPresaleActiveValue = await getOrCreateConfig('isPresaleActive', { value: true });
 
         const presaleInfo = presaleInfoSchema.safeParse(presaleInfoValue);
+        const currentSeasonName = presaleInfo.success ? presaleInfo.data.seasonName : defaultPresaleInfo.seasonName;
+
+        const totalSoldAggregate = await prisma.transaction.aggregate({
+            _sum: {
+                amountExn: true,
+            },
+            where: {
+                status: 'Completed',
+                stageName: currentSeasonName,
+            }
+        });
+        const totalExnSoldForCurrentStage = totalSoldAggregate._sum.amountExn || 0;
 
         return NextResponse.json({
-            totalExnSold,
+            totalExnSoldForCurrentStage,
             presaleInfo: presaleInfo.success ? presaleInfo.data : defaultPresaleInfo,
             isPresaleActive: (isPresaleActiveValue as { value: boolean })?.value ?? true,
         }, { status: 200 });
@@ -43,7 +49,7 @@ export async function GET() {
     } catch (error) {
         console.error('API Presale-Data Error:', error);
         return NextResponse.json({
-            totalExnSold: 0,
+            totalExnSoldForCurrentStage: 0,
             presaleInfo: defaultPresaleInfo,
             isPresaleActive: true,
         }, { status: 500 });

@@ -24,6 +24,7 @@ export type Transaction = {
   blockhash?: string;
   lastValidBlockHeight?: number;
   balanceAdded?: boolean;
+  stageName: string;
 };
 
 type TokenPrices = {
@@ -34,7 +35,7 @@ type TokenPrices = {
 type DashboardContextType = {
     exnBalance: number;
     transactions: Transaction[];
-    totalExnSold: number;
+    totalExnSoldForCurrentStage: number;
     connected: boolean;
     handlePurchase: (exnAmount: number, paidAmount: number, currency: string) => Promise<void>;
     tokenPrices: TokenPrices;
@@ -67,7 +68,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const { toast } = useToast();
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
-  const [totalExnSold, setTotalExnSold] = useState(0);
+  const [totalExnSoldForCurrentStage, setTotalExnSoldForCurrentStage] = useState(0);
   const [tokenPrices, setTokenPrices] = useState<TokenPrices>({ SOL: null, USDC: null });
   const [isLoadingPrices, setIsLoadingPrices] = useState(true);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
@@ -75,7 +76,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const [presaleInfo, setPresaleInfo] = useState<PresaleInfo | null>(null);
   const [isPresaleActive, setIsPresaleActive] = useState(true);
   
-  const isHardCapReached = presaleInfo ? totalExnSold >= presaleInfo.hardCap : false;
+  const isHardCapReached = presaleInfo ? totalExnSoldForCurrentStage >= presaleInfo.hardCap : false;
 
   useEffect(() => {
     setIsClient(true);
@@ -110,7 +111,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         if (presaleDataRes.status === 'fulfilled' && presaleDataRes.value.ok) {
             const presaleData = await presaleDataRes.value.json();
-            setTotalExnSold(presaleData.totalExnSold || 0);
+            setTotalExnSoldForCurrentStage(presaleData.totalExnSoldForCurrentStage || 0);
             setPresaleInfo(presaleData.presaleInfo || null);
             setIsPresaleActive(presaleData.isPresaleActive === undefined ? true : presaleData.isPresaleActive);
         } else {
@@ -160,7 +161,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
                 const res = await fetch('/api/presale-data', { signal });
                 if (!signal.aborted && res.ok) {
                     const data = await res.json();
-                    setTotalExnSold(data.totalExnSold || 0);
+                    setTotalExnSoldForCurrentStage(data.totalExnSoldForCurrentStage || 0);
                 }
             } catch (error: any) {
                  if (error.name !== 'AbortError') {
@@ -195,7 +196,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         if (result) {
             const { newBalance, newTotalSold, transactions } = result;
             if (newBalance !== undefined) setExnBalance(newBalance);
-            if (newTotalSold !== undefined) setTotalExnSold(newTotalSold);
+            if (newTotalSold !== undefined) setTotalExnSoldForCurrentStage(newTotalSold);
             if (transactions) {
                  const parsedTxs = transactions.map((t: any) => ({...t, date: new Date(t.date)}));
                  setTransactions(parsedTxs);
@@ -215,7 +216,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   }, [publicKey, toast]);
 
   const handlePurchase = useCallback(async (exnAmount: number, paidAmount: number, currency: string) => {
-    if (!publicKey || !wallet?.adapter.connected) {
+    if (!publicKey || !wallet?.adapter.connected || !presaleInfo) {
       toast({ title: "Wallet not connected", description: "Please connect your wallet and try again.", variant: "destructive" });
       return;
     }
@@ -230,6 +231,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     
     setIsLoadingPurchase(true);
     let signature: TransactionSignature | null = null;
+    const currentStageName = presaleInfo.seasonName;
     
     try {
         const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
@@ -318,6 +320,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             status: 'Completed',
             blockhash,
             lastValidBlockHeight,
+            stageName: currentStageName,
         };
 
         await persistTransaction(completedTx);
@@ -344,15 +347,15 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
              failureReason = error.message;
         }
 
-        // Create a failed transaction record
         const failedTx: Transaction = {
-            id: signature || `tx_${uuidv4()}`, // Use signature if available, otherwise a unique ID
+            id: signature || `tx_${uuidv4()}`,
             amountExn,
             paidAmount,
             paidCurrency: currency,
             date: new Date(),
             status: 'Failed',
             failureReason,
+            stageName: currentStageName,
         };
         await persistTransaction(failedTx);
         
@@ -364,9 +367,9 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     } finally {
         setIsLoadingPurchase(false);
     }
-  }, [publicKey, connection, sendTransaction, toast, wallet, persistTransaction, isHardCapReached]);
+  }, [publicKey, connection, sendTransaction, toast, wallet, persistTransaction, isHardCapReached, presaleInfo]);
   
-  if (!isClient || connecting || !publicKey || isLoadingDashboard) {
+  if (!isClient || connecting) {
       return <DashboardLoadingSkeleton />; 
   }
 
@@ -379,7 +382,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const contextValue = {
     exnBalance,
     transactions,
-    totalExnSold,
+    totalExnSoldForCurrentStage,
     connected,
     handlePurchase,
     tokenPrices,
@@ -396,5 +399,3 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
-
-    

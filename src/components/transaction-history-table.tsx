@@ -6,7 +6,7 @@ import { CardDescription, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge, BadgeProps } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { List, CheckCircle, AlertCircle, Clock, ExternalLink, TrendingUp, HelpCircle, RefreshCw, Copy, Award, ChevronLeft, ChevronRight } from "lucide-react";
+import { List, CheckCircle, AlertCircle, Clock, ExternalLink, TrendingUp, HelpCircle, RefreshCw, Copy, Award, ChevronLeft, ChevronRight, ChevronsRight } from "lucide-react";
 import { useDashboard, Transaction } from "./dashboard-client-provider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Button } from "./ui/button";
@@ -59,9 +59,13 @@ function TransactionRow({ tx }: { tx: Transaction }) {
                         <p>
                            {`${tx.status === 'Completed' ? 'Purchased' : 'Attempted'} ${tx.amountExn.toLocaleString()} EXN`}
                         </p>
-                         <p className="text-xs text-muted-foreground">
-                            {`Paid ${tx.paidAmount.toLocaleString()} ${tx.paidCurrency}`}
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                            <p className="text-xs text-muted-foreground">
+                                {`Paid ${tx.paidAmount.toLocaleString()} ${tx.paidCurrency}`}
+                            </p>
+                             <ChevronsRight className="h-3 w-3 text-muted-foreground" />
+                             <Badge variant="secondary" className="text-xs">{tx.stageName}</Badge>
+                        </div>
                     </div>
                 </div>
             </TableCell>
@@ -159,6 +163,7 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
             <div className="flex justify-between items-center text-xs">
                 <p className="text-muted-foreground">{new Date(tx.date).toLocaleString()}</p>
                  <div className="flex items-center gap-2">
+                     <Badge variant="secondary" className="text-xs">{tx.stageName}</Badge>
                     <Button variant="outline" size="sm" className="h-7" asChild disabled={isLinkDisabled}>
                         <a href={`https://solscan.io/tx/${tx.id}`} target="_blank" rel="noopener noreferrer">
                            <ExternalLink className="mr-1.5 h-3 w-3" /> Solscan
@@ -259,5 +264,3 @@ export function TransactionHistoryTable() {
         </div>
     );
 }
-
-    
