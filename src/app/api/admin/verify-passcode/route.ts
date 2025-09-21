@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
         
         const configDoc = await prisma.config.findUnique({ where: { id: 'adminPasscode' } });
 
-        let correctPasscode = process.env.ADMIN_PASSCODE || '203020';
+        let correctPasscode = process.env.ADMIN_PASSCODE || '203040';
         if (configDoc) {
              const docValue = (configDoc.value as { value?: string }).value;
              if (docValue) {
@@ -36,3 +36,4 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ message: 'An internal server error occurred during verification.' }, { status: 500 });
     }
 }
+
