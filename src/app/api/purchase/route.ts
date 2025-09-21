@@ -38,7 +38,6 @@ export async function POST(request: Request) {
                         blockhash: transaction.blockhash,
                         lastValidBlockHeight: transaction.lastValidBlockHeight,
                         userWallet: userKey,
-                        stageName: transaction.stageName,
                     }
                 });
 
@@ -76,4 +75,5 @@ export async function POST(request: Request) {
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }
+
 
