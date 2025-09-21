@@ -148,11 +148,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
 
   useEffect(() => {
-    // If wallet is disconnected, redirect to home page.
-    if (isClient && !connected && !connecting) {
-        router.push('/');
-    }
-
     if (connected && publicKey) {
         fetchDashboardData();
         
@@ -178,9 +173,16 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             clearInterval(intervalId);
         };
     }
-  }, [isClient, connected, connecting, publicKey, fetchDashboardData, router]);
+  }, [connected, publicKey, fetchDashboardData]);
   
-  const persistTransaction = useCallback(async (transaction: Omit<Transaction, 'stageName'>) => {
+  useEffect(() => {
+    // If wallet is disconnected, redirect to home page.
+    if (isClient && !connected && !connecting) {
+        router.push('/');
+    }
+  }, [isClient, connected, connecting, router]);
+
+  const persistTransaction = useCallback(async (transaction: Transaction) => {
     if (!publicKey) return null;
     try {
         const userKey = publicKey.toBase58();
@@ -312,9 +314,9 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             throw new Error(`Transaction failed on-chain: ${JSON.stringify(confirmation.value.err)}`);
         }
 
-        const completedTx: Omit<Transaction, 'stageName'> = {
+        const completedTx: Transaction = {
             id: signature,
-            amountExn,
+            amountExn: exnAmount,
             paidAmount,
             paidCurrency: currency,
             date: new Date(),
@@ -347,7 +349,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
              failureReason = error.message;
         }
 
-        const failedTx: Omit<Transaction, 'stageName'> = {
+        const failedTx: Transaction = {
             id: signature || `tx_${uuidv4()}`,
             amountExn: exnAmount,
             paidAmount,
@@ -368,12 +370,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
   }, [publicKey, connection, sendTransaction, toast, wallet, persistTransaction, isHardCapReached, presaleInfo]);
   
-  useEffect(() => {
-    if (!connected && isClient && !connecting) {
-      router.push('/');
-    }
-  }, [connected, isClient, connecting, router]);
-
   if (!isClient || connecting || (!connected && isClient)) {
       return <DashboardLoadingSkeleton />; 
   }
