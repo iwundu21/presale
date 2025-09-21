@@ -19,6 +19,16 @@ export async function POST(request: NextRequest) {
         if (passcode === correctPasscode) {
             return NextResponse.json({ message: 'Verification successful' }, { status: 200 });
         } else {
+            // Check against the database value as a fallback
+            try {
+                const configDoc = await prisma.config.findUnique({ where: { id: 'adminPasscode' } });
+                if (configDoc && (configDoc.value as { value: string }).value === passcode) {
+                     return NextResponse.json({ message: 'Verification successful' }, { status: 200 });
+                }
+            } catch(dbError) {
+                // Ignore db error and proceed to fail
+                 console.error("Database check failed during passcode verification:", dbError);
+            }
             return NextResponse.json({ message: 'Incorrect passcode.' }, { status: 401 });
         }
 

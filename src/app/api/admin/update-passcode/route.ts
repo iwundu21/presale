@@ -13,14 +13,20 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const { currentPasscode, newPasscode } = updatePasscodeSchema.parse(body);
 
-        const configDoc = await prisma.config.findUnique({ where: { id: 'adminPasscode' } });
-
-        let correctPasscode = process.env.ADMIN_PASSCODE || '203040';
-        if (configDoc) {
-            correctPasscode = (configDoc.value as { value: string }).value;
+        // Allow either the hardcoded default or the DB value as the "current" passcode
+        const defaultPasscode = process.env.ADMIN_PASSCODE || '203040';
+        let dbPasscode = defaultPasscode;
+        
+        try {
+            const configDoc = await prisma.config.findUnique({ where: { id: 'adminPasscode' } });
+            if (configDoc) {
+                dbPasscode = (configDoc.value as { value: string }).value;
+            }
+        } catch(dbError){
+            console.error("Could not fetch DB passcode for update:", dbError);
         }
 
-        if (currentPasscode !== correctPasscode) {
+        if (currentPasscode !== defaultPasscode && currentPasscode !== dbPasscode) {
              return NextResponse.json({ message: 'Incorrect current passcode.' }, { status: 403 });
         }
         
@@ -32,7 +38,8 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ message: 'Passcode updated successfully.' }, { status: 200 });
 
-    } catch (error: any) {
+    } catch (error: any)
+ {
         console.error('API Update-Passcode Error:', error);
         if (error instanceof z.ZodError) {
             return NextResponse.json({ message: 'Invalid input.', details: error.errors }, { status: 400 });
@@ -40,4 +47,3 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }
-
