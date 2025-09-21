@@ -26,7 +26,7 @@ const SEASON_PRICES: { [key: string]: number } = {
 const SEASON_ORDER = Object.keys(SEASON_PRICES);
 
 export function LandingPage({ presaleEndDate, presaleInfo, isPresaleActive }: LandingPageProps) {
-    const { wallet, connecting } = useWallet();
+    const { wallet, connected, connecting } = useWallet();
     const { setVisible } = useWalletModal();
     const router = useRouter();
     const [isClient, setIsClient] = useState(false);
@@ -40,6 +40,12 @@ export function LandingPage({ presaleEndDate, presaleInfo, isPresaleActive }: La
     const handleConnect = () => {
         setVisible(true);
     };
+
+    useEffect(() => {
+        if (connected && !connecting) {
+            router.push('/dashboard');
+        }
+    }, [connected, connecting, router]);
 
     useEffect(() => {
       const currentSeasonIndex = SEASON_ORDER.indexOf(presaleInfo.seasonName);
