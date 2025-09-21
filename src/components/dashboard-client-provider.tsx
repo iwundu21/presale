@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, createContext, useContext } from "react";
+import { useState, useEffect, useCallback, createContext, useContext, useRef } from "react";
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
@@ -156,6 +156,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         const intervalId = setInterval(async () => {
             try {
+                if (signal.aborted) return;
                 const res = await fetch('/api/presale-data', { signal });
                 if (!signal.aborted && res.ok) {
                     const data = await res.json();
