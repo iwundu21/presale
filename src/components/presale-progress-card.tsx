@@ -40,7 +40,7 @@ export function PresaleProgressCard() {
                     </div>
                      <div>
                         <p className="text-lg font-bold text-white break-all">{formatNumber(hardCap)}</p>
-                        <p className="text-xs text-muted-foreground">Hard Cap</p>
+                        <p className="text-xs text-muted-foreground">Total Supply for {presaleInfo?.seasonName}</p>
                     </div>
                 </div>
                  <div className="text-center bg-muted/20 p-3 rounded-lg border border-border">
