@@ -22,10 +22,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/t
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { Separator } from "./ui/separator";
 
-const SEASON_CONFIGS: { [key: string]: { price: number; softCap: number; hardCap: number; } } = {
-    "Early Stage": { price: 0.09, softCap: 500000000, hardCap: 700000000 },
-    "Investors": { price: 0.15, softCap: 700000000, hardCap: 1000000000 },
-    "Whale": { price: 0.25, softCap: 1000000000, hardCap: 1500000000 },
+const SEASON_CONFIGS: { [key: string]: { price: number; hardCap: number; } } = {
+    "Early Stage": { price: 0.09, hardCap: 700000000 },
+    "Investors": { price: 0.15, hardCap: 1000000000 },
+    "Whale": { price: 0.25, hardCap: 1500000000 },
 };
 
 type UserAdminView = {
@@ -65,7 +65,6 @@ export function AdminDashboard() {
     const [time, setTime] = useState('');
     const [season, setSeason] = useState("Early Stage");
     const [price, setPrice] = useState(SEASON_CONFIGS[season].price);
-    const [softCap, setSoftCap] = useState(SEASON_CONFIGS[season].softCap);
     const [hardCap, setHardCap] = useState(SEASON_CONFIGS[season].hardCap);
     const [isPresaleActive, setIsPresaleActive] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
@@ -136,7 +135,6 @@ export function AdminDashboard() {
                 if (presaleDataRes) {
                     setSeason(presaleDataRes.presaleInfo.seasonName);
                     setPrice(presaleDataRes.presaleInfo.tokenPrice);
-                    setSoftCap(presaleDataRes.presaleInfo.softCap);
                     setHardCap(presaleDataRes.presaleInfo.hardCap);
                     setIsPresaleActive(presaleDataRes.isPresaleActive);
                 }
@@ -218,7 +216,6 @@ export function AdminDashboard() {
         const config = SEASON_CONFIGS[newSeason];
         if (config) {
             setPrice(config.price);
-            setSoftCap(config.softCap);
             setHardCap(config.hardCap);
         }
     };
@@ -229,7 +226,6 @@ export function AdminDashboard() {
             await setPresaleInfo({ 
                 seasonName: season, 
                 tokenPrice: price,
-                softCap: softCap,
                 hardCap: hardCap
             });
             toast({
@@ -812,11 +808,11 @@ export function AdminDashboard() {
                     <CardHeader>
                         <CardTitle>Manage Presale Stage</CardTitle>
                         <CardDescription>
-                            Select the current presale stage and set its parameters. The token price and caps will update automatically.
+                            Select the current presale stage and set its parameters. The token price and cap will update automatically.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-col gap-4">
-                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 items-end gap-4">
+                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 items-end gap-4">
                             <div className="grid w-full items-center gap-1.5">
                                 <Label htmlFor="season">Season</Label>
                                 <Select value={season} onValueChange={handleSeasonChange} disabled={isLoading}>
@@ -833,10 +829,6 @@ export function AdminDashboard() {
                            <div className="grid w-full items-center gap-1.5">
                                <Label htmlFor="price">Token Price ($)</Label>
                                <Input id="price" type="number" value={price} readOnly disabled/>
-                           </div>
-                            <div className="grid w-full items-center gap-1.5">
-                               <Label htmlFor="soft-cap">Soft Cap</Label>
-                               <Input id="soft-cap" type="number" value={softCap} onChange={e => setSoftCap(Number(e.target.value))} disabled={isLoading} />
                            </div>
                            <div className="grid w-full items-center gap-1.5">
                                <Label htmlFor="hard-cap">Hard Cap</Label>
@@ -879,5 +871,3 @@ export function AdminDashboard() {
     );
 
 }
-
-    

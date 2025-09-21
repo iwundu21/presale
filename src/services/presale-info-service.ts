@@ -7,7 +7,6 @@ import { z } from 'zod';
 export type PresaleInfo = {
     seasonName: string;
     tokenPrice: number;
-    softCap: number;
     hardCap: number;
 };
 
@@ -19,7 +18,6 @@ export type PresaleData = {
 const presaleInfoSchema = z.object({
   seasonName: z.string(),
   tokenPrice: z.number(),
-  softCap: z.number(),
   hardCap: z.number(),
 });
 
@@ -27,7 +25,6 @@ const defaultData: PresaleData = {
     presaleInfo: {
         seasonName: "Early Stage",
         tokenPrice: 0.09,
-        softCap: 500000000,
         hardCap: 700000000,
     },
     isPresaleActive: true
