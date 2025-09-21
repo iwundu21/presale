@@ -1,18 +1,18 @@
 
+
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import type { Transaction } from '@/components/dashboard-client-provider';
 
 export async function POST(request: Request) {
     try {
-        const { userKey, exnAmount, transaction, tempTxId } = await request.json() as { userKey: string; exnAmount: number; transaction: Transaction, tempTxId?: string };
+        const { userKey, exnAmount, transaction } = await request.json() as { userKey: string; exnAmount: number; transaction: Transaction };
 
         if (!userKey || !transaction || !transaction.id) {
             return NextResponse.json({ message: 'Invalid input' }, { status: 400 });
         }
         
-        let finalTotalSold = 0;
-
+        // Since we now only record successful transactions, we can proceed directly.
         const result = await prisma.$transaction(async (tx) => {
              // Create or find user
             let user = await tx.user.findUnique({ where: { wallet: userKey } });
@@ -20,41 +20,34 @@ export async function POST(request: Request) {
                 user = await tx.user.create({ data: { wallet: userKey, balance: 0 } });
             }
 
-            // Prepare transaction data
-            const txData = {
-                id: transaction.id,
-                amountExn: transaction.amountExn,
-                paidAmount: transaction.paidAmount,
-                paidCurrency: transaction.paidCurrency,
-                date: transaction.date,
-                status: transaction.status,
-                failureReason: transaction.failureReason,
-                blockhash: transaction.blockhash,
-                lastValidBlockHeight: transaction.lastValidBlockHeight,
-                balanceAdded: transaction.balanceAdded,
-                userWallet: userKey,
-            };
-
-            // If a tempId was provided, it means we are updating a pending record
-            // with its final signature and state.
-            if (tempTxId && tempTxId.startsWith('temp_')) {
-                const existingTx = await tx.transaction.findUnique({ where: { id: tempTxId } });
-                if (existingTx) {
-                     // Delete the old temp record and create the new permanent one.
-                     // This avoids unique constraint issues if the user retries and gets the same signature.
-                    await tx.transaction.delete({ where: { id: tempTxId } });
-                }
-            }
-
-            // Create or update the transaction record with its final ID (the signature)
-            await tx.transaction.upsert({
+            // Check if this transaction signature has already been processed
+            const existingTx = await tx.transaction.findUnique({
                 where: { id: transaction.id },
-                update: txData,
-                create: txData,
             });
 
-            // Update balance if completed and not already added
-            if (transaction.status === 'Completed' && transaction.balanceAdded === false) {
+            if (existingTx) {
+                // If it exists, it means the user might have refreshed the page
+                // after a successful purchase but before the UI updated.
+                // We shouldn't process it again. Just return the current state.
+                console.log(`Transaction ${transaction.id} already processed. Skipping.`);
+            } else {
+                 // Create the transaction record
+                await tx.transaction.create({
+                    data: {
+                        id: transaction.id,
+                        amountExn: transaction.amountExn,
+                        paidAmount: transaction.paidAmount,
+                        paidCurrency: transaction.paidCurrency,
+                        date: transaction.date,
+                        status: 'Completed', // Always completed now
+                        blockhash: transaction.blockhash,
+                        lastValidBlockHeight: transaction.lastValidBlockHeight,
+                        balanceAdded: true, // Balance is added in this transaction
+                        userWallet: userKey,
+                    }
+                });
+
+                // Update user's balance
                 await tx.user.update({
                     where: { wallet: userKey },
                     data: {
@@ -63,24 +56,20 @@ export async function POST(request: Request) {
                         },
                     },
                 });
-                await tx.transaction.update({
-                    where: { id: transaction.id },
-                    data: { balanceAdded: true },
-                });
                 
                 // Atomically update the total sold amount
-                const totalSoldConfig = await tx.config.findUnique({ where: { id: 'totalExnSold' } });
-                const currentTotalSold = (totalSoldConfig?.value as { value: number })?.value || 0;
-                finalTotalSold = currentTotalSold + exnAmount;
-
                 await tx.config.upsert({
                     where: { id: 'totalExnSold' },
-                    update: { value: { value: finalTotalSold } },
-                    create: { id: 'totalExnSold', value: { value: exnAmount } },
+                    update: { 
+                        value: { 
+                            increment: exnAmount 
+                        }
+                    },
+                    create: { 
+                        id: 'totalExnSold', 
+                        value: { value: exnAmount } 
+                    },
                 });
-            } else {
-                 const totalSoldConfig = await tx.config.findUnique({ where: { id: 'totalExnSold' } });
-                 finalTotalSold = (totalSoldConfig?.value as { value: number })?.value || 0;
             }
 
             // Fetch updated data to return inside the transaction
@@ -90,6 +79,8 @@ export async function POST(request: Request) {
                     transactions: { orderBy: { date: 'desc' } }
                 }
             });
+            const totalSoldConfig = await tx.config.findUnique({ where: { id: 'totalExnSold' } });
+            const finalTotalSold = (totalSoldConfig?.value as { value: number })?.value || 0;
 
             return { updatedUser, newTotalSold: finalTotalSold };
         });
@@ -106,3 +97,5 @@ export async function POST(request: Request) {
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }
+
+    

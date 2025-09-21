@@ -1,5 +1,6 @@
 
 
+
 "use client";
 
 import { CardDescription, CardTitle } from "@/components/ui/card";
@@ -7,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge, BadgeProps } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { List, CheckCircle, AlertCircle, Clock, ExternalLink, TrendingUp, HelpCircle, RefreshCw, Copy, Award, ChevronLeft, ChevronRight } from "lucide-react";
-import { useDashboard, Transaction, TRANSACTION_TIMEOUT_MS } from "./dashboard-client-provider";
+import { useDashboard, Transaction } from "./dashboard-client-provider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
@@ -27,7 +28,6 @@ const formatTxId = (txId: string) => {
 const getStatusBadgeVariant = (status: Transaction['status']): BadgeProps['variant'] => {
     switch (status) {
         case 'Completed': return 'success';
-        case 'Pending': return 'secondary';
         case 'Failed': return 'destructive';
         default: return 'outline';
     }
@@ -37,12 +37,11 @@ const getStatusIcon = (status: Transaction['status']) => {
     switch (status) {
         case 'Completed': return <CheckCircle className="h-4 w-4 text-green-400" />;
         case 'Failed': return <AlertCircle className="h-4 w-4 text-red-400" />;
-        case 'Pending': return <Clock className="h-4 w-4 text-yellow-400 animate-spin" />;
     }
 }
 
 function TransactionRow({ tx }: { tx: Transaction }) {
-    const { retryTransaction, isLoadingPurchase } = useDashboard();
+    const { isLoadingPurchase } = useDashboard();
     const { toast } = useToast();
 
     const handleCopyToClipboard = (text: string) => {
@@ -53,14 +52,6 @@ function TransactionRow({ tx }: { tx: Transaction }) {
             variant: "success",
         });
     };
-
-    const canRetry = (tx: Transaction) => {
-       if (tx.status !== 'Pending' || tx.id.startsWith('temp_')) {
-           return false;
-       }
-       const timeSinceCreation = new Date().getTime() - new Date(tx.date).getTime();
-       return timeSinceCreation < TRANSACTION_TIMEOUT_MS;
-    }
 
     const isLinkDisabled = tx.id.startsWith('temp_');
 
@@ -96,24 +87,6 @@ function TransactionRow({ tx }: { tx: Transaction }) {
             </TableCell>
             <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-2">
-                    {canRetry(tx) && (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-6 w-6" 
-                                    onClick={() => retryTransaction(tx)}
-                                    disabled={isLoadingPurchase}
-                                >
-                                    <RefreshCw className={`h-4 w-4 ${isLoadingPurchase ? 'animate-spin' : ''}`} />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" align="end">
-                                <p>Retry Confirmation</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    )}
                     <Badge variant={getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
                         {getStatusIcon(tx.status)}
                         {tx.status}
@@ -149,7 +122,6 @@ function TransactionRow({ tx }: { tx: Transaction }) {
 }
 
 function TransactionMobileCard({ tx }: { tx: Transaction }) {
-    const { retryTransaction, isLoadingPurchase } = useDashboard();
     const { toast } = useToast();
 
     const handleCopyToClipboard = (text: string) => {
@@ -160,14 +132,6 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
             variant: "success",
         });
     };
-
-    const canRetry = (tx: Transaction) => {
-        if (tx.status !== 'Pending' || tx.id.startsWith('temp_')) {
-            return false;
-        }
-        const timeSinceCreation = new Date().getTime() - new Date(tx.date).getTime();
-        return timeSinceCreation < TRANSACTION_TIMEOUT_MS;
-    }
     const isLinkDisabled = tx.id.startsWith('temp_');
 
     return (
@@ -199,18 +163,6 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
             <div className="flex justify-between items-center text-xs">
                 <p className="text-muted-foreground">{new Date(tx.date).toLocaleString()}</p>
                  <div className="flex items-center gap-2">
-                    {canRetry(tx) && (
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-7"
-                            onClick={() => retryTransaction(tx)}
-                            disabled={isLoadingPurchase}
-                        >
-                            <RefreshCw className={`mr-1.5 h-3 w-3 ${isLoadingPurchase ? 'animate-spin' : ''}`} />
-                            Retry
-                        </Button>
-                    )}
                     <Button variant="outline" size="sm" className="h-7" asChild disabled={isLinkDisabled}>
                         <a href={`https://solscan.io/tx/${tx.id}`} target="_blank" rel="noopener noreferrer">
                            <ExternalLink className="mr-1.5 h-3 w-3" /> Solscan
@@ -320,5 +272,7 @@ export function TransactionHistoryTable() {
 
 
 
+
+    
 
     

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useCallback, createContext, useContext } from "react";
@@ -8,17 +9,17 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction, TransactionSignature } from "@solana/web3.js";
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
-import { PRESALE_WALLET_ADDRESS, USDC_MINT, USDT_MINT, HARD_CAP } from "@/config";
+import { PRESALE_WALLET_ADDRESS, USDC_MINT, HARD_CAP } from "@/config";
 import type { PresaleInfo } from "@/services/presale-info-service";
 import { v4 as uuidv4 } from 'uuid';
 
 export type Transaction = {
-  id: string; // Signature or temp ID
+  id: string; // Signature
   amountExn: number;
   paidAmount: number;
   paidCurrency: string;
   date: Date;
-  status: "Completed" | "Pending" | "Failed";
+  status: "Completed" | "Failed";
   failureReason?: string;
   blockhash?: string;
   lastValidBlockHeight?: number;
@@ -36,7 +37,6 @@ type DashboardContextType = {
     totalExnSold: number;
     connected: boolean;
     handlePurchase: (exnAmount: number, paidAmount: number, currency: string) => Promise<void>;
-    retryTransaction: (tx: Transaction) => Promise<void>;
     tokenPrices: TokenPrices;
     isLoadingPrices: boolean;
     isLoadingPurchase: boolean;
@@ -184,32 +184,14 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
   }, [connected, publicKey, fetchDashboardData]);
   
-  const updateTransactionInState = useCallback((tx: Transaction) => {
-     setTransactions(prev => {
-        const existingIndex = prev.findIndex(t => t.id === tx.id);
-        
-        let newTxs;
-        if (existingIndex !== -1) {
-            newTxs = [...prev];
-            newTxs[existingIndex] = tx;
-        } else {
-            newTxs = [tx, ...prev];
-        }
-
-        newTxs.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        return newTxs;
-    });
-  }, []);
-
-
-  const persistTransaction = useCallback(async (transaction: Transaction, tempTxId?: string) => {
+  const persistTransaction = useCallback(async (transaction: Transaction) => {
     if (!publicKey) return null;
     try {
         const userKey = publicKey.toBase58();
         const response = await fetch('/api/purchase', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userKey, exnAmount: transaction.amountExn, transaction, tempTxId }),
+            body: JSON.stringify({ userKey, exnAmount: transaction.amountExn, transaction }),
         });
 
         if (!response.ok) {
@@ -228,54 +210,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
   }, [publicKey, toast]);
 
-  const confirmAndFinalizeTransaction = useCallback(async (tx: Transaction, signature: string) => {
-    if (!tx.blockhash || !tx.lastValidBlockHeight) return;
-
-    try {
-        const confirmation = await connection.confirmTransaction({
-            signature: signature,
-            blockhash: tx.blockhash,
-            lastValidBlockHeight: tx.lastValidBlockHeight
-        }, 'confirmed');
-        
-        if (confirmation.value.err) {
-            throw new Error(`Transaction failed to confirm: ${JSON.stringify(confirmation.value.err)}`);
-        }
-
-        const completedTx: Transaction = { ...tx, status: 'Completed', failureReason: "Transaction successfully confirmed on-chain.", balanceAdded: false };
-        
-        const result = await persistTransaction(completedTx);
-        if (result) {
-            const { newBalance, newTotalSold, transactions } = result;
-            if (newBalance !== undefined) setExnBalance(newBalance);
-            if (newTotalSold !== undefined) setTotalExnSold(newTotalSold);
-            if (transactions) {
-                 const parsedTxs = transactions.map((t: any) => ({...t, date: new Date(t.date)}));
-                 setTransactions(parsedTxs);
-            }
-        }
-
-        toast({
-            title: "Purchase Successful!",
-            description: `You purchased ${tx.amountExn.toLocaleString()} EXN. Your balance is updated.`,
-            variant: "success"
-        });
-
-    } catch (error: any) {
-        console.error("Transaction finalization failed:", error);
-        
-        const failedTx: Transaction = { ...tx, status: 'Failed', failureReason: "Failed to confirm on-chain." };
-        updateTransactionInState(failedTx);
-        await persistTransaction(failedTx);
-        
-        toast({
-            title: "Transaction Failed",
-            description: "Your transaction could not be confirmed on the blockchain.",
-            variant: "destructive",
-        });
-    }
-  }, [connection, persistTransaction, toast, updateTransactionInState]);
-
   const handlePurchase = useCallback(async (exnAmount: number, paidAmount: number, currency: string) => {
     if (!publicKey || !wallet?.adapter.connected) {
       toast({ title: "Wallet not connected", description: "Please connect your wallet and try again.", variant: "destructive" });
@@ -291,23 +225,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
     
     setIsLoadingPurchase(true);
-
-    const tempTxId = `temp_${uuidv4()}`;
     let signature: TransactionSignature | null = null;
-    
-    // Create a pending transaction immediately
-    const pendingTx: Transaction = {
-        id: tempTxId,
-        amountExn: exnAmount,
-        paidAmount,
-        paidCurrency: currency,
-        date: new Date(),
-        status: "Pending",
-        failureReason: "Awaiting confirmation from wallet...",
-        balanceAdded: false,
-    };
-    updateTransactionInState(pendingTx);
-    await persistTransaction(pendingTx);
     
     try {
         const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
@@ -320,7 +238,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
                 lamports: Math.round(paidAmount * LAMPORTS_PER_SOL),
             }));
         } else {
-            const mintPublicKey = currency === "USDC" ? USDC_MINT : USDT_MINT;
+            const mintPublicKey = USDC_MINT; // Only USDC is supported
             const decimals = 6;
             const integerAmount = Math.round(paidAmount * (10 ** decimals));
 
@@ -373,27 +291,51 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             skipPreflight: false,
         });
         
-        const signedTxState: Transaction = { 
-            ...pendingTx, 
-            id: signature, 
-            blockhash, 
-            lastValidBlockHeight, 
-            failureReason: 'Processing on-chain...' 
-        };
-        
-        // Update the client state record from temp to signed
-        setTransactions(prev => prev.map(t => t.id === tempTxId ? signedTxState : t));
-
-        // Update the database record from temp to signed
-        await persistTransaction(signedTxState, tempTxId); 
-
         toast({
             title: "Transaction Sent!",
-            description: "Your purchase is being processed. This may take a few moments.",
+            description: "Processing on-chain. This may take a moment...",
             variant: "success",
         });
 
-        await confirmAndFinalizeTransaction(signedTxState, signature);
+        const confirmation = await connection.confirmTransaction({
+            signature: signature,
+            blockhash: blockhash,
+            lastValidBlockHeight: lastValidBlockHeight
+        }, 'confirmed');
+
+        if (confirmation.value.err) {
+            throw new Error(`Transaction failed to confirm: ${JSON.stringify(confirmation.value.err)}`);
+        }
+
+        // --- Transaction is confirmed, now create the DB record ---
+        const completedTx: Transaction = {
+            id: signature,
+            amountExn,
+            paidAmount,
+            paidCurrency: currency,
+            date: new Date(),
+            status: 'Completed',
+            blockhash,
+            lastValidBlockHeight,
+            balanceAdded: false, // Server will mark this true
+        };
+
+        const result = await persistTransaction(completedTx);
+        if (result) {
+            const { newBalance, newTotalSold, transactions } = result;
+            if (newBalance !== undefined) setExnBalance(newBalance);
+            if (newTotalSold !== undefined) setTotalExnSold(newTotalSold);
+            if (transactions) {
+                 const parsedTxs = transactions.map((t: any) => ({...t, date: new Date(t.date)}));
+                 setTransactions(parsedTxs);
+            }
+        }
+        
+        toast({
+            title: "Purchase Successful!",
+            description: `You purchased ${exnAmount.toLocaleString()} EXN. Your balance is updated.`,
+            variant: "success"
+        });
         
     } catch (error: any) {
         console.error("Transaction failed:", error);
@@ -405,22 +347,11 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             failureReason = "Transaction was rejected in the wallet.";
             toastTitle = "Transaction Cancelled";
         } else if (error.message.includes("timed out") || error.message.includes("Request is not recent enough")) {
-             failureReason = "Confirmation timed out. The transaction might have succeeded or failed. Please check the transaction on Solscan or try retrying.";
+             failureReason = "Confirmation timed out. The transaction might have succeeded or failed. Please check your balance and transaction history.";
              toastTitle = "Transaction Timed Out";
         } else if (error.message) {
              failureReason = error.message;
         }
-        
-        const failedTx: Transaction = {
-            ...pendingTx,
-            id: signature || tempTxId, // Use signature if available, otherwise tempId
-            status: 'Failed',
-            failureReason
-        };
-        
-        updateTransactionInState(failedTx);
-        // Persist the final failed state, referencing the tempId if signature was never obtained
-        await persistTransaction(failedTx, !signature ? tempTxId : undefined);
         
         toast({
             title: toastTitle,
@@ -430,75 +361,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     } finally {
         setIsLoadingPurchase(false);
     }
-  }, [publicKey, connection, sendTransaction, toast, updateTransactionInState, wallet, persistTransaction, confirmAndFinalizeTransaction, isHardCapReached]);
+  }, [publicKey, connection, sendTransaction, toast, wallet, persistTransaction, isHardCapReached]);
   
-  const retryTransaction = useCallback(async (tx: Transaction) => {
-    if (tx.status !== 'Pending' || tx.id.startsWith('temp_') || !tx.blockhash || !tx.lastValidBlockHeight) {
-        toast({ title: "Retry Unavailable", description: "This transaction cannot be retried from here.", variant: "destructive" });
-        return;
-    }
-
-    const timeSinceCreation = new Date().getTime() - new Date(tx.date).getTime();
-    if (timeSinceCreation > TRANSACTION_TIMEOUT_MS) {
-        const failedTx: Transaction = {
-            ...tx,
-            status: 'Failed',
-            failureReason: 'Transaction expired before it could be confirmed.'
-        };
-        updateTransactionInState(failedTx);
-        persistTransaction(failedTx);
-        toast({ title: "Transaction Expired", description: "This transaction can no longer be confirmed.", variant: "destructive" });
-        return;
-    }
-    
-    toast({ title: "Checking status...", description: "Re-checking latest status of your transaction."});
-    
-    confirmAndFinalizeTransaction(tx, tx.id);
-
-  }, [toast, connection, updateTransactionInState, persistTransaction, confirmAndFinalizeTransaction]);
-  
-  useEffect(() => {
-    const interval = setInterval(() => {
-        const now = new Date().getTime();
-        setTransactions(prevTxs => {
-            const newTxs = [...prevTxs];
-            let changed = false;
-            
-            newTxs.forEach((tx, index) => {
-                if (tx.status === 'Pending' && (now - new Date(tx.date).getTime()) > TRANSACTION_TIMEOUT_MS) {
-                    // This handles transactions that were abandoned by the user before a signature was ever generated.
-                    if (tx.id.startsWith('temp_')) {
-                        const timedOutTx: Transaction = {
-                            ...tx,
-                            status: 'Failed',
-                            failureReason: 'User did not confirm in wallet within 5 minutes.'
-                        };
-                        newTxs[index] = timedOutTx;
-                        persistTransaction(timedOutTx, tx.id);
-                        changed = true;
-                    }
-                    // This handles transactions that were sent but never confirmed on-chain.
-                    else if (tx.blockhash) {
-                         const failedTx: Transaction = {
-                            ...tx,
-                            status: 'Failed',
-                            failureReason: 'On-chain confirmation timed out after 5 minutes.'
-                        };
-                        newTxs[index] = failedTx;
-                        persistTransaction(failedTx);
-                        changed = true;
-                    }
-                }
-            });
-
-            return changed ? newTxs : prevTxs;
-        });
-    }, 60000); // Check every minute
-
-    return () => clearInterval(interval);
-  }, [updateTransactionInState, persistTransaction]);
-
-
   if (!isClient || connecting || !publicKey || isLoadingDashboard) {
       return <DashboardLoadingSkeleton />; 
   }
@@ -509,7 +373,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     totalExnSold,
     connected,
     handlePurchase,
-    retryTransaction,
     tokenPrices,
     isLoadingPrices,
     isLoadingPurchase,
@@ -524,3 +387,5 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
+
+    
