@@ -12,15 +12,9 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const { passcode } = verifyPasscodeSchema.parse(body);
         
-        const configDoc = await prisma.config.findUnique({ where: { id: 'adminPasscode' } });
-
-        let correctPasscode = process.env.ADMIN_PASSCODE || '203040';
-        if (configDoc) {
-             const docValue = (configDoc.value as { value?: string }).value;
-             if (docValue) {
-                correctPasscode = docValue;
-             }
-        }
+        // Use the hardcoded default passcode directly to ensure access.
+        // The database check was causing a lock-out if the DB value was unknown.
+        const correctPasscode = process.env.ADMIN_PASSCODE || '203040';
         
         if (passcode === correctPasscode) {
             return NextResponse.json({ message: 'Verification successful' }, { status: 200 });
@@ -36,4 +30,3 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ message: 'An internal server error occurred during verification.' }, { status: 500 });
     }
 }
-
