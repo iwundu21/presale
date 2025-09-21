@@ -1,8 +1,10 @@
+
 "use client";
 
 import { useDashboard } from "./dashboard-client-provider";
 import { Wallet } from "lucide-react";
 import { CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
 
 export function BalanceCard() {
     const { exnBalance } = useDashboard();
@@ -20,9 +22,12 @@ export function BalanceCard() {
                     </p>
                 </div>
             </div>
-            <p className="text-xs text-muted-foreground text-right">
-                Token claiming will be enabled at the end of the presale.
-            </p>
+            <div className="flex items-center gap-4">
+                <p className="text-xs text-muted-foreground text-right">
+                    Token claiming will be enabled at the end of the presale.
+                </p>
+                <Button disabled>Claim</Button>
+            </div>
         </div>
     );
 }
