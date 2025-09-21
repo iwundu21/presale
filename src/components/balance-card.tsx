@@ -8,7 +8,7 @@ export function BalanceCard() {
     const { exnBalance } = useDashboard();
 
     return (
-        <div className="w-full rounded-lg border border-border p-4 flex items-center justify-between">
+        <div className="w-full rounded-lg border border-border p-4 flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
                 <div className="p-2 bg-primary/20 rounded-lg">
                     <Wallet className="h-5 w-5 text-primary"/>
@@ -20,6 +20,9 @@ export function BalanceCard() {
                     </p>
                 </div>
             </div>
+            <p className="text-xs text-muted-foreground text-right">
+                Token claiming will be enabled at the end of the presale.
+            </p>
         </div>
     );
 }
