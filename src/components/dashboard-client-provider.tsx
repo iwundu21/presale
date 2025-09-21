@@ -23,8 +23,6 @@ export type Transaction = {
   failureReason?: string;
   blockhash?: string;
   lastValidBlockHeight?: number;
-  balanceAdded?: boolean;
-  stageName: string;
 };
 
 type TokenPrices = {
@@ -63,10 +61,10 @@ type DashboardClientProviderProps = {
 export function DashboardClientProvider({ children }: DashboardClientProviderProps) {
   const { connected, publicKey, connecting, sendTransaction, wallet } = useWallet();
   const { connection } = useConnection();
+  const router = useRouter();
   const [exnBalance, setExnBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const { toast } = useToast();
-  const router = useRouter();
   const [isClient, setIsClient] = useState(false);
   const [totalExnSoldForCurrentStage, setTotalExnSoldForCurrentStage] = useState(0);
   const [tokenPrices, setTokenPrices] = useState<TokenPrices>({ SOL: null, USDC: null });
@@ -151,7 +149,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
   useEffect(() => {
     // If wallet is disconnected, redirect to home page.
-    // This is done in a useEffect to prevent "cannot update component while rendering" errors.
     if (isClient && !connected && !connecting) {
         router.push('/');
     }
@@ -183,7 +180,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
   }, [isClient, connected, connecting, publicKey, fetchDashboardData, router]);
   
-  const persistTransaction = useCallback(async (transaction: Transaction) => {
+  const persistTransaction = useCallback(async (transaction: Omit<Transaction, 'stageName'>) => {
     if (!publicKey) return null;
     try {
         const userKey = publicKey.toBase58();
@@ -200,9 +197,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         // Update local state after successful persistence
         if (result) {
-            const { newBalance, newTotalSold, transactions } = result;
+            const { newBalance, transactions } = result;
             if (newBalance !== undefined) setExnBalance(newBalance);
-            if (newTotalSold !== undefined) setTotalExnSoldForCurrentStage(newTotalSold);
             if (transactions) {
                  const parsedTxs = transactions.map((t: any) => ({...t, date: new Date(t.date)}));
                  setTransactions(parsedTxs);
@@ -237,7 +233,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     
     setIsLoadingPurchase(true);
     let signature: TransactionSignature | null = null;
-    const currentStageName = presaleInfo.seasonName;
     
     try {
         const presaleWalletPublicKey = new PublicKey(PRESALE_WALLET_ADDRESS);
@@ -317,7 +312,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             throw new Error(`Transaction failed on-chain: ${JSON.stringify(confirmation.value.err)}`);
         }
 
-        const completedTx: Transaction = {
+        const completedTx: Omit<Transaction, 'stageName'> = {
             id: signature,
             amountExn,
             paidAmount,
@@ -326,7 +321,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             status: 'Completed',
             blockhash,
             lastValidBlockHeight,
-            stageName: currentStageName,
         };
 
         await persistTransaction(completedTx);
@@ -353,15 +347,14 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
              failureReason = error.message;
         }
 
-        const failedTx: Transaction = {
+        const failedTx: Omit<Transaction, 'stageName'> = {
             id: signature || `tx_${uuidv4()}`,
-            amountExn,
+            amountExn: exnAmount,
             paidAmount,
             paidCurrency: currency,
             date: new Date(),
             status: 'Failed',
             failureReason,
-            stageName: currentStageName,
         };
         await persistTransaction(failedTx);
         
@@ -375,6 +368,12 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
   }, [publicKey, connection, sendTransaction, toast, wallet, persistTransaction, isHardCapReached, presaleInfo]);
   
+  useEffect(() => {
+    if (!connected && isClient && !connecting) {
+      router.push('/');
+    }
+  }, [connected, isClient, connecting, router]);
+
   if (!isClient || connecting || (!connected && isClient)) {
       return <DashboardLoadingSkeleton />; 
   }
