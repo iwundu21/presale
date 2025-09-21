@@ -35,7 +35,7 @@ export function PresaleProgressCard() {
             <div className="space-y-4 pt-4">
                 <div className="grid grid-cols-2 gap-4 text-center">
                     <div>
-                        <p className="text-lg font-bold text-white break-all">{formatNumber(totalExnSoldForCurrentStage)}</p>
+                        <p className="text-lg font-bold text-white break-all">{formatNumber(totalExnSoldForCurrentStage, { notation: 'standard', maximumFractionDigits: 4 })}</p>
                         <p className="text-xs text-muted-foreground">Tokens Sold</p>
                     </div>
                      <div>
