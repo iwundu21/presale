@@ -23,9 +23,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Separator } from "./ui/separator";
 
 const SEASON_CONFIGS: { [key: string]: { price: number; hardCap: number; } } = {
-    "Early Stage": { price: 0.09, hardCap: 700000000 },
-    "Investors": { price: 0.15, hardCap: 1000000000 },
-    "Whale": { price: 0.25, hardCap: 1500000000 },
+    "Presale": { price: 0.09, hardCap: 700000000 },
 };
 
 type UserAdminView = {
@@ -63,7 +61,7 @@ export function AdminDashboard() {
     const { toast } = useToast();
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
-    const [season, setSeason] = useState("Early Stage");
+    const [season, setSeason] = useState("Presale");
     const [price, setPrice] = useState(SEASON_CONFIGS[season].price);
     const [hardCap, setHardCap] = useState(SEASON_CONFIGS[season].hardCap);
     const [isPresaleActive, setIsPresaleActive] = useState(true);
@@ -230,14 +228,14 @@ export function AdminDashboard() {
             });
             toast({
                 title: "Success",
-                description: `Presale season updated to ${season}.`,
+                description: `Presale info updated.`,
                 variant: "success",
             });
         } catch (error) {
             console.error("Failed to update season", error);
             toast({
                 title: "Update Failed",
-                description: "Could not update the presale season. Please try again.",
+                description: "Could not update the presale info. Please try again.",
                 variant: "destructive",
             });
         } finally {
@@ -806,29 +804,20 @@ export function AdminDashboard() {
                 </Card>
                 <Card>
                     <CardHeader>
-                        <CardTitle>Manage Presale Stage</CardTitle>
+                        <CardTitle>Manage Presale Parameters</CardTitle>
                         <CardDescription>
-                            Select the current presale stage and set its parameters. The token price and cap will update automatically.
+                            Set the presale name, token price, and hard cap.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-col gap-4">
                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 items-end gap-4">
                             <div className="grid w-full items-center gap-1.5">
-                                <Label htmlFor="season">Season</Label>
-                                <Select value={season} onValueChange={handleSeasonChange} disabled={isLoading}>
-                                    <SelectTrigger id="season">
-                                        <SelectValue placeholder="Select a season" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {Object.keys(SEASON_CONFIGS).map(s => (
-                                            <SelectItem key={s} value={s}>{s}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Label htmlFor="season">Presale Name</Label>
+                                <Input id="season" value={season} onChange={e => setSeason(e.target.value)} disabled={isLoading} />
                            </div>
                            <div className="grid w-full items-center gap-1.5">
                                <Label htmlFor="price">Token Price ($)</Label>
-                               <Input id="price" type="number" value={price} readOnly disabled/>
+                               <Input id="price" type="number" value={price} onChange={e => setPrice(Number(e.target.value))} disabled={isLoading}/>
                            </div>
                            <div className="grid w-full items-center gap-1.5">
                                <Label htmlFor="hard-cap">Hard Cap</Label>
@@ -836,7 +825,7 @@ export function AdminDashboard() {
                            </div>
                        </div>
                         <Button onClick={handleUpdateSeason} disabled={isLoading} className="self-start">
-                            {isLoading ? "Updating..." : "Update Stage"}
+                            {isLoading ? "Updating..." : "Update Parameters"}
                         </Button>
                     </CardContent>
                 </Card>

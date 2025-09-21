@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
 
-const defaultPresaleInfo = { seasonName: "Early Stage", tokenPrice: 0.09, hardCap: 700000000 };
+const defaultPresaleInfo = { seasonName: "Presale", tokenPrice: 0.09, hardCap: 700000000 };
 
 const presaleInfoSchema = z.object({
   seasonName: z.string(),
@@ -25,23 +25,18 @@ export async function GET() {
     try {
         const presaleInfoValue = await getOrCreateConfig('presaleInfo', defaultPresaleInfo);
         const isPresaleActiveValue = await getOrCreateConfig('isPresaleActive', { value: true });
-
+        
         const presaleInfo = presaleInfoSchema.safeParse(presaleInfoValue);
-        const currentSeasonName = presaleInfo.success ? presaleInfo.data.seasonName : defaultPresaleInfo.seasonName;
-
-        const totalSoldAggregate = await prisma.transaction.aggregate({
+        
+        const totalSoldAggregate = await prisma.user.aggregate({
             _sum: {
-                amountExn: true,
-            },
-            where: {
-                status: 'Completed',
-                stageName: currentSeasonName,
+                balance: true,
             }
         });
-        const totalExnSoldForCurrentStage = totalSoldAggregate._sum.amountExn || 0;
+        const totalExnSold = totalSoldAggregate._sum.balance || 0;
 
         return NextResponse.json({
-            totalExnSoldForCurrentStage,
+            totalExnSoldForCurrentStage: totalExnSold,
             presaleInfo: presaleInfo.success ? presaleInfo.data : defaultPresaleInfo,
             isPresaleActive: (isPresaleActiveValue as { value: boolean })?.value ?? true,
         }, { status: 200 });

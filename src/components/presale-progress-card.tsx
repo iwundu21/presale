@@ -26,7 +26,7 @@ export function PresaleProgressCard() {
                     <div className="p-2 bg-primary/20 rounded-md">
                         <Flame className="h-6 w-6 text-primary"/>
                     </div>
-                    <CardTitle className="text-2xl font-bold text-white">{presaleInfo?.seasonName} Progress</CardTitle>
+                    <CardTitle className="text-2xl font-bold text-white">{presaleInfo?.seasonName || "Presale"} Progress</CardTitle>
                 </div>
                  <CardDescription>
                     The presale is live! Join the revolution.
@@ -36,16 +36,16 @@ export function PresaleProgressCard() {
                 <div className="grid grid-cols-2 gap-4 text-center">
                     <div>
                         <p className="text-lg font-bold text-white break-all">{formatNumber(totalExnSoldForCurrentStage)}</p>
-                        <p className="text-xs text-muted-foreground">Tokens Sold in Stage</p>
+                        <p className="text-xs text-muted-foreground">Tokens Sold</p>
                     </div>
                      <div>
                         <p className="text-lg font-bold text-white break-all">{formatNumber(hardCap)}</p>
-                        <p className="text-xs text-muted-foreground">Total Supply for {presaleInfo?.seasonName}</p>
+                        <p className="text-xs text-muted-foreground">Total Supply for Presale</p>
                     </div>
                 </div>
                  <div className="text-center bg-muted/20 p-3 rounded-lg border border-border">
                     <p className="text-sm font-semibold text-white break-all">
-                        Total Raised in Stage: ${formatNumber(totalSoldValue, { notation: 'standard', maximumFractionDigits: 0 })}
+                        Total Raised: ${formatNumber(totalSoldValue, { notation: 'standard', maximumFractionDigits: 0 })}
                     </p>
                  </div>
             </div>

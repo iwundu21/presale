@@ -63,8 +63,6 @@ function TransactionRow({ tx }: { tx: Transaction }) {
                             <p className="text-xs text-muted-foreground">
                                 {`Paid ${tx.paidAmount.toLocaleString()} ${tx.paidCurrency}`}
                             </p>
-                             <ChevronsRight className="h-3 w-3 text-muted-foreground" />
-                             <Badge variant="secondary" className="text-xs">{tx.stageName}</Badge>
                         </div>
                     </div>
                 </div>
@@ -163,7 +161,6 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
             <div className="flex justify-between items-center text-xs">
                 <p className="text-muted-foreground">{new Date(tx.date).toLocaleString()}</p>
                  <div className="flex items-center gap-2">
-                     <Badge variant="secondary" className="text-xs">{tx.stageName}</Badge>
                     <Button variant="outline" size="sm" className="h-7" asChild disabled={isLinkDisabled}>
                         <a href={`https://solscan.io/tx/${tx.id}`} target="_blank" rel="noopener noreferrer">
                            <ExternalLink className="mr-1.5 h-3 w-3" /> Solscan

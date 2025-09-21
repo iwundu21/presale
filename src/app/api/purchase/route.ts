@@ -12,7 +12,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Invalid input' }, { status: 400 });
         }
         
-        const result = await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx) => {
             // 1. Create or find user
             let user = await tx.user.findUnique({ where: { wallet: userKey } });
             if (!user) {
@@ -54,42 +54,26 @@ export async function POST(request: Request) {
                     });
                 }
             }
+        });
 
-            // 5. Fetch updated data to return
-            const updatedUser = await tx.user.findUnique({
-                where: { wallet: userKey },
-                include: {
-                    transactions: { orderBy: { date: 'desc' } }
-                }
-            });
-            
-             // 6. Recalculate total sold for the current stage
-            const presaleInfoConfig = await tx.config.findUnique({ where: { id: 'presaleInfo' } });
-            const currentSeasonName = (presaleInfoConfig?.value as any)?.seasonName || 'Early Stage';
-            
-            const totalSoldAggregate = await tx.transaction.aggregate({
-                _sum: {
-                    amountExn: true,
-                },
-                where: {
-                    status: 'Completed',
-                    stageName: currentSeasonName,
-                }
-            });
-            const newTotalSold = totalSoldAggregate._sum.amountExn || 0;
-
-            return { updatedUser, newTotalSold };
+        // Fetch updated data to return (outside the main transaction block if not needed for immediate return)
+        const updatedUser = await prisma.user.findUnique({
+            where: { wallet: userKey },
+            include: {
+                transactions: { orderBy: { date: 'desc' } }
+            }
         });
 
         return NextResponse.json({
             message: `Transaction ${transaction.status}`,
-            newBalance: result.updatedUser?.balance || 0,
-            newTotalSold: result.newTotalSold,
-            transactions: result.updatedUser?.transactions || [],
+            newBalance: updatedUser?.balance || 0,
+            transactions: updatedUser?.transactions || [],
         }, { status: 200 });
+
 
     } catch (error) {
         console.error('API Purchase Error:', error);
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }
+
