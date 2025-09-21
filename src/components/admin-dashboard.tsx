@@ -61,9 +61,8 @@ export function AdminDashboard() {
     const { toast } = useToast();
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
-    const [season, setSeason] = useState("Presale");
-    const [price, setPrice] = useState(SEASON_CONFIGS[season].price);
-    const [hardCap, setHardCap] = useState(SEASON_CONFIGS[season].hardCap);
+    const [price, setPrice] = useState(SEASON_CONFIGS["Presale"].price);
+    const [hardCap, setHardCap] = useState(SEASON_CONFIGS["Presale"].hardCap);
     const [isPresaleActive, setIsPresaleActive] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
     const [isUpdatingDate, setIsUpdatingDate] = useState(false);
@@ -131,7 +130,6 @@ export function AdminDashboard() {
                 const presaleDataRes = await getPresaleData();
                 
                 if (presaleDataRes) {
-                    setSeason(presaleDataRes.presaleInfo.seasonName);
                     setPrice(presaleDataRes.presaleInfo.tokenPrice);
                     setHardCap(presaleDataRes.presaleInfo.hardCap);
                     setIsPresaleActive(presaleDataRes.isPresaleActive);
@@ -208,21 +206,12 @@ export function AdminDashboard() {
             setIsUpdatingDate(false);
         }
     };
-    
-    const handleSeasonChange = (newSeason: string) => {
-        setSeason(newSeason);
-        const config = SEASON_CONFIGS[newSeason];
-        if (config) {
-            setPrice(config.price);
-            setHardCap(config.hardCap);
-        }
-    };
 
-    const handleUpdateSeason = async () => {
+    const handleUpdateParams = async () => {
         setIsLoading(true);
         try {
             await setPresaleInfo({ 
-                seasonName: season, 
+                seasonName: "Presale", 
                 tokenPrice: price,
                 hardCap: hardCap
             });
@@ -661,7 +650,7 @@ export function AdminDashboard() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={()={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                                     disabled={currentPage === 1}
                                 >
                                     <ChevronLeft className="h-4 w-4" />
@@ -673,7 +662,7 @@ export function AdminDashboard() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={()={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                                     disabled={currentPage === totalPages}
                                 >
                                     Next
@@ -806,15 +795,11 @@ export function AdminDashboard() {
                     <CardHeader>
                         <CardTitle>Manage Presale Parameters</CardTitle>
                         <CardDescription>
-                            Set the presale name, token price, and hard cap.
+                            Set the presale token price and hard cap.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-col gap-4">
-                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 items-end gap-4">
-                            <div className="grid w-full items-center gap-1.5">
-                                <Label htmlFor="season">Presale Name</Label>
-                                <Input id="season" value={season} onChange={e => setSeason(e.target.value)} disabled={isLoading} />
-                           </div>
+                       <div className="grid grid-cols-1 sm:grid-cols-2 items-end gap-4">
                            <div className="grid w-full items-center gap-1.5">
                                <Label htmlFor="price">Token Price ($)</Label>
                                <Input id="price" type="number" value={price} onChange={e => setPrice(Number(e.target.value))} disabled={isLoading}/>
@@ -824,7 +809,7 @@ export function AdminDashboard() {
                                <Input id="hard-cap" type="number" value={hardCap} onChange={e => setHardCap(Number(e.target.value))} disabled={isLoading} />
                            </div>
                        </div>
-                        <Button onClick={handleUpdateSeason} disabled={isLoading} className="self-start">
+                        <Button onClick={handleUpdateParams} disabled={isLoading} className="self-start">
                             {isLoading ? "Updating..." : "Update Parameters"}
                         </Button>
                     </CardContent>
@@ -860,3 +845,5 @@ export function AdminDashboard() {
     );
 
 }
+
+    
