@@ -62,6 +62,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const { connected, publicKey, connecting, sendTransaction, wallet } = useWallet();
   const { connection } = useConnection();
   const router = useRouter();
+  const isMounted = useRef(false);
   const [exnBalance, setExnBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const { toast } = useToast();
@@ -78,6 +79,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
   useEffect(() => {
     setIsClient(true);
+    isMounted.current = true;
+    return () => {
+        isMounted.current = false;
+    }
   }, []);
 
   const fetchDashboardData = useCallback(async () => {
@@ -151,14 +156,11 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     if (connected && publicKey) {
         fetchDashboardData();
         
-        const abortController = new AbortController();
-        const signal = abortController.signal;
-
         const intervalId = setInterval(async () => {
+            if (!isMounted.current) return;
             try {
-                if (signal.aborted) return;
-                const res = await fetch('/api/presale-data', { signal });
-                if (!signal.aborted && res.ok) {
+                const res = await fetch('/api/presale-data');
+                if (isMounted.current && res.ok) {
                     const data = await res.json();
                     setTotalExnSoldForCurrentStage(data.totalExnSoldForCurrentStage || 0);
                 }
@@ -170,7 +172,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         }, 30000); // Poll every 30 seconds
 
         return () => {
-            abortController.abort();
             clearInterval(intervalId);
         };
     }
@@ -317,7 +318,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         const completedTx: Transaction = {
             id: signature,
-            amountExn: exnAmount,
+            amountExn,
             paidAmount,
             paidCurrency: currency,
             date: new Date(),
@@ -336,14 +337,23 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         
     } catch (error: any) {
         console.error("Transaction failed:", error);
+
+        // If user rejects the transaction in the wallet, just show a toast and do nothing else.
+        if (error.name === 'WalletSendTransactionError' || (error.message && error.message.includes("User rejected the request"))) {
+            toast({
+                title: "Transaction Cancelled",
+                description: "Transaction was rejected in the wallet.",
+                variant: "destructive",
+            });
+            setIsLoadingPurchase(false);
+            return;
+        }
         
+        // For all other errors (on-chain failure, timeout, etc.), create a failed record.
         let failureReason = "An unknown error occurred.";
         let toastTitle = "Transaction Failed";
         
-        if (error.name === 'WalletSendTransactionError' || (error.message && error.message.includes("User rejected the request"))) {
-            failureReason = "Transaction was rejected in the wallet.";
-            toastTitle = "Transaction Cancelled";
-        } else if (error.message.includes("timed out") || error.message.includes("Request is not recent enough")) {
+        if (error.message.includes("timed out") || error.message.includes("Request is not recent enough")) {
              failureReason = "Confirmation timed out. The transaction might have succeeded or failed. Please check your balance and history.";
              toastTitle = "Transaction Timed Out";
         } else if (error.message) {
@@ -352,7 +362,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         const failedTx: Transaction = {
             id: signature || `tx_${uuidv4()}`,
-            amountExn: exnAmount,
+            amountExn,
             paidAmount,
             paidCurrency: currency,
             date: new Date(),
