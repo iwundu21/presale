@@ -1,6 +1,5 @@
 
 
-
 "use client";
 
 import { CardDescription, CardTitle } from "@/components/ui/card";
@@ -20,11 +19,6 @@ import { useState } from "react";
 
 const TRANSACTIONS_PER_PAGE = 10;
 
-const formatTxId = (txId: string) => {
-    if (txId.startsWith('temp_')) return 'Processing...';
-    return `${txId.substring(0, 4)}...${txId.substring(txId.length - 4)}`;
-}
-
 const getStatusBadgeVariant = (status: Transaction['status']): BadgeProps['variant'] => {
     switch (status) {
         case 'Completed': return 'success';
@@ -41,7 +35,6 @@ const getStatusIcon = (status: Transaction['status']) => {
 }
 
 function TransactionRow({ tx }: { tx: Transaction }) {
-    const { isLoadingPurchase } = useDashboard();
     const { toast } = useToast();
 
     const handleCopyToClipboard = (text: string) => {
@@ -53,7 +46,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
         });
     };
 
-    const isLinkDisabled = tx.id.startsWith('temp_');
+    const isLinkDisabled = tx.id.startsWith('tx_');
 
     return (
         <TableRow key={tx.id}>
@@ -64,7 +57,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
                     </div>
                     <div>
                         <p>
-                           {`Purchased ${tx.amountExn.toLocaleString()} EXN`}
+                           {`${tx.status === 'Completed' ? 'Purchased' : 'Attempted'} ${tx.amountExn.toLocaleString()} EXN`}
                         </p>
                          <p className="text-xs text-muted-foreground">
                             {`Paid ${tx.paidAmount.toLocaleString()} ${tx.paidCurrency}`}
@@ -77,7 +70,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
                     <span className="truncate max-w-[100px]">{tx.id}</span>
                      <Tooltip>
                         <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopyToClipboard(tx.id)}>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" disabled={isLinkDisabled} onClick={() => handleCopyToClipboard(tx.id)}>
                                 <Copy className="h-3 w-3" />
                             </Button>
                         </TooltipTrigger>
@@ -102,15 +95,16 @@ function TransactionRow({ tx }: { tx: Transaction }) {
                                 <p className="font-bold">{new Date(tx.date).toLocaleString()}</p>
                                 <div className="flex items-center gap-2">
                                     <p className="truncate">Tx: {tx.id}</p>
-                                    <a href={`https://solscan.io/tx/${tx.id}`} target="_blank" rel="noopener noreferrer" className={isLinkDisabled ? 'pointer-events-none text-muted-foreground/50' : ''}>
-                                        <ExternalLink className="h-4 w-4"/>
-                                    </a>
+                                    {!isLinkDisabled && (
+                                        <a href={`https://solscan.io/tx/${tx.id}`} target="_blank" rel="noopener noreferrer">
+                                            <ExternalLink className="h-4 w-4"/>
+                                        </a>
+                                    )}
                                 </div>
                                 {tx.failureReason && (
-                                    <p className={cn("max-w-xs break-words", {
-                                        "text-red-400": tx.status === "Failed",
-                                        "text-green-400": tx.status === "Completed",
-                                    })}>Reason: {tx.failureReason}</p>
+                                    <p className={cn("max-w-xs break-words text-red-400")}>
+                                        Reason: {tx.failureReason}
+                                    </p>
                                 )}
                             </div>
                         </PopoverContent>
@@ -132,14 +126,14 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
             variant: "success",
         });
     };
-    const isLinkDisabled = tx.id.startsWith('temp_');
+    const isLinkDisabled = tx.id.startsWith('tx_');
 
     return (
         <div className="p-4 bg-muted/30 rounded-lg space-y-3">
             <div className="flex justify-between items-start">
                 <div className="font-medium text-white">
                     <p>
-                        {`Purchased ${tx.amountExn.toLocaleString()} EXN`}
+                        {`${tx.status === 'Completed' ? 'Purchased' : 'Attempted'} ${tx.amountExn.toLocaleString()} EXN`}
                     </p>
                     <p className="text-xs text-muted-foreground">
                         {`Paid ${tx.paidAmount.toLocaleString()} ${tx.paidCurrency}`}
@@ -155,9 +149,11 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
              <div className="flex items-start gap-2 font-mono text-xs text-muted-foreground">
                 <span className="font-sans">ID:</span>
                 <span className="break-all flex-1">{tx.id}</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => handleCopyToClipboard(tx.id)}>
-                    <Copy className="h-3 w-3" />
-                </Button>
+                {!isLinkDisabled && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => handleCopyToClipboard(tx.id)}>
+                        <Copy className="h-3 w-3" />
+                    </Button>
+                )}
             </div>
             <Separator />
             <div className="flex justify-between items-center text-xs">
@@ -171,10 +167,7 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
                  </div>
             </div>
              {tx.failureReason && (
-                <p className={cn("text-xs break-words pt-1", {
-                    "text-red-400": tx.status === "Failed",
-                    "text-green-400": tx.status === "Completed",
-                })}>
+                <p className={cn("text-xs break-words pt-1 text-red-400")}>
                     <span className="font-semibold">Reason:</span> {tx.failureReason}
                 </p>
             )}
@@ -266,13 +259,5 @@ export function TransactionHistoryTable() {
         </div>
     );
 }
-
-    
-
-
-
-
-
-    
 
     

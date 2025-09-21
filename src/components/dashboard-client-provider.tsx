@@ -14,7 +14,7 @@ import type { PresaleInfo } from "@/services/presale-info-service";
 import { v4 as uuidv4 } from 'uuid';
 
 export type Transaction = {
-  id: string; // Signature
+  id: string; // Signature or temporary ID
   amountExn: number;
   paidAmount: number;
   paidCurrency: string;
@@ -59,8 +59,6 @@ type DashboardClientProviderProps = {
     children: React.ReactNode;
 };
 
-export const TRANSACTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes for on-chain confirmation
-
 export function DashboardClientProvider({ children }: DashboardClientProviderProps) {
   const { connected, publicKey, connecting, sendTransaction, wallet } = useWallet();
   const { connection } = useConnection();
@@ -82,12 +80,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   useEffect(() => {
     setIsClient(true);
   }, []);
-
-  useEffect(() => {
-    if (isClient && !connecting && !connected) {
-      router.push('/');
-    }
-  }, [isClient, connected, connecting, router]);
 
   const fetchDashboardData = useCallback(async () => {
     if (!connected || !publicKey) return;
@@ -197,13 +189,25 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         if (!response.ok) {
             throw new Error(`Server-side transaction update failed: ${await response.text()}`);
         }
-        return await response.json();
+        const result = await response.json();
+
+        // Update local state after successful persistence
+        if (result) {
+            const { newBalance, newTotalSold, transactions } = result;
+            if (newBalance !== undefined) setExnBalance(newBalance);
+            if (newTotalSold !== undefined) setTotalExnSold(newTotalSold);
+            if (transactions) {
+                 const parsedTxs = transactions.map((t: any) => ({...t, date: new Date(t.date)}));
+                 setTransactions(parsedTxs);
+            }
+        }
+        return result;
 
     } catch (error) {
         console.error("Failed to persist transaction:", error);
         toast({
             title: "Sync Error",
-            description: "Your transaction was successful, but we failed to update your permanent record. Please contact support if your balance seems incorrect.",
+            description: "Your transaction was processed, but we failed to update your permanent record. Please contact support if your balance seems incorrect.",
             variant: "destructive"
         });
         return null;
@@ -237,8 +241,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
                 toPubkey: presaleWalletPublicKey,
                 lamports: Math.round(paidAmount * LAMPORTS_PER_SOL),
             }));
-        } else {
-            const mintPublicKey = USDC_MINT; // Only USDC is supported
+        } else { // Assumes "USDC"
+            const mintPublicKey = USDC_MINT;
             const decimals = 6;
             const integerAmount = Math.round(paidAmount * (10 ** decimals));
 
@@ -254,9 +258,9 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             if (!toTokenAccountInfo) {
                 instructions.push(
                     createAssociatedTokenAccountInstruction(
-                        publicKey, // Payer funds the account creation
+                        publicKey,
                         toTokenAccount,
-                        presaleWalletPublicKey, // Owner of the new account
+                        presaleWalletPublicKey,
                         mintPublicKey
                     )
                 );
@@ -287,9 +291,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             description: "Please approve the transaction in your wallet.",
         });
 
-        signature = await sendTransaction(transaction, connection, {
-            skipPreflight: false,
-        });
+        signature = await sendTransaction(transaction, connection, { skipPreflight: false });
         
         toast({
             title: "Transaction Sent!",
@@ -304,10 +306,9 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         }, 'confirmed');
 
         if (confirmation.value.err) {
-            throw new Error(`Transaction failed to confirm: ${JSON.stringify(confirmation.value.err)}`);
+            throw new Error(`Transaction failed on-chain: ${JSON.stringify(confirmation.value.err)}`);
         }
 
-        // --- Transaction is confirmed, now create the DB record ---
         const completedTx: Transaction = {
             id: signature,
             amountExn,
@@ -317,19 +318,9 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             status: 'Completed',
             blockhash,
             lastValidBlockHeight,
-            balanceAdded: false, // Server will mark this true
         };
 
-        const result = await persistTransaction(completedTx);
-        if (result) {
-            const { newBalance, newTotalSold, transactions } = result;
-            if (newBalance !== undefined) setExnBalance(newBalance);
-            if (newTotalSold !== undefined) setTotalExnSold(newTotalSold);
-            if (transactions) {
-                 const parsedTxs = transactions.map((t: any) => ({...t, date: new Date(t.date)}));
-                 setTransactions(parsedTxs);
-            }
-        }
+        await persistTransaction(completedTx);
         
         toast({
             title: "Purchase Successful!",
@@ -347,11 +338,23 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             failureReason = "Transaction was rejected in the wallet.";
             toastTitle = "Transaction Cancelled";
         } else if (error.message.includes("timed out") || error.message.includes("Request is not recent enough")) {
-             failureReason = "Confirmation timed out. The transaction might have succeeded or failed. Please check your balance and transaction history.";
+             failureReason = "Confirmation timed out. The transaction might have succeeded or failed. Please check your balance and history.";
              toastTitle = "Transaction Timed Out";
         } else if (error.message) {
              failureReason = error.message;
         }
+
+        // Create a failed transaction record
+        const failedTx: Transaction = {
+            id: signature || `tx_${uuidv4()}`, // Use signature if available, otherwise a unique ID
+            amountExn,
+            paidAmount,
+            paidCurrency: currency,
+            date: new Date(),
+            status: 'Failed',
+            failureReason,
+        };
+        await persistTransaction(failedTx);
         
         toast({
             title: toastTitle,

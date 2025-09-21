@@ -6,32 +6,26 @@ import type { Transaction } from '@/components/dashboard-client-provider';
 
 export async function POST(request: Request) {
     try {
-        const { userKey, exnAmount, transaction } = await request.json() as { userKey: string; exnAmount: number; transaction: Transaction };
+        const { userKey, transaction } = await request.json() as { userKey: string; transaction: Transaction };
 
         if (!userKey || !transaction || !transaction.id) {
             return NextResponse.json({ message: 'Invalid input' }, { status: 400 });
         }
         
-        // Since we now only record successful transactions, we can proceed directly.
         const result = await prisma.$transaction(async (tx) => {
-             // Create or find user
+            // 1. Create or find user
             let user = await tx.user.findUnique({ where: { wallet: userKey } });
             if (!user) {
                 user = await tx.user.create({ data: { wallet: userKey, balance: 0 } });
             }
 
-            // Check if this transaction signature has already been processed
-            const existingTx = await tx.transaction.findUnique({
-                where: { id: transaction.id },
-            });
+            // 2. Check if this transaction has already been processed
+            const existingTx = await tx.transaction.findUnique({ where: { id: transaction.id } });
 
             if (existingTx) {
-                // If it exists, it means the user might have refreshed the page
-                // after a successful purchase but before the UI updated.
-                // We shouldn't process it again. Just return the current state.
                 console.log(`Transaction ${transaction.id} already processed. Skipping.`);
             } else {
-                 // Create the transaction record
+                 // 3. Create the new transaction record (Completed or Failed)
                 await tx.transaction.create({
                     data: {
                         id: transaction.id,
@@ -39,40 +33,45 @@ export async function POST(request: Request) {
                         paidAmount: transaction.paidAmount,
                         paidCurrency: transaction.paidCurrency,
                         date: transaction.date,
-                        status: 'Completed', // Always completed now
+                        status: transaction.status,
+                        failureReason: transaction.failureReason,
                         blockhash: transaction.blockhash,
                         lastValidBlockHeight: transaction.lastValidBlockHeight,
-                        balanceAdded: true, // Balance is added in this transaction
                         userWallet: userKey,
+                        // This field is now redundant but kept for schema compatibility
+                        balanceAdded: transaction.status === 'Completed'
                     }
                 });
 
-                // Update user's balance
-                await tx.user.update({
-                    where: { wallet: userKey },
-                    data: {
-                        balance: {
-                            increment: exnAmount,
+                // 4. If completed, update balances and totals
+                if (transaction.status === 'Completed') {
+                    // Update user's balance
+                    await tx.user.update({
+                        where: { wallet: userKey },
+                        data: {
+                            balance: {
+                                increment: transaction.amountExn,
+                            },
                         },
-                    },
-                });
-                
-                // Atomically update the total sold amount
-                await tx.config.upsert({
-                    where: { id: 'totalExnSold' },
-                    update: { 
-                        value: { 
-                            increment: exnAmount 
-                        }
-                    },
-                    create: { 
-                        id: 'totalExnSold', 
-                        value: { value: exnAmount } 
-                    },
-                });
+                    });
+                    
+                    // Atomically update the total sold amount
+                    await tx.config.upsert({
+                        where: { id: 'totalExnSold' },
+                        update: { 
+                            value: { 
+                                increment: transaction.amountExn 
+                            }
+                        },
+                        create: { 
+                            id: 'totalExnSold', 
+                            value: { value: transaction.amountExn } 
+                        },
+                    });
+                }
             }
 
-            // Fetch updated data to return inside the transaction
+            // 5. Fetch updated data to return
             const updatedUser = await tx.user.findUnique({
                 where: { wallet: userKey },
                 include: {
@@ -86,7 +85,7 @@ export async function POST(request: Request) {
         });
 
         return NextResponse.json({
-            message: 'Purchase recorded',
+            message: `Transaction ${transaction.status}`,
             newBalance: result.updatedUser?.balance || 0,
             newTotalSold: result.newTotalSold,
             transactions: result.updatedUser?.transactions || [],
