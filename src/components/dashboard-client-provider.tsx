@@ -362,7 +362,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         const failedTx: Transaction = {
             id: signature || `tx_${uuidv4()}`,
-            amountExn,
+            amountExn: exnAmount,
             paidAmount,
             paidCurrency: currency,
             date: new Date(),
