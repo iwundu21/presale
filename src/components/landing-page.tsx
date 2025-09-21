@@ -26,7 +26,7 @@ const SEASON_PRICES: { [key: string]: number } = {
 const SEASON_ORDER = Object.keys(SEASON_PRICES);
 
 export function LandingPage({ presaleEndDate, presaleInfo, isPresaleActive }: LandingPageProps) {
-    const { wallet, connected, connecting } = useWallet();
+    const { wallet, connecting } = useWallet();
     const { setVisible } = useWalletModal();
     const router = useRouter();
     const [isClient, setIsClient] = useState(false);
@@ -36,12 +36,6 @@ export function LandingPage({ presaleEndDate, presaleInfo, isPresaleActive }: La
         setIsClient(true);
         document.title = "Exnus Presale";
     }, []);
-
-    useEffect(() => {
-      if (connected) {
-        router.push('/dashboard');
-      }
-    }, [connected, router]);
 
     const handleConnect = () => {
         setVisible(true);
