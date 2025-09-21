@@ -150,6 +150,12 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
 
   useEffect(() => {
+    // If wallet is disconnected, redirect to home page.
+    // This is done in a useEffect to prevent "cannot update component while rendering" errors.
+    if (isClient && !connected && !connecting) {
+        router.push('/');
+    }
+
     if (connected && publicKey) {
         fetchDashboardData();
         
@@ -175,7 +181,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             clearInterval(intervalId);
         };
     }
-  }, [connected, publicKey, fetchDashboardData]);
+  }, [isClient, connected, connecting, publicKey, fetchDashboardData, router]);
   
   const persistTransaction = useCallback(async (transaction: Transaction) => {
     if (!publicKey) return null;
@@ -369,16 +375,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
   }, [publicKey, connection, sendTransaction, toast, wallet, persistTransaction, isHardCapReached, presaleInfo]);
   
-  if (!isClient || connecting) {
+  if (!isClient || connecting || (!connected && isClient)) {
       return <DashboardLoadingSkeleton />; 
   }
-
-  if (!connected) {
-    router.push('/');
-    return <DashboardLoadingSkeleton />;
-  }
-
-
+  
   const contextValue = {
     exnBalance,
     transactions,
