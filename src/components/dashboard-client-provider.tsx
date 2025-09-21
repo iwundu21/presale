@@ -28,7 +28,6 @@ export type Transaction = {
 type TokenPrices = {
     SOL: number | null;
     USDC: number | null;
-    USDT: number | null;
 };
 
 type DashboardContextType = {
@@ -71,7 +70,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
   const [totalExnSold, setTotalExnSold] = useState(0);
-  const [tokenPrices, setTokenPrices] = useState<TokenPrices>({ SOL: null, USDC: null, USDT: null });
+  const [tokenPrices, setTokenPrices] = useState<TokenPrices>({ SOL: null, USDC: null });
   const [isLoadingPrices, setIsLoadingPrices] = useState(true);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
   const [isLoadingPurchase, setIsLoadingPurchase] = useState(false);
@@ -102,7 +101,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         const [userDataRes, presaleDataRes, pricesRes] = await Promise.allSettled([
             fetch(`/api/user-data?userKey=${userKey}`),
             fetch('/api/presale-data'),
-            fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana,usd-coin,tether&vs_currencies=usd')
+            fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana,usd-coin&vs_currencies=usd')
         ]);
 
         if (userDataRes.status === 'fulfilled' && userDataRes.value.ok) {
@@ -132,11 +131,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             setTokenPrices({
                 SOL: pricesData.solana?.usd || null,
                 USDC: pricesData['usd-coin']?.usd || null,
-                USDT: pricesData.tether?.usd || null,
             });
         } else {
             console.error('Failed to fetch token prices:', pricesRes.status === 'rejected' ? pricesRes.reason : 'API request failed');
-            setTokenPrices({ SOL: 150, USDC: 1, USDT: 1 }); // Fallback prices
+            setTokenPrices({ SOL: 150, USDC: 1 }); // Fallback prices
             toast({
               title: "Could not fetch token prices",
               description: "Using fallback prices. Conversions may be approximate.",

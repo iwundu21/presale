@@ -11,7 +11,7 @@ import { Skeleton } from "./ui/skeleton";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { getAssociatedTokenAddress } from "@solana/spl-token";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { USDC_MINT, USDT_MINT } from "@/config";
+import { USDC_MINT } from "@/config";
 import { useDashboard } from "./dashboard-client-provider";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 
@@ -19,7 +19,7 @@ const SOL_GAS_BUFFER = 0.0009; // Reserve 0.0009 SOL for gas fees
 const MIN_PURCHASE_USD = 1;
 const MAX_PURCHASE_USD = 10000;
 
-type Currency = "USDC" | "USDT" | "SOL";
+type Currency = "USDC" | "SOL";
 
 export function BuyExnCard() {
   const { connected: isConnected, handlePurchase, tokenPrices, isLoadingPrices, presaleInfo, isPresaleActive, isLoadingPurchase, isHardCapReached } = useDashboard();
@@ -28,7 +28,7 @@ export function BuyExnCard() {
   const [payAmount, setPayAmount] = useState("1.00");
   const [receiveAmount, setReceiveAmount] = useState("");
   const [currency, setCurrency] = useState<Currency>("USDC");
-  const [balances, setBalances] = useState({ SOL: 0, USDC: 0, USDT: 0 });
+  const [balances, setBalances] = useState({ SOL: 0, USDC: 0 });
   const [isFetchingBalance, setIsFetchingBalance] = useState(false);
   const [balanceError, setBalanceError] = useState("");
   const [limitError, setLimitError] = useState("");
@@ -55,22 +55,9 @@ export function BuyExnCard() {
                 console.log("Could not fetch USDC balance for user, likely no account exists yet.");
             }
            
-            // Fetch USDT balance
-            let usdtBalance = 0;
-            try {
-                const usdtTokenAccount = await getAssociatedTokenAddress(USDT_MINT, publicKey);
-                const usdtTokenAccountInfo = await connection.getParsedAccountInfo(usdtTokenAccount);
-                if (usdtTokenAccountInfo.value) {
-                    usdtBalance = (usdtTokenAccountInfo.value.data as any).parsed.info.tokenAmount.uiAmount;
-                }
-            } catch (e) {
-                 console.log("Could not fetch USDT balance for user, likely no account exists yet.");
-            }
-
             setBalances({
                 SOL: solBalance / LAMPORTS_PER_SOL,
                 USDC: usdcBalance,
-                USDT: usdtBalance
             });
         } catch (error) {
             console.error("Failed to fetch wallet balances", error);
@@ -262,7 +249,6 @@ export function BuyExnCard() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="USDC">USDC</SelectItem>
-                    <SelectItem value="USDT">USDT</SelectItem>
                     <SelectItem value="SOL">SOL</SelectItem>
                   </SelectContent>
                 </Select>
