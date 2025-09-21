@@ -318,7 +318,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         const completedTx: Transaction = {
             id: signature,
-            amountExn,
+            amountExn: exnAmount,
             paidAmount,
             paidCurrency: currency,
             date: new Date(),
@@ -362,7 +362,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
 
         const failedTx: Transaction = {
             id: signature || `tx_${uuidv4()}`,
-            amountExn: exnAmount,
+            amountExn,
             paidAmount,
             paidCurrency: currency,
             date: new Date(),
