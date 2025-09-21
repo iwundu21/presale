@@ -59,14 +59,6 @@ const getStatusIcon = (status: Transaction['status']) => {
     }
 }
 
-const getTxIcon = (tx: Transaction) => {
-    if (tx.paidCurrency === 'BONUS') {
-        return <Award className="h-4 w-4 text-yellow-500" />;
-    }
-    return getStatusIcon(tx.status);
-}
-
-
 export function AdminDashboard() {
     const { toast } = useToast();
     const [date, setDate] = useState('');
@@ -104,10 +96,6 @@ export function AdminDashboard() {
     const [newBalance, setNewBalance] = useState('');
     const [isUpdatingBalance, setIsUpdatingBalance] = useState(false);
 
-    // Bonus Distribution State
-    const [isBonusDistributed, setIsBonusDistributed] = useState(false);
-    const [isDistributing, setIsDistributing] = useState(false);
-
     const fetchUsers = useCallback(async (page: number, query: string) => {
         setIsLoadingUsers(true);
         try {
@@ -141,20 +129,12 @@ export function AdminDashboard() {
         const fetchInitialData = async () => {
             setIsLoading(true);
             try {
-                const [presaleDataRes, bonusStatusRes] = await Promise.all([
-                    getPresaleData(),
-                    fetch('/api/admin/distribute-bonus')
-                ]);
+                const presaleDataRes = await getPresaleData();
                 
                 if (presaleDataRes) {
                     setSeason(presaleDataRes.presaleInfo.seasonName);
                     setPrice(presaleDataRes.presaleInfo.tokenPrice);
                     setIsPresaleActive(presaleDataRes.isPresaleActive);
-                }
-
-                if (bonusStatusRes.ok) {
-                    const bonusData = await bonusStatusRes.json();
-                    setIsBonusDistributed(bonusData.isBonusDistributed);
                 }
 
             } catch (error) {
@@ -397,32 +377,6 @@ export function AdminDashboard() {
         }
     }
 
-    const handleDistributeBonus = async () => {
-        setIsDistributing(true);
-        try {
-            const response = await fetch('/api/admin/distribute-bonus', { method: 'POST' });
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.message || "Failed to distribute bonus.");
-            }
-            toast({
-                title: "Bonus Distributed!",
-                description: data.message,
-                variant: "success",
-            });
-            setIsBonusDistributed(true);
-            fetchUsers(1, ''); // Refresh user list
-        } catch (error: any) {
-            toast({
-                title: "Distribution Failed",
-                description: error.message,
-                variant: "destructive",
-            });
-        } finally {
-            setIsDistributing(false);
-        }
-    };
-    
     const handleTxSearch = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!txSearchQuery) return;
@@ -521,7 +475,7 @@ export function AdminDashboard() {
                                         <div className="flex justify-between items-center">
                                             <span className="text-muted-foreground">Status</span>
                                             <Badge variant={getStatusBadgeVariant(foundTx.status)} className="gap-1.5 cursor-pointer">
-                                                {getTxIcon(foundTx)}
+                                                {getStatusIcon(foundTx.status)}
                                                 {foundTx.status}
                                             </Badge>
                                         </div>
@@ -643,21 +597,21 @@ export function AdminDashboard() {
                                                                                         </div>
                                                                                     </TableCell>
                                                                                     <TableCell>
-                                                                                        <p>{tx.paidCurrency === 'BONUS' ? '+' : ''}{tx.amountExn.toLocaleString()} EXN</p>
+                                                                                        <p>{tx.amountExn.toLocaleString()} EXN</p>
                                                                                         <p className="text-xs text-muted-foreground">
                                                                                             {new Date(tx.date).toLocaleString()}
                                                                                         </p>
                                                                                     </TableCell>
                                                                                     <TableCell>
-                                                                                        <Badge variant={tx.paidCurrency === 'BONUS' ? 'default' : getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
-                                                                                            {getTxIcon(tx)}
-                                                                                            {tx.paidCurrency === 'BONUS' ? tx.failureReason : tx.status}
+                                                                                        <Badge variant={getStatusBadgeVariant(tx.status)} className="gap-1.5 cursor-pointer">
+                                                                                            {getStatusIcon(tx.status)}
+                                                                                            {tx.status}
                                                                                         </Badge>
                                                                                     </TableCell>
                                                                                     <TableCell>
                                                                                         <Tooltip>
                                                                                             <TooltipTrigger asChild>
-                                                                                                <Button variant="ghost" size="icon" className="h-8 w-8" disabled={tx.id.startsWith('tx_') || tx.paidCurrency === 'BONUS' || tx.id.startsWith('bonus-')} asChild>
+                                                                                                <Button variant="ghost" size="icon" className="h-8 w-8" disabled={tx.id.startsWith('tx_')} asChild>
                                                                                                     <a href={`https://solscan.io/tx/${tx.id}`} target="_blank" rel="noopener noreferrer" >
                                                                                                         <ExternalLink className="h-4 w-4" />
                                                                                                     </a>
@@ -699,7 +653,7 @@ export function AdminDashboard() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                    onClick={()={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                                     disabled={currentPage === 1}
                                 >
                                     <ChevronLeft className="h-4 w-4" />
@@ -711,7 +665,7 @@ export function AdminDashboard() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                    onClick={()={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                                     disabled={currentPage === totalPages}
                                 >
                                     Next
@@ -771,38 +725,6 @@ export function AdminDashboard() {
                             <Download className="mr-2 h-4 w-4"/>
                             {isDownloading ? "Downloading..." : "Download All User Data (CSV)"}
                         </Button>
-                    </CardContent>
-                </Card>
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>Distribute Presale Bonus</CardTitle>
-                        <CardDescription>
-                            Distribute a 3% EXN token bonus to all participants. This action can only be performed once.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button disabled={isDistributing || isBonusDistributed || isLoading}>
-                                    <Gift className="mr-2 h-4 w-4"/>
-                                    {isDistributing ? "Distributing..." : isBonusDistributed ? "Bonus Already Distributed" : "Distribute 3% Bonus"}
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This action will permanently add a 3% bonus to every user's current EXN balance. This action cannot be undone and can only be performed once.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDistributeBonus}>
-                                        Yes, distribute bonus
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
                     </CardContent>
                 </Card>
                 <Card>
@@ -933,3 +855,5 @@ export function AdminDashboard() {
     );
 
 }
+
+    
