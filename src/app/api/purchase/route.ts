@@ -38,34 +38,17 @@ export async function POST(request: Request) {
                         blockhash: transaction.blockhash,
                         lastValidBlockHeight: transaction.lastValidBlockHeight,
                         userWallet: userKey,
-                        // This field is now redundant but kept for schema compatibility
-                        balanceAdded: transaction.status === 'Completed'
                     }
                 });
 
-                // 4. If completed, update balances and totals
+                // 4. If completed, update user balance
                 if (transaction.status === 'Completed') {
-                    // Update user's balance
                     await tx.user.update({
                         where: { wallet: userKey },
                         data: {
                             balance: {
                                 increment: transaction.amountExn,
                             },
-                        },
-                    });
-                    
-                    // Atomically update the total sold amount
-                    await tx.config.upsert({
-                        where: { id: 'totalExnSold' },
-                        update: { 
-                            value: { 
-                                increment: transaction.amountExn 
-                            }
-                        },
-                        create: { 
-                            id: 'totalExnSold', 
-                            value: { value: transaction.amountExn } 
                         },
                     });
                 }
@@ -78,8 +61,13 @@ export async function POST(request: Request) {
                     transactions: { orderBy: { date: 'desc' } }
                 }
             });
-            const totalSoldConfig = await tx.config.findUnique({ where: { id: 'totalExnSold' } });
-            const finalTotalSold = (totalSoldConfig?.value as { value: number })?.value || 0;
+            
+            const totalSoldAggregate = await tx.user.aggregate({
+                _sum: {
+                    balance: true,
+                },
+            });
+            const finalTotalSold = totalSoldAggregate._sum.balance || 0;
 
             return { updatedUser, newTotalSold: finalTotalSold };
         });
@@ -96,5 +84,3 @@ export async function POST(request: Request) {
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }
-
-    
