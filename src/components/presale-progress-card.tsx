@@ -3,7 +3,6 @@
 
 import { Flame } from "lucide-react";
 import { CardDescription, CardTitle } from "@/components/ui/card";
-import { HARD_CAP, SOFT_CAP } from "@/config";
 import { useDashboard } from "./dashboard-client-provider";
 
 const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
@@ -18,6 +17,8 @@ export function PresaleProgressCard() {
     const { totalExnSold, presaleInfo } = useDashboard();
     const exnPrice = presaleInfo?.tokenPrice || 0.09;
     const totalSoldValue = totalExnSold * exnPrice;
+    const softCap = presaleInfo?.softCap || 500000000;
+    const hardCap = presaleInfo?.hardCap || 700000000;
 
     return (
         <div className="w-full rounded-lg border border-border p-6 space-y-4">
@@ -39,11 +40,11 @@ export function PresaleProgressCard() {
                         <p className="text-xs text-muted-foreground">Tokens Sold</p>
                     </div>
                      <div>
-                        <p className="text-lg font-bold text-white break-all">{formatNumber(SOFT_CAP)}</p>
+                        <p className="text-lg font-bold text-white break-all">{formatNumber(softCap)}</p>
                         <p className="text-xs text-muted-foreground">Soft Cap</p>
                     </div>
                      <div>
-                        <p className="text-lg font-bold text-white break-all">{formatNumber(HARD_CAP)}</p>
+                        <p className="text-lg font-bold text-white break-all">{formatNumber(hardCap)}</p>
                         <p className="text-xs text-muted-foreground">Hard Cap</p>
                     </div>
                 </div>

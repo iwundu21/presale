@@ -5,15 +5,13 @@ export const PRESALE_WALLET_ADDRESS = "B23Lt4oFVzVYsqnUNkyz1yjzbobZXDik3Cbt8PQgD
 export const RPC_URL = "https://mainnet.helius-rpc.com/?api-key=ef62b792-793e-4ecd-a102-d7cb7f1c023f";
 
 export const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // Mainnet
-export const USDT_MINT = new PublicKey("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"); // Mainnet
 
 // EXN Token does not have a mint address yet. Distribution will be done later.
 // We will track contributions and calculate balances off-chain (client-side).
 
-// NOTE: The EXN_PRICE is now managed from the Admin Dashboard and fetched dynamically.
-// This value is used as a fallback only.
-export const EXN_PRICE = 0.09; 
-export const SOFT_CAP = 500_000_000;
+// NOTE: The EXN_PRICE, SOFT_CAP, and HARD_CAP are now managed from the Admin Dashboard and fetched dynamically.
+// These values are used as fallbacks only.
+export const EXN_PRICE = 0.09;
 export const HARD_CAP = 700_000_000;
 export const EXN_TOKEN_DECIMALS = 5; // The number of decimals for display purposes
 

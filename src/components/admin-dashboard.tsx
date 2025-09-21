@@ -22,10 +22,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/t
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { Separator } from "./ui/separator";
 
-const SEASON_PRICES: { [key: string]: number } = {
-    "Early Stage": 0.09,
-    "Investors": 0.15,
-    "Whale": 0.25,
+const SEASON_CONFIGS: { [key: string]: { price: number; softCap: number; hardCap: number; } } = {
+    "Early Stage": { price: 0.09, softCap: 500000000, hardCap: 700000000 },
+    "Investors": { price: 0.15, softCap: 700000000, hardCap: 1000000000 },
+    "Whale": { price: 0.25, softCap: 1000000000, hardCap: 1500000000 },
 };
 
 type UserAdminView = {
@@ -64,7 +64,9 @@ export function AdminDashboard() {
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
     const [season, setSeason] = useState("Early Stage");
-    const [price, setPrice] = useState(SEASON_PRICES[season]);
+    const [price, setPrice] = useState(SEASON_CONFIGS[season].price);
+    const [softCap, setSoftCap] = useState(SEASON_CONFIGS[season].softCap);
+    const [hardCap, setHardCap] = useState(SEASON_CONFIGS[season].hardCap);
     const [isPresaleActive, setIsPresaleActive] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
     const [isUpdatingDate, setIsUpdatingDate] = useState(false);
@@ -134,6 +136,8 @@ export function AdminDashboard() {
                 if (presaleDataRes) {
                     setSeason(presaleDataRes.presaleInfo.seasonName);
                     setPrice(presaleDataRes.presaleInfo.tokenPrice);
+                    setSoftCap(presaleDataRes.presaleInfo.softCap);
+                    setHardCap(presaleDataRes.presaleInfo.hardCap);
                     setIsPresaleActive(presaleDataRes.isPresaleActive);
                 }
 
@@ -211,16 +215,26 @@ export function AdminDashboard() {
     
     const handleSeasonChange = (newSeason: string) => {
         setSeason(newSeason);
-        setPrice(SEASON_PRICES[newSeason]);
+        const config = SEASON_CONFIGS[newSeason];
+        if (config) {
+            setPrice(config.price);
+            setSoftCap(config.softCap);
+            setHardCap(config.hardCap);
+        }
     };
 
     const handleUpdateSeason = async () => {
         setIsLoading(true);
         try {
-            await setPresaleInfo({ seasonName: season, tokenPrice: price });
+            await setPresaleInfo({ 
+                seasonName: season, 
+                tokenPrice: price,
+                softCap: softCap,
+                hardCap: hardCap
+            });
             toast({
                 title: "Success",
-                description: `Presale season updated to ${season} with price $${price}.`,
+                description: `Presale season updated to ${season}.`,
                 variant: "success",
             });
         } catch (error) {
@@ -796,31 +810,41 @@ export function AdminDashboard() {
                 </Card>
                 <Card>
                     <CardHeader>
-                        <CardTitle>Manage Presale Season</CardTitle>
+                        <CardTitle>Manage Presale Stage</CardTitle>
                         <CardDescription>
-                            Select the current presale season. The token price will update automatically.
+                            Select the current presale stage and set its parameters. The token price and caps will update automatically.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="flex flex-col sm:flex-row items-end gap-4">
-                       <div className="grid w-full max-w-sm items-center gap-1.5">
-                            <Label htmlFor="season">Season</Label>
-                            <Select value={season} onValueChange={handleSeasonChange} disabled={isLoading}>
-                                <SelectTrigger id="season">
-                                    <SelectValue placeholder="Select a season" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {Object.keys(SEASON_PRICES).map(s => (
-                                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                    <CardContent className="flex flex-col gap-4">
+                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 items-end gap-4">
+                            <div className="grid w-full items-center gap-1.5">
+                                <Label htmlFor="season">Season</Label>
+                                <Select value={season} onValueChange={handleSeasonChange} disabled={isLoading}>
+                                    <SelectTrigger id="season">
+                                        <SelectValue placeholder="Select a season" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {Object.keys(SEASON_CONFIGS).map(s => (
+                                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                           </div>
+                           <div className="grid w-full items-center gap-1.5">
+                               <Label htmlFor="price">Token Price ($)</Label>
+                               <Input id="price" type="number" value={price} readOnly disabled/>
+                           </div>
+                            <div className="grid w-full items-center gap-1.5">
+                               <Label htmlFor="soft-cap">Soft Cap</Label>
+                               <Input id="soft-cap" type="number" value={softCap} onChange={e => setSoftCap(Number(e.target.value))} disabled={isLoading} />
+                           </div>
+                           <div className="grid w-full items-center gap-1.5">
+                               <Label htmlFor="hard-cap">Hard Cap</Label>
+                               <Input id="hard-cap" type="number" value={hardCap} onChange={e => setHardCap(Number(e.target.value))} disabled={isLoading} />
+                           </div>
                        </div>
-                       <div className="grid w-full max-w-xs items-center gap-1.5">
-                           <Label htmlFor="price">Token Price ($)</Label>
-                           <Input id="price" type="number" value={price} readOnly disabled/>
-                       </div>
-                        <Button onClick={handleUpdateSeason} disabled={isLoading}>
-                            {isLoading ? "Updating..." : "Update Season"}
+                        <Button onClick={handleUpdateSeason} disabled={isLoading} className="self-start">
+                            {isLoading ? "Updating..." : "Update Stage"}
                         </Button>
                     </CardContent>
                 </Card>

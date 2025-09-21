@@ -9,7 +9,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { SystemProgram, LAMPORTS_PER_SOL, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction, TransactionSignature } from "@solana/web3.js";
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { DashboardLoadingSkeleton } from "@/components/dashboard-loading";
-import { PRESALE_WALLET_ADDRESS, USDC_MINT, HARD_CAP } from "@/config";
+import { PRESALE_WALLET_ADDRESS, USDC_MINT } from "@/config";
 import type { PresaleInfo } from "@/services/presale-info-service";
 import { v4 as uuidv4 } from 'uuid';
 
@@ -75,7 +75,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const [presaleInfo, setPresaleInfo] = useState<PresaleInfo | null>(null);
   const [isPresaleActive, setIsPresaleActive] = useState(true);
   
-  const isHardCapReached = totalExnSold >= HARD_CAP;
+  const isHardCapReached = presaleInfo ? totalExnSold >= presaleInfo.hardCap : false;
 
   useEffect(() => {
     setIsClient(true);
@@ -183,7 +183,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         const response = await fetch('/api/purchase', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userKey, exnAmount: transaction.amountExn, transaction }),
+            body: JSON.stringify({ userKey, transaction }),
         });
 
         if (!response.ok) {
@@ -369,6 +369,12 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   if (!isClient || connecting || !publicKey || isLoadingDashboard) {
       return <DashboardLoadingSkeleton />; 
   }
+
+  if (!connected) {
+    router.push('/');
+    return <DashboardLoadingSkeleton />;
+  }
+
 
   const contextValue = {
     exnBalance,
