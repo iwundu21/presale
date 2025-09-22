@@ -12,7 +12,7 @@ import type { PresaleInfo } from "@/services/presale-info-service";
 import { Switch } from "./ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
-import { CalendarIcon, Loader2, Settings } from "lucide-react";
+import { CalendarIcon, Loader2, Settings, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -20,6 +20,11 @@ type AdminData = {
     presaleInfo: PresaleInfo;
     isPresaleActive: boolean;
     presaleEndDate: string;
+};
+
+type UserData = {
+    wallet: string;
+    balance: number;
 };
 
 export function AdminDashboard() {
@@ -39,6 +44,8 @@ export function AdminDashboard() {
         date: false,
     });
     
+    const [isDownloading, setIsDownloading] = useState(false);
+
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
@@ -154,6 +161,46 @@ export function AdminDashboard() {
         }
     };
     
+    const handleDownloadCsv = async () => {
+        setIsDownloading(true);
+        try {
+            const response = await fetch('/api/all-users-data');
+            if (!response.ok) {
+                throw new Error('Failed to fetch user data');
+            }
+            const users: UserData[] = await response.json();
+
+            if (users.length === 0) {
+                toast({ title: "No Data", description: "There are no users to export yet." });
+                return;
+            }
+
+            const headers = ['wallet', 'balance'];
+            const csvContent = [
+                headers.join(','),
+                ...users.map(user => [user.wallet, user.balance].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'user-balances.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            toast({ title: "Success", description: "User balances CSV downloaded.", variant: "success" });
+
+        } catch (error) {
+            console.error("Failed to download CSV", error);
+            toast({ title: "Download Failed", description: "Could not download user data.", variant: "destructive" });
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
     if (isLoading) {
         return <div className="flex items-center justify-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
@@ -238,6 +285,22 @@ export function AdminDashboard() {
                         <Button onClick={handleUpdateDate} disabled={isUpdating.date}>
                             {isUpdating.date && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Update End Date
+                        </Button>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Data Export</CardTitle>
+                        <CardDescription>Download user contribution data for token distribution.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button onClick={handleDownloadCsv} disabled={isDownloading}>
+                            {isDownloading ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Download className="mr-2 h-4 w-4" />
+                            )}
+                            Download User Balances (CSV)
                         </Button>
                     </CardContent>
                 </Card>
