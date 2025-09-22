@@ -17,12 +17,12 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "./ui/t
 
 const SOL_GAS_BUFFER = 0.0009; // Reserve 0.0009 SOL for gas fees
 const MIN_PURCHASE_USD = 1;
-const MAX_PURCHASE_USD = 10000;
+const MAX_PURCHASE_USD = 5000;
 
 type Currency = "USDC" | "SOL";
 
 export function BuyExnCard() {
-  const { connected: isConnected, handlePurchase, tokenPrices, isLoadingPrices, presaleInfo, isPresaleActive, isLoadingPurchase, isHardCapReached } = useDashboard();
+  const { connected: isConnected, handlePurchase, tokenPrices, isLoadingPrices, presaleInfo, isPresaleActive, isLoadingPurchase, isHardCapReached, exnBalance } = useDashboard();
   const { publicKey } = useWallet();
   const { connection } = useConnection();
   const [payAmount, setPayAmount] = useState("1.00");
@@ -34,6 +34,8 @@ export function BuyExnCard() {
   const [limitError, setLimitError] = useState("");
 
   const exnPrice = presaleInfo?.tokenPrice || 0.09;
+  const userTotalInvestedUSD = exnBalance * exnPrice;
+  const hasReachedMax = userTotalInvestedUSD >= MAX_PURCHASE_USD;
   
   useEffect(() => {
     const fetchBalances = async () => {
@@ -140,15 +142,16 @@ export function BuyExnCard() {
     
     // Round to 2 decimal places to avoid floating point inaccuracies
     const usdValue = parseFloat(rawUsdValue.toFixed(2));
+    const totalFutureInvestment = userTotalInvestedUSD + usdValue;
 
     if (usdValue < MIN_PURCHASE_USD) {
         setLimitError(`Minimum purchase is $${MIN_PURCHASE_USD}.`);
-    } else if (usdValue > MAX_PURCHASE_USD) {
-        setLimitError(`Maximum purchase is $${MAX_PURCHASE_USD}.`);
+    } else if (totalFutureInvestment > MAX_PURCHASE_USD) {
+        setLimitError(`Purchase exceeds wallet limit of $${MAX_PURCHASE_USD}.`);
     } else {
         setLimitError("");
     }
-  }, [payAmount, currency, tokenPrices]);
+  }, [payAmount, currency, tokenPrices, userTotalInvestedUSD]);
 
 
   const handlePayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,9 +180,10 @@ export function BuyExnCard() {
 
   const currentBalance = balances[currency as keyof typeof balances];
   const maxSpend = currency === 'SOL' ? currentBalance - SOL_GAS_BUFFER : currentBalance;
-  const isPurchaseDisabled = !isConnected || !parseFloat(payAmount) || parseFloat(payAmount) <= 0 || isLoadingPrices || !!balanceError || !!limitError || !isPresaleActive || isLoadingPurchase || isHardCapReached;
+  const isPurchaseDisabled = !isConnected || !parseFloat(payAmount) || parseFloat(payAmount) <= 0 || isLoadingPrices || !!balanceError || !!limitError || !isPresaleActive || isLoadingPurchase || isHardCapReached || hasReachedMax;
 
   const getButtonText = () => {
+    if (hasReachedMax) return "Maximum contribution reached";
     if (isHardCapReached) return "Hard Cap Reached";
     if (!isPresaleActive) return "Presale is currently closed";
     if (isLoadingPrices) return 'Loading Prices...';
@@ -204,7 +208,17 @@ export function BuyExnCard() {
         <CardDescription>
           Current Price: <strong>${exnPrice}</strong> per EXN
         </CardDescription>
+        <CardDescription>
+            Your Total Contribution: <strong>${userTotalInvestedUSD.toLocaleString(undefined, {maximumFractionDigits: 2})} / ${MAX_PURCHASE_USD.toLocaleString()}</strong>
+        </CardDescription>
       </div>
+      
+       {hasReachedMax ? (
+         <div className="text-center bg-green-500/10 border border-green-500/50 text-green-400 p-4 rounded-lg mt-4">
+            <p className="font-bold">Congratulations!</p>
+            <p className="text-sm">You have reached the maximum contribution limit for this wallet.</p>
+        </div>
+      ) : (
       <div className="space-y-4 pt-4">
         <div>
           <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-2">
@@ -294,6 +308,7 @@ export function BuyExnCard() {
         )}
         
       </div>
+       )}
       <div className="flex-col gap-4 pt-4">
         <Button 
             size="lg" 
@@ -307,3 +322,5 @@ export function BuyExnCard() {
     </div>
   );
 }
+
+    
