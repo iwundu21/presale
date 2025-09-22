@@ -15,7 +15,7 @@ export function AppFooter() {
                 </div>
                 <div className="flex items-center gap-6">
                     <a href="https://x.com/exnusprotocol?s=09" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-muted-foreground hover:text-white transition-colors">
-                        <Image src="/X.jpg" alt="X Logo" width={20} height={20} className="h-5 w-5" />
+                        <Image src="/x.jpg" alt="X Logo" width={20} height={20} className="h-5 w-5" />
                         <span className="text-xs">X</span>
                     </a>
                     <a href="https://discord.gg/v8MpYYFdP8" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-muted-foreground hover:text-white transition-colors">
