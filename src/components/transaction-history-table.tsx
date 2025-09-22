@@ -34,6 +34,11 @@ const getStatusIcon = (status: Transaction['status']) => {
     }
 }
 
+const shortenTxId = (id: string) => {
+    if (id.length <= 12) return id;
+    return `${id.slice(0, 6)}*****${id.slice(-6)}`;
+}
+
 function TransactionRow({ tx }: { tx: Transaction }) {
     const { toast } = useToast();
 
@@ -69,7 +74,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
             </TableCell>
             <TableCell className="text-center font-mono text-xs">
                  <div className="flex items-center justify-center gap-2">
-                    <span className="min-w-[100px]">{tx.id}</span>
+                    <span className="min-w-[150px]">{shortenTxId(tx.id)}</span>
                      <Tooltip>
                         <TooltipTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-6 w-6" disabled={isLinkDisabled} onClick={() => handleCopyToClipboard(tx.id)}>
@@ -150,7 +155,7 @@ function TransactionMobileCard({ tx }: { tx: Transaction }) {
             </div>
              <div className="flex items-start gap-2 font-mono text-xs text-muted-foreground">
                 <span className="font-sans">ID:</span>
-                <span className="break-all flex-1">{tx.id}</span>
+                <span className="break-all flex-1">{shortenTxId(tx.id)}</span>
                 {!isLinkDisabled && (
                     <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => handleCopyToClipboard(tx.id)}>
                         <Copy className="h-3 w-3" />
@@ -196,7 +201,7 @@ export function TransactionHistoryTable() {
         if (container) {
             const hasHorizontalScrollbar = container.scrollWidth > container.clientWidth;
             setCanScrollLeft(container.scrollLeft > 0);
-            setCanScrollRight(hasHorizontalScrollbar && container.scrollLeft < container.scrollWidth - container.clientWidth);
+            setCanScrollRight(hasHorizontalScrollbar && container.scrollLeft < container.scrollWidth - container.clientWidth - 1); // -1 for precision issues
         }
     }, []);
 
@@ -279,13 +284,14 @@ export function TransactionHistoryTable() {
                 <div 
                     className="overflow-auto" 
                     ref={scrollContainerRef}
+                    onScroll={checkForScrollability}
                 >
                     <TooltipProvider>
                         <Table>
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="min-w-[300px]">Details</TableHead>
-                                    <TableHead className="text-center min-w-[500px]">Transaction ID</TableHead>
+                                    <TableHead className="text-center min-w-[250px]">Transaction ID</TableHead>
                                     <TableHead className="text-right min-w-[150px]">Status</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -327,5 +333,7 @@ export function TransactionHistoryTable() {
         </div>
     );
 }
+
+    
 
     
