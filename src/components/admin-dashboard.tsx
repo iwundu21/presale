@@ -36,7 +36,7 @@ export function AdminDashboard() {
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<AdminData | null>(null);
     const [users, setUsers] = useState<UserData[]>([]);
-    const [isLoadingUsers, setIsLoadingUsers = useState(true);
+    const [isLoadingUsers, setIsLoadingUsers] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
 
     const [seasonName, setSeasonName] = useState("");
@@ -254,7 +254,8 @@ export function AdminDashboard() {
             const updatedUser = await res.json();
             
             // Update the user in the local state
-            setUsers(prevUsers => prevUsers.map(u => u.wallet === updatedUser.wallet ? updatedUser : u));
+            setUsers(prevUsers => prevUsers.map(u => u.wallet === updatedUser.wallet ? { ...updatedUser, balance: updatedUser.balance } : u));
+
 
             toast({ title: "Success", description: "User balance updated successfully.", variant: "success" });
             setIsEditUserDialogOpen(false);
@@ -479,4 +480,4 @@ export function AdminDashboard() {
     );
 }
 
-    
+  
