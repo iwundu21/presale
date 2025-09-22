@@ -18,6 +18,8 @@ export function PresaleProgressCard() {
     const exnPrice = presaleInfo?.tokenPrice || 0.09;
     const totalSoldValue = totalExnSoldForCurrentStage * exnPrice;
     const hardCap = presaleInfo?.hardCap || 700000000;
+    const remainingTokens = hardCap - totalExnSoldForCurrentStage;
+
 
     return (
         <div className="w-full rounded-lg border border-border p-6 space-y-4">
@@ -33,10 +35,14 @@ export function PresaleProgressCard() {
                 </CardDescription>
             </div>
             <div className="space-y-4 pt-4">
-                <div className="grid grid-cols-2 gap-4 text-center">
+                <div className="grid grid-cols-3 gap-4 text-center">
                     <div>
                         <p className="text-lg font-bold text-white break-all">{formatNumber(totalExnSoldForCurrentStage, { notation: 'standard', maximumFractionDigits: 4 })}</p>
                         <p className="text-xs text-muted-foreground">Tokens Sold</p>
+                    </div>
+                    <div>
+                        <p className="text-lg font-bold text-white break-all">{formatNumber(remainingTokens, { notation: 'standard', maximumFractionDigits: 4 })}</p>
+                        <p className="text-xs text-muted-foreground">Remaining Tokens</p>
                     </div>
                      <div>
                         <p className="text-lg font-bold text-white break-all">{formatNumber(hardCap)}</p>
