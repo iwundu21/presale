@@ -69,7 +69,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
             </TableCell>
             <TableCell className="text-center font-mono text-xs">
                 <div className="flex items-center justify-center gap-2">
-                    <span className="truncate max-w-[100px]">{tx.id}</span>
+                    <span className="min-w-[100px]">{tx.id}</span>
                      <Tooltip>
                         <TooltipTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-6 w-6" disabled={isLinkDisabled} onClick={() => handleCopyToClipboard(tx.id)}>
