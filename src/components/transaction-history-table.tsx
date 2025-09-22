@@ -15,7 +15,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Separator } from "./ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 const TRANSACTIONS_PER_PAGE = 10;
 
@@ -181,25 +181,80 @@ export function TransactionHistoryTable() {
     const { transactions } = useDashboard();
     const isMobile = useIsMobile();
     const [currentPage, setCurrentPage] = useState(1);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
 
     const totalPages = Math.ceil(transactions.length / TRANSACTIONS_PER_PAGE);
     const paginatedTransactions = transactions.slice(
         (currentPage - 1) * TRANSACTIONS_PER_PAGE,
         currentPage * TRANSACTIONS_PER_PAGE
     );
+
+    const checkForScrollability = useCallback(() => {
+        const container = scrollContainerRef.current;
+        if (container) {
+            setCanScrollLeft(container.scrollLeft > 0);
+            setCanScrollRight(container.scrollLeft < container.scrollWidth - container.clientWidth);
+        }
+    }, []);
+
+    useEffect(() => {
+        const container = scrollContainerRef.current;
+        if (container) {
+            checkForScrollability();
+            const resizeObserver = new ResizeObserver(checkForScrollability);
+            resizeObserver.observe(container);
+            return () => resizeObserver.disconnect();
+        }
+    }, [paginatedTransactions, checkForScrollability]);
+
+    const handleScroll = (direction: 'left' | 'right') => {
+        const container = scrollContainerRef.current;
+        if (container) {
+            const scrollAmount = direction === 'left' ? -300 : 300;
+            container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        }
+    };
     
     return (
         <div className="w-full rounded-lg border border-border p-6 space-y-4 flex flex-col">
-            <div className="space-y-1.5">
-                <div className="flex items-center gap-3">
-                     <div className="p-2 bg-primary/20 rounded-md">
-                        <List className="h-6 w-6 text-primary"/>
+            <div className="flex justify-between items-start gap-4">
+                <div className="space-y-1.5">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/20 rounded-md">
+                            <List className="h-6 w-6 text-primary"/>
+                        </div>
+                        <CardTitle className="text-2xl font-bold text-white">Transaction History</CardTitle>
                     </div>
-                    <CardTitle className="text-2xl font-bold text-white">Transaction History</CardTitle>
+                    <CardDescription>
+                        Your recent presale contributions.
+                    </CardDescription>
                 </div>
-                <CardDescription>
-                    Your recent presale contributions.
-                </CardDescription>
+                {!isMobile && transactions.length > 0 && (
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleScroll('left')}
+                            disabled={!canScrollLeft}
+                            className="h-8 w-8"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                            <span className="sr-only">Scroll Left</span>
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleScroll('right')}
+                            disabled={!canScrollRight}
+                            className="h-8 w-8"
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                            <span className="sr-only">Scroll Right</span>
+                        </Button>
+                    </div>
+                )}
             </div>
             <div className="pt-4 flex-grow">
                 <ScrollArea className="h-[400px] w-full">
@@ -214,22 +269,28 @@ export function TransactionHistoryTable() {
                            ))}
                        </div>
                    ) : (
-                    <TooltipProvider>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Details</TableHead>
-                                    <TableHead className="text-center">Transaction ID</TableHead>
-                                    <TableHead className="text-right">Status</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {paginatedTransactions.map((tx) => (
-                                   <TransactionRow tx={tx} key={tx.id} />
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TooltipProvider>
+                    <div 
+                        className="relative overflow-auto" 
+                        ref={scrollContainerRef}
+                        onScroll={checkForScrollability}
+                    >
+                        <TooltipProvider>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Details</TableHead>
+                                        <TableHead className="text-center">Transaction ID</TableHead>
+                                        <TableHead className="text-right">Status</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {paginatedTransactions.map((tx) => (
+                                    <TransactionRow tx={tx} key={tx.id} />
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TooltipProvider>
+                    </div>
                    )}
                 </ScrollArea>
             </div>
