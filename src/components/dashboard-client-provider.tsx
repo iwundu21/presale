@@ -165,7 +165,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         const signal = controller.signal;
 
         const intervalId = setInterval(async () => {
-            if (!isMounted.current) return;
+            if (!isMounted.current || signal.aborted) return;
             try {
                 const res = await fetch('/api/presale-data', { signal });
                 if (isMounted.current && res.ok) {
