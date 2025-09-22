@@ -11,11 +11,12 @@ import type { PresaleInfo } from "@/services/presale-info-service";
 import { Switch } from "./ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
-import { CalendarIcon, Loader2, Settings, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarIcon, Loader2, Settings, Download, ChevronLeft, ChevronRight, Edit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { ScrollArea } from "./ui/scroll-area";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "./ui/dialog";
 
 type AdminData = {
     presaleInfo: PresaleInfo;
@@ -35,7 +36,7 @@ export function AdminDashboard() {
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<AdminData | null>(null);
     const [users, setUsers] = useState<UserData[]>([]);
-    const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+    const [isLoadingUsers, setIsLoadingUsers = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
 
     const [seasonName, setSeasonName] = useState("");
@@ -48,9 +49,14 @@ export function AdminDashboard() {
         info: false,
         status: false,
         date: false,
+        balance: false,
     });
     
     const [isDownloading, setIsDownloading] = useState(false);
+    const [editingUser, setEditingUser] = useState<UserData | null>(null);
+    const [newBalance, setNewBalance] = useState<number>(0);
+    const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
+
 
     useEffect(() => {
         const fetchData = async () => {
@@ -226,6 +232,40 @@ export function AdminDashboard() {
         }
     };
 
+    const handleEditUser = (user: UserData) => {
+        setEditingUser(user);
+        setNewBalance(user.balance);
+        setIsEditUserDialogOpen(true);
+    };
+
+    const handleUpdateBalance = async () => {
+        if (!editingUser) return;
+        setIsUpdating(prev => ({ ...prev, balance: true }));
+        try {
+            const res = await fetch('/api/update-user-balance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wallet: editingUser.wallet, balance: newBalance }),
+            });
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || 'Failed to update balance');
+            }
+            const updatedUser = await res.json();
+            
+            // Update the user in the local state
+            setUsers(prevUsers => prevUsers.map(u => u.wallet === updatedUser.wallet ? updatedUser : u));
+
+            toast({ title: "Success", description: "User balance updated successfully.", variant: "success" });
+            setIsEditUserDialogOpen(false);
+        } catch (error: any) {
+            console.error(error);
+            toast({ title: "Error", description: error.message || "Failed to update user balance.", variant: "destructive" });
+        } finally {
+            setIsUpdating(prev => ({ ...prev, balance: false }));
+        }
+    };
+
     if (isLoading) {
         return <div className="flex items-center justify-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
@@ -324,51 +364,97 @@ export function AdminDashboard() {
                         ) : users.length === 0 ? (
                             <p className="text-muted-foreground text-center py-4">No users with a balance found.</p>
                         ) : (
-                            <>
-                                <ScrollArea className="h-[400px] w-full">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Wallet Address</TableHead>
-                                                <TableHead className="text-right">EXN Balance</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {paginatedUsers.map((user) => (
-                                                <TableRow key={user.wallet}>
-                                                    <TableCell className="font-mono text-xs truncate max-w-[200px] sm:max-w-none">{user.wallet}</TableCell>
-                                                    <TableCell className="text-right font-medium">{user.balance.toLocaleString()}</TableCell>
+                            <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
+                                <>
+                                    <ScrollArea className="h-[400px] w-full">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Wallet Address</TableHead>
+                                                    <TableHead className="text-right">EXN Balance</TableHead>
+                                                    <TableHead className="text-right">Actions</TableHead>
                                                 </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </ScrollArea>
-                                {totalPages > 1 && (
-                                    <div className="flex items-center justify-end space-x-2 pt-4 border-t border-border">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                                            disabled={currentPage === 1}
-                                        >
-                                            <ChevronLeft className="h-4 w-4" />
-                                            Previous
-                                        </Button>
-                                        <span className="text-sm text-muted-foreground">
-                                            Page {currentPage} of {totalPages}
-                                        </span>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                            disabled={currentPage === totalPages}
-                                        >
-                                            Next
-                                            <ChevronRight className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                )}
-                            </>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {paginatedUsers.map((user) => (
+                                                    <TableRow key={user.wallet}>
+                                                        <TableCell className="font-mono text-xs truncate max-w-[200px] sm:max-w-none">{user.wallet}</TableCell>
+                                                        <TableCell className="text-right font-medium">{user.balance.toLocaleString()}</TableCell>
+                                                        <TableCell className="text-right">
+                                                            <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
+                                                                <Edit className="h-4 w-4" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </ScrollArea>
+                                    {totalPages > 1 && (
+                                        <div className="flex items-center justify-end space-x-2 pt-4 border-t border-border">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                                disabled={currentPage === 1}
+                                            >
+                                                <ChevronLeft className="h-4 w-4" />
+                                                Previous
+                                            </Button>
+                                            <span className="text-sm text-muted-foreground">
+                                                Page {currentPage} of {totalPages}
+                                            </span>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                                disabled={currentPage === totalPages}
+                                            >
+                                                Next
+                                                <ChevronRight className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    )}
+
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Edit User Balance</DialogTitle>
+                                            <DialogDescription>
+                                                Modify the token balance for the user. This is a permanent action.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="grid gap-4 py-4">
+                                            <div className="grid grid-cols-4 items-center gap-4">
+                                                <Label htmlFor="wallet" className="text-right">
+                                                    Wallet
+                                                </Label>
+                                                <Input id="wallet" value={editingUser?.wallet || ''} readOnly className="col-span-3" />
+                                            </div>
+                                            <div className="grid grid-cols-4 items-center gap-4">
+                                                <Label htmlFor="balance" className="text-right">
+                                                    Balance
+                                                </Label>
+                                                <Input
+                                                    id="balance"
+                                                    type="number"
+                                                    value={newBalance}
+                                                    onChange={(e) => setNewBalance(parseFloat(e.target.value) || 0)}
+                                                    className="col-span-3"
+                                                />
+                                            </div>
+                                        </div>
+                                        <DialogFooter>
+                                            <DialogClose asChild>
+                                                <Button type="button" variant="secondary">Cancel</Button>
+                                            </DialogClose>
+                                            <Button onClick={handleUpdateBalance} disabled={isUpdating.balance}>
+                                                {isUpdating.balance && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                Save Changes
+                                            </Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </>
+                            </Dialog>
                         )}
                     </CardContent>
                 </Card>
@@ -392,3 +478,5 @@ export function AdminDashboard() {
         </main>
     );
 }
+
+    
