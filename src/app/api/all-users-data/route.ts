@@ -12,7 +12,6 @@ export async function GET() {
             where: {
                 balance: {
                     gt: 0,
-                    not: null // Explicitly exclude null values
                 }
             },
             orderBy: {
@@ -20,12 +19,15 @@ export async function GET() {
             }
         });
 
-        // The balance from prisma is a Decimal, convert it to a number for JSON serialization
-        const usersWithNumberBalance = users.map(user => ({
-            ...user,
-            // We can now safely assume user.balance is not null due to the query
-            balance: user.balance!.toNumber(), 
-        }));
+        // The balance from prisma is a Decimal. It must be converted to a number for JSON serialization.
+        // First filter out any potential null/undefined balances, then map.
+        const usersWithNumberBalance = users
+            .filter(user => user.balance) // Ensure balance is not null, undefined, or 0
+            .map(user => ({
+                wallet: user.wallet,
+                // At this point, user.balance is guaranteed to be a Decimal object
+                balance: user.balance!.toNumber(), 
+            }));
 
         return NextResponse.json(usersWithNumberBalance, { status: 200 });
 
