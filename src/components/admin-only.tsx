@@ -18,6 +18,7 @@ export function AdminOnly({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         // Wait until wallet connection status is resolved
         if (connecting) {
+            setIsLoading(true);
             return;
         }
 
@@ -25,13 +26,12 @@ export function AdminOnly({ children }: { children: React.ReactNode }) {
             if (publicKey.toBase58() === ADMIN_WALLET) {
                 setIsAuthorized(true);
             } else {
+                // If a non-admin wallet is connected, redirect them.
                 router.push('/');
             }
-        }
-        
-        // If not connected, we wait for the user to connect via the button
-        if (!connected) {
-             setIsAuthorized(false);
+        } else {
+            // If no wallet is connected, they are not authorized yet but we show them the login button.
+            setIsAuthorized(false);
         }
 
         setIsLoading(false);
@@ -66,6 +66,7 @@ export function AdminOnly({ children }: { children: React.ReactNode }) {
     }
 
     if (!isAuthorized) {
+         // This state is reached if a non-admin wallet is connected and redirection is in progress.
          return (
             <div className="flex items-center justify-center h-screen">
                 <div className="text-center">
@@ -75,6 +76,6 @@ export function AdminOnly({ children }: { children: React.ReactNode }) {
         );
     }
 
-
+    // If we get here, user is connected and authorized.
     return <>{children}</>;
 }
