@@ -19,10 +19,10 @@ export async function GET() {
             }
         });
 
-        // The balance from prisma is a Decimal, convert it to a number for JSON serialization
+        // The balance from prisma is a Decimal, convert it to a number for JSON serialization, handling potential nulls
         const usersWithNumberBalance = users.map(user => ({
             ...user,
-            balance: user.balance.toNumber(),
+            balance: user.balance ? user.balance.toNumber() : 0,
         }));
 
         return NextResponse.json(usersWithNumberBalance, { status: 200 });
