@@ -161,10 +161,13 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     if (connected && publicKey) {
         fetchDashboardData();
         
+        const controller = new AbortController();
+        const signal = controller.signal;
+
         const intervalId = setInterval(async () => {
             if (!isMounted.current) return;
             try {
-                const res = await fetch('/api/presale-data');
+                const res = await fetch('/api/presale-data', { signal });
                 if (isMounted.current && res.ok) {
                     const data = await res.json();
                     setTotalExnSoldForCurrentStage(data.totalExnSoldForCurrentStage || 0);
@@ -177,6 +180,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
         }, 30000); // Poll every 30 seconds
 
         return () => {
+            controller.abort();
             clearInterval(intervalId);
         };
     }
