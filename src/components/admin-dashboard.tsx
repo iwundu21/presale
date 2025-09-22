@@ -11,9 +11,11 @@ import type { PresaleInfo } from "@/services/presale-info-service";
 import { Switch } from "./ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
-import { CalendarIcon, Loader2, Settings, Download } from "lucide-react";
+import { CalendarIcon, Loader2, Settings, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
+import { ScrollArea } from "./ui/scroll-area";
 
 type AdminData = {
     presaleInfo: PresaleInfo;
@@ -26,10 +28,15 @@ type UserData = {
     balance: number;
 };
 
+const USERS_PER_PAGE = 10;
+
 export function AdminDashboard() {
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<AdminData | null>(null);
+    const [users, setUsers] = useState<UserData[]>([]);
+    const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
 
     const [seasonName, setSeasonName] = useState("");
     const [tokenPrice, setTokenPrice] = useState(0);
@@ -48,24 +55,32 @@ export function AdminDashboard() {
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
+            setIsLoadingUsers(true);
             try {
-                const [presaleDataRes, presaleDateRes] = await Promise.all([
+                const [presaleDataRes, presaleDateRes, usersRes] = await Promise.all([
                     fetch('/api/presale-data'),
-                    fetch('/api/presale-date')
+                    fetch('/api/presale-date'),
+                    fetch('/api/all-users-data')
                 ]);
 
                 if (!presaleDataRes.ok || !presaleDateRes.ok) {
                     throw new Error('Failed to fetch initial admin data');
                 }
+                 if (!usersRes.ok) {
+                    throw new Error('Failed to fetch user data');
+                }
 
                 const presaleData = await presaleDataRes.json();
                 const presaleDateData = await presaleDateRes.json();
+                const usersData = await usersRes.json();
 
                 setData({
                     presaleInfo: presaleData.presaleInfo,
                     isPresaleActive: presaleData.isPresaleActive,
                     presaleEndDate: presaleDateData.presaleEndDate
                 });
+
+                setUsers(usersData);
                 
                 setSeasonName(presaleData.presaleInfo.seasonName);
                 setTokenPrice(presaleData.presaleInfo.tokenPrice);
@@ -82,11 +97,19 @@ export function AdminDashboard() {
                 });
             } finally {
                 setIsLoading(false);
+                setIsLoadingUsers(false);
             }
         };
 
         fetchData();
     }, [toast]);
+    
+    const totalPages = Math.ceil(users.length / USERS_PER_PAGE);
+    const paginatedUsers = users.slice(
+        (currentPage - 1) * USERS_PER_PAGE,
+        currentPage * USERS_PER_PAGE
+    );
+
 
     const handleUpdateInfo = async () => {
         setIsUpdating(prev => ({ ...prev, info: true }));
@@ -165,11 +188,12 @@ export function AdminDashboard() {
         try {
             const response = await fetch('/api/all-users-data');
             if (!response.ok) {
-                throw new Error('Failed to fetch user data');
+                const errorData = await response.json().catch(() => ({ message: 'Failed to fetch user data' }));
+                throw new Error(errorData.message);
             }
-            const users: UserData[] = await response.json();
+            const usersToDownload: UserData[] = await response.json();
 
-            if (users.length === 0) {
+            if (usersToDownload.length === 0) {
                 toast({ title: "No Data", description: "There are no users with a balance to export yet." });
                 setIsDownloading(false);
                 return;
@@ -178,7 +202,7 @@ export function AdminDashboard() {
             const headers = ['wallet', 'balance'];
             const csvContent = [
                 headers.join(','),
-                ...users.map(user => [user.wallet, user.balance].join(','))
+                ...usersToDownload.map(user => [user.wallet, user.balance].join(','))
             ].join('\n');
 
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -195,7 +219,8 @@ export function AdminDashboard() {
 
         } catch (error) {
             console.error("Failed to download CSV", error);
-            toast({ title: "Download Failed", description: "Could not download user data.", variant: "destructive" });
+            const errorMessage = error instanceof Error ? error.message : "Could not download user data.";
+            toast({ title: "Download Failed", description: errorMessage, variant: "destructive" });
         } finally {
             setIsDownloading(false);
         }
@@ -286,6 +311,65 @@ export function AdminDashboard() {
                             {isUpdating.date && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Update End Date
                         </Button>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>User Balances</CardTitle>
+                        <CardDescription>A list of all users with a non-zero token balance.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {isLoadingUsers ? (
+                             <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div>
+                        ) : users.length === 0 ? (
+                            <p className="text-muted-foreground text-center py-4">No users with a balance found.</p>
+                        ) : (
+                            <>
+                                <ScrollArea className="h-[400px] w-full">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Wallet Address</TableHead>
+                                                <TableHead className="text-right">EXN Balance</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {paginatedUsers.map((user) => (
+                                                <TableRow key={user.wallet}>
+                                                    <TableCell className="font-mono text-xs truncate max-w-[200px] sm:max-w-none">{user.wallet}</TableCell>
+                                                    <TableCell className="text-right font-medium">{user.balance.toLocaleString()}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </ScrollArea>
+                                {totalPages > 1 && (
+                                    <div className="flex items-center justify-end space-x-2 pt-4 border-t border-border">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                            disabled={currentPage === 1}
+                                        >
+                                            <ChevronLeft className="h-4 w-4" />
+                                            Previous
+                                        </Button>
+                                        <span className="text-sm text-muted-foreground">
+                                            Page {currentPage} of {totalPages}
+                                        </span>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                            disabled={currentPage === totalPages}
+                                        >
+                                            Next
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                )}
+                            </>
+                        )}
                     </CardContent>
                 </Card>
                  <Card>
