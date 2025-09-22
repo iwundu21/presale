@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -14,12 +15,6 @@ import { Calendar } from "./ui/calendar";
 import { CalendarIcon, Loader2, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-
-const SEASON_PRICES: { [key: string]: number } = {
-    "Early Stage": 0.09,
-    "Investors": 0.15,
-    "Whale": 0.25,
-};
 
 type AdminData = {
     presaleInfo: PresaleInfo;
@@ -178,11 +173,11 @@ export function AdminDashboard() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="tokenPrice">Token Price (USD)</Label>
-                            <Input id="tokenPrice" type="number" value={tokenPrice} onChange={(e) => setTokenPrice(parseFloat(e.target.value))} />
+                            <Input id="tokenPrice" type="number" value={tokenPrice} onChange={(e) => setTokenPrice(parseFloat(e.target.value) || 0)} />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="hardCap">Hard Cap (Total Supply for Presale)</Label>
-                            <Input id="hardCap" type="number" value={hardCap} onChange={(e) => setHardCap(parseInt(e.target.value, 10))} />
+                            <Input id="hardCap" type="number" value={hardCap} onChange={(e) => setHardCap(parseInt(e.target.value, 10) || 0)} />
                         </div>
                         <Button onClick={handleUpdateInfo} disabled={isUpdating.info}>
                             {isUpdating.info && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
