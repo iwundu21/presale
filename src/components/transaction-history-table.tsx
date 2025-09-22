@@ -68,7 +68,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
                 </div>
             </TableCell>
             <TableCell className="text-center font-mono text-xs">
-                <div className="flex items-center justify-center gap-2">
+                 <div className="flex items-center justify-center gap-2">
                     <span className="min-w-[100px]">{tx.id}</span>
                      <Tooltip>
                         <TooltipTrigger asChild>
@@ -194,18 +194,24 @@ export function TransactionHistoryTable() {
     const checkForScrollability = useCallback(() => {
         const container = scrollContainerRef.current;
         if (container) {
+            const hasHorizontalScrollbar = container.scrollWidth > container.clientWidth;
             setCanScrollLeft(container.scrollLeft > 0);
-            setCanScrollRight(container.scrollLeft < container.scrollWidth - container.clientWidth);
+            setCanScrollRight(hasHorizontalScrollbar && container.scrollLeft < container.scrollWidth - container.clientWidth);
         }
     }, []);
 
     useEffect(() => {
         const container = scrollContainerRef.current;
         if (container) {
-            checkForScrollability();
-            const resizeObserver = new ResizeObserver(checkForScrollability);
+            checkForScrollability(); // Initial check
+            container.addEventListener('scroll', checkForScrollability); // Check on scroll
+            const resizeObserver = new ResizeObserver(checkForScrollability); // Check on resize
             resizeObserver.observe(container);
-            return () => resizeObserver.disconnect();
+
+            return () => {
+                container.removeEventListener('scroll', checkForScrollability);
+                resizeObserver.disconnect();
+            };
         }
     }, [paginatedTransactions, checkForScrollability]);
 
@@ -256,43 +262,42 @@ export function TransactionHistoryTable() {
                     </div>
                 )}
             </div>
-            <div className="pt-4 flex-grow">
-                <ScrollArea className="h-[400px] w-full">
-                   {transactions.length === 0 ? (
-                        <div className="flex items-center justify-center h-full text-muted-foreground">
-                            You have no transactions yet.
-                        </div>
-                   ) : isMobile ? (
-                       <div className="space-y-4 pr-4">
-                           {paginatedTransactions.map((tx) => (
-                               <TransactionMobileCard tx={tx} key={tx.id} />
-                           ))}
-                       </div>
-                   ) : (
-                    <div 
-                        className="relative overflow-auto" 
-                        ref={scrollContainerRef}
-                        onScroll={checkForScrollability}
-                    >
-                        <TooltipProvider>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Details</TableHead>
-                                        <TableHead className="text-center">Transaction ID</TableHead>
-                                        <TableHead className="text-right">Status</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {paginatedTransactions.map((tx) => (
-                                    <TransactionRow tx={tx} key={tx.id} />
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TooltipProvider>
+            <div className="pt-4 flex-grow h-[400px] flex flex-col">
+                {transactions.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                        You have no transactions yet.
                     </div>
-                   )}
-                </ScrollArea>
+                ) : isMobile ? (
+                    <ScrollArea className="h-full w-full">
+                        <div className="space-y-4 pr-4">
+                            {paginatedTransactions.map((tx) => (
+                                <TransactionMobileCard tx={tx} key={tx.id} />
+                            ))}
+                        </div>
+                    </ScrollArea>
+                ) : (
+                <div 
+                    className="overflow-auto" 
+                    ref={scrollContainerRef}
+                >
+                    <TooltipProvider>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="min-w-[300px]">Details</TableHead>
+                                    <TableHead className="text-center min-w-[500px]">Transaction ID</TableHead>
+                                    <TableHead className="text-right min-w-[150px]">Status</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {paginatedTransactions.map((tx) => (
+                                <TransactionRow tx={tx} key={tx.id} />
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TooltipProvider>
+                </div>
+                )}
             </div>
              {totalPages > 1 && (
                 <div className="flex items-center justify-end space-x-2 pt-4 border-t border-border">
@@ -322,3 +327,5 @@ export function TransactionHistoryTable() {
         </div>
     );
 }
+
+    
