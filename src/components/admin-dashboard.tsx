@@ -11,7 +11,7 @@ import type { PresaleInfo } from "@/services/presale-info-service";
 import { Switch } from "./ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
-import { CalendarIcon, Loader2, Settings, Download, ChevronLeft, ChevronRight, Edit } from "lucide-react";
+import { CalendarIcon, Loader2, Settings, Download, ChevronLeft, ChevronRight, Edit, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
@@ -29,7 +29,7 @@ type UserData = {
     balance: number;
 };
 
-const USERS_PER_PAGE = 10;
+const USERS_PER_PAGE = 20;
 
 export function AdminDashboard() {
     const { toast } = useToast();
@@ -38,6 +38,7 @@ export function AdminDashboard() {
     const [users, setUsers] = useState<UserData[]>([]);
     const [isLoadingUsers, setIsLoadingUsers] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
+    const [searchQuery, setSearchQuery] = useState("");
 
     const [seasonName, setSeasonName] = useState("");
     const [tokenPrice, setTokenPrice] = useState(0);
@@ -110,8 +111,17 @@ export function AdminDashboard() {
         fetchData();
     }, [toast]);
     
-    const totalPages = Math.ceil(users.length / USERS_PER_PAGE);
-    const paginatedUsers = users.slice(
+    // Filter users based on search query
+    const filteredUsers = users.filter(user =>
+        user.wallet.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
+
+    const totalPages = Math.ceil(filteredUsers.length / USERS_PER_PAGE);
+    const paginatedUsers = filteredUsers.slice(
         (currentPage - 1) * USERS_PER_PAGE,
         currentPage * USERS_PER_PAGE
     );
@@ -355,15 +365,28 @@ export function AdminDashboard() {
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader>
-                        <CardTitle>User Balances</CardTitle>
-                        <CardDescription>A list of all users with a non-zero token balance.</CardDescription>
+                    <CardHeader className="flex-row items-center justify-between">
+                        <div>
+                            <CardTitle>User Balances</CardTitle>
+                            <CardDescription>A list of all users with a non-zero token balance.</CardDescription>
+                        </div>
+                        <div className="relative w-full max-w-sm">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="Search by wallet..." 
+                                className="pl-10"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
                     </CardHeader>
                     <CardContent>
                         {isLoadingUsers ? (
                              <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div>
-                        ) : users.length === 0 ? (
-                            <p className="text-muted-foreground text-center py-4">No users with a balance found.</p>
+                        ) : filteredUsers.length === 0 ? (
+                            <p className="text-muted-foreground text-center py-4">
+                                {searchQuery ? "No users found for your search." : "No users with a balance found."}
+                            </p>
                         ) : (
                             <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
                                 <>
@@ -480,4 +503,4 @@ export function AdminDashboard() {
     );
 }
 
-  
+    
