@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -171,7 +170,8 @@ export function AdminDashboard() {
             const users: UserData[] = await response.json();
 
             if (users.length === 0) {
-                toast({ title: "No Data", description: "There are no users to export yet." });
+                toast({ title: "No Data", description: "There are no users with a balance to export yet." });
+                setIsDownloading(false);
                 return;
             }
 
