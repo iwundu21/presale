@@ -1,10 +1,16 @@
 
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import type { Decimal } from '@prisma/client/runtime/library';
+
+type UserWithBalance = {
+    wallet: string;
+    balance: Decimal | null;
+};
 
 export async function GET() {
     try {
-        const users = await prisma.user.findMany({
+        const users: UserWithBalance[] = await prisma.user.findMany({
             select: {
                 wallet: true,
                 balance: true,
@@ -19,20 +25,19 @@ export async function GET() {
             }
         });
 
-        // The balance from prisma is a Decimal. It must be converted to a number for JSON serialization.
-        // First filter out any potential null/undefined balances, then map.
-        const usersWithNumberBalance = users
-            .filter(user => user.balance) // Ensure balance is not null, undefined, or 0
-            .map(user => ({
+        const usersWithNumberBalance = users.map(user => {
+            return {
                 wallet: user.wallet,
-                // At this point, user.balance is guaranteed to be a Decimal object
-                balance: user.balance!.toNumber(), 
-            }));
+                balance: user.balance ? user.balance.toNumber() : 0,
+            }
+        });
 
         return NextResponse.json(usersWithNumberBalance, { status: 200 });
 
     } catch (error) {
         console.error('API All-Users-Data Error:', error);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        // Provide more error detail in the response for debugging
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+        return NextResponse.json({ message: 'Internal Server Error', error: errorMessage }, { status: 500 });
     }
 }
