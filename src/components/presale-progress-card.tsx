@@ -14,10 +14,15 @@ const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
 };
 
 export function PresaleProgressCard() {
-    const { totalExnSoldForCurrentStage, presaleInfo } = useDashboard();
-    const exnPrice = presaleInfo?.tokenPrice || 0.09;
-    const totalSoldValue = totalExnSoldForCurrentStage * exnPrice;
+    const { totalExnSoldForCurrentStage, presaleInfo, auctionSlotsSold } = useDashboard();
+    
+    const auctionUsdAmount = presaleInfo?.auctionUsdAmount || 0;
+    const auctionExnAmount = presaleInfo?.auctionExnAmount || 0;
+    const totalSoldFromAuction = auctionSlotsSold * auctionExnAmount;
+    const totalRaisedFromAuction = auctionSlotsSold * auctionUsdAmount;
+    
     const hardCap = presaleInfo?.hardCap || 700000000;
+    // Keep remaining based on total supply for now, as it reflects the overall pool
     const remainingTokens = hardCap - totalExnSoldForCurrentStage;
 
 
@@ -37,21 +42,21 @@ export function PresaleProgressCard() {
             <div className="space-y-4 pt-4">
                 <div className="grid grid-cols-3 gap-4 text-center">
                     <div>
-                        <p className="text-lg font-bold text-white break-all">{formatNumber(totalExnSoldForCurrentStage, { notation: 'standard', maximumFractionDigits: 4 })}</p>
-                        <p className="text-xs text-muted-foreground">Tokens Sold</p>
+                        <p className="text-lg font-bold text-white break-all">{formatNumber(totalSoldFromAuction, { notation: 'standard', maximumFractionDigits: 0 })}</p>
+                        <p className="text-xs text-muted-foreground">Auction Tokens Sold</p>
                     </div>
                     <div>
                         <p className="text-lg font-bold text-white break-all">{formatNumber(remainingTokens, { notation: 'standard', maximumFractionDigits: 4 })}</p>
-                        <p className="text-xs text-muted-foreground">Remaining Tokens</p>
+                        <p className="text-xs text-muted-foreground">Remaining in Supply</p>
                     </div>
                      <div>
                         <p className="text-lg font-bold text-white break-all">{formatNumber(hardCap)}</p>
-                        <p className="text-xs text-muted-foreground">Total Supply for Presale</p>
+                        <p className="text-xs text-muted-foreground">Total Presale Supply</p>
                     </div>
                 </div>
                  <div className="text-center bg-muted/20 p-3 rounded-lg border border-border">
                     <p className="text-sm font-semibold text-white break-all">
-                        Total Raised: ${formatNumber(totalSoldValue, { notation: 'standard', maximumFractionDigits: 0 })}
+                        Total Raised from Auction: ${formatNumber(totalRaisedFromAuction, { notation: 'standard', maximumFractionDigits: 0 })}
                     </p>
                  </div>
             </div>
