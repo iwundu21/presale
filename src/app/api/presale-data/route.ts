@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 
 const defaultPresaleInfo = { 
     seasonName: "Presale", 
@@ -28,7 +29,7 @@ export async function GET() {
         const auctionSlotsSoldConfig = await prisma.config.findUnique({ where: { id: 'auctionSlotsSold' } });
 
         const presaleInfo = presaleInfoSchema.safeParse(presaleInfoConfig?.value);
-
+        
         const totalSoldAggregate = await prisma.user.aggregate({
             _sum: {
                 balance: true,
@@ -45,12 +46,14 @@ export async function GET() {
 
     } catch (error) {
         console.error('API Presale-Data Error:', error);
+        // If there's an error (e.g. database down), return default values with a 200 status
+        // so the frontend can still render with fallback data.
         return NextResponse.json({
             totalExnSoldForCurrentStage: 0,
             presaleInfo: defaultPresaleInfo,
             isPresaleActive: true,
             auctionSlotsSold: 0,
-        }, { status: 500 });
+        }, { status: 200 });
     }
 }
 

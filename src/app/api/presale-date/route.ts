@@ -14,7 +14,8 @@ export async function GET() {
         const config = await prisma.config.findUnique({ where: { id: 'presaleEndDate' } });
         let presaleEndDate;
         if (config) {
-            presaleEndDate = (config.value as { value: string }).value;
+            // The value is stored directly, not nested.
+            presaleEndDate = config.value as string;
         } else {
             presaleEndDate = getDefaultEndDate();
         }
@@ -35,8 +36,8 @@ export async function POST(request: Request) {
 
         await prisma.config.upsert({
             where: { id: 'presaleEndDate' },
-            update: { value: { value: parsedDate } },
-            create: { id: 'presaleEndDate', value: { value: parsedDate } },
+            update: { value: parsedDate },
+            create: { id: 'presaleEndDate', value: parsedDate },
         });
         
         return NextResponse.json({
