@@ -20,7 +20,7 @@ export function PresaleProgressCard() {
     const totalSoldFromAuction = auctionSlotsSold * auctionExnAmount;
     const totalRaisedFromAuction = auctionSlotsSold * auctionUsdAmount;
     
-    const hardCap = presaleInfo?.hardCap || 700000000;
+    const hardCap = presaleInfo?.hardCap || 0;
     // This reflects the overall supply remaining for the entire presale
     const remainingTokens = hardCap - totalExnSoldForCurrentStage;
 

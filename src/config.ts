@@ -9,10 +9,9 @@ export const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyT
 // EXN Token does not have a mint address yet. Distribution will be done later.
 // We will track contributions and calculate balances off-chain (client-side).
 
-// NOTE: The EXN_PRICE, SOFT_CAP, and HARD_CAP are now managed from the Admin Dashboard and fetched dynamically.
+// NOTE: The EXN_PRICE and HARD_CAP are now managed from the Admin Dashboard and fetched dynamically.
 // These values are used as fallbacks only.
 export const EXN_PRICE = 0.09;
-export const HARD_CAP = 700_000_000;
 export const EXN_TOKEN_DECIMALS = 5; // The number of decimals for display purposes
 
     

@@ -78,9 +78,11 @@ export async function POST(request: Request) {
             });
         }
 
+        // Re-fetch all data to ensure the response is complete
         const presaleInfoConfig = await prisma.config.findUnique({ where: { id: 'presaleInfo' } });
         const isPresaleActiveConfig = await prisma.config.findUnique({ where: { id: 'isPresaleActive' } });
         const auctionSlotsSoldConfig = await prisma.config.findUnique({ where: { id: 'auctionSlotsSold' } });
+        
         const updatedInfo = presaleInfoSchema.safeParse(presaleInfoConfig?.value);
         
         const totalSoldAggregate = await prisma.user.aggregate({
@@ -103,6 +105,6 @@ export async function POST(request: Request) {
         if (error instanceof z.ZodError) {
              return NextResponse.json({ message: 'Invalid input for presale info', details: error.errors }, { status: 400 });
         }
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ message: 'Internal Server Error', error: error.message }, { status: 500 });
     }
 }
