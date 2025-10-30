@@ -9,25 +9,20 @@ const getDefaultEndDate = () => {
     return d.toISOString();
 };
 
-async function getOrCreateEndDate() {
-    let config = await prisma.config.findUnique({ where: { id: 'presaleEndDate' } });
-    if (!config) {
-        const defaultEndDate = getDefaultEndDate();
-        config = await prisma.config.create({
-            data: { id: 'presaleEndDate', value: { value: defaultEndDate } },
-        });
-    }
-    return (config.value as { value: string }).value;
-}
-
 export async function GET() {
     try {
-        const presaleEndDate = await getOrCreateEndDate();
+        const config = await prisma.config.findUnique({ where: { id: 'presaleEndDate' } });
+        let presaleEndDate;
+        if (config) {
+            presaleEndDate = (config.value as { value: string }).value;
+        } else {
+            presaleEndDate = getDefaultEndDate();
+        }
         return NextResponse.json({ presaleEndDate }, { status: 200 });
     } catch (error) {
         console.error('API Presale-Date GET Error:', error);
-        const presaleEndDate = getDefaultEndDate();
-        return NextResponse.json({ presaleEndDate }, { status: 200 });
+        // Fallback to default on any error
+        return NextResponse.json({ presaleEndDate: getDefaultEndDate() }, { status: 200 });
     }
 }
 
