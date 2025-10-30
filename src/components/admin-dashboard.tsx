@@ -44,9 +44,6 @@ export function AdminDashboard() {
     const [seasonName, setSeasonName] = useState("");
     const [tokenPrice, setTokenPrice] = useState(0);
     const [hardCap, setHardCap] = useState(0);
-    const [auctionUsdAmount, setAuctionUsdAmount] = useState(0);
-    const [auctionExnAmount, setAuctionExnAmount] = useState(0);
-    const [auctionSlots, setAuctionSlots] = useState(0);
     const [isPresaleActive, setIsPresaleActive] = useState(true);
     const [presaleEndDate, setPresaleEndDate] = useState<Date | undefined>(new Date());
     
@@ -106,9 +103,6 @@ export function AdminDashboard() {
                     setSeasonName(presaleData.presaleInfo.seasonName);
                     setTokenPrice(presaleData.presaleInfo.tokenPrice);
                     setHardCap(presaleData.presaleInfo.hardCap);
-                    setAuctionUsdAmount(presaleData.presaleInfo.auctionUsdAmount);
-                    setAuctionExnAmount(presaleData.presaleInfo.auctionExnAmount);
-                    setAuctionSlots(presaleData.presaleInfo.auctionSlots);
                 }
                 setIsPresaleActive(presaleData.isPresaleActive);
                 if (presaleDateData.presaleEndDate) {
@@ -151,11 +145,12 @@ export function AdminDashboard() {
     const handleUpdateInfo = async () => {
         setIsUpdating(prev => ({ ...prev, info: true }));
         try {
+            const currentInfo = data?.presaleInfo || {};
             const res = await fetch('/api/presale-data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    presaleInfo: { seasonName, tokenPrice, hardCap, auctionUsdAmount, auctionExnAmount, auctionSlots }
+                    presaleInfo: { ...currentInfo, seasonName, tokenPrice, hardCap }
                 }),
             });
             if (!res.ok) throw new Error('Failed to update presale info');
@@ -328,32 +323,6 @@ export function AdminDashboard() {
                                 <Input id="hardCap" type="number" value={hardCap} onChange={(e) => setHardCap(parseInt(e.target.value, 10) || 0)} />
                             </div>
                         </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Auction Deal Settings</CardTitle>
-                        <CardDescription>Configure the special auction package.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                         <div className="grid md:grid-cols-3 gap-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="auctionUsdAmount">Auction Price (USD)</Label>
-                                <Input id="auctionUsdAmount" type="number" value={auctionUsdAmount} onChange={(e) => setAuctionUsdAmount(parseFloat(e.target.value) || 0)} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="auctionExnAmount">Auction EXN Amount</Label>
-                                <Input id="auctionExnAmount" type="number" value={auctionExnAmount} onChange={(e) => setAuctionExnAmount(parseInt(e.target.value, 10) || 0)} />
-                            </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="auctionSlots">Total Auction Slots</Label>
-                                <Input id="auctionSlots" type="number" value={auctionSlots} onChange={(e) => setAuctionSlots(parseInt(e.target.value, 10) || 0)} />
-                            </div>
-                         </div>
-                          <div className="mt-4 text-sm text-muted-foreground">
-                            Slots Sold: {data?.auctionSlotsSold || 0} / {data?.presaleInfo?.auctionSlots || 0}
-                         </div>
                         <Button onClick={handleUpdateInfo} disabled={isUpdating.info}>
                             {isUpdating.info && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Update Presale Info
