@@ -185,7 +185,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
                     console.error("Failed to poll presale data:", error);
                 }
             }
-        }, 30000); // Poll every 30 seconds
+        }, 5000); // Poll every 5 seconds
 
         return () => {
             controller.abort();
@@ -447,5 +447,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
+
+    
 
     
