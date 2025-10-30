@@ -36,14 +36,12 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Invalid input', details: error.errors }, { status: 400 });
         }
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            // Handle specific Prisma errors, like record not found
+            // P2025: Record to update not found.
             if (error.code === 'P2025') {
-                 return NextResponse.json({ message: `User with wallet ${'wallet' in (error.meta || {}) ? (error.meta as any).wallet : ''} not found.` }, { status: 404 });
+                 return NextResponse.json({ message: `User not found.` }, { status: 404 });
             }
         }
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
         return NextResponse.json({ message: 'Internal Server Error', error: errorMessage }, { status: 500 });
     }
 }
-
-  
