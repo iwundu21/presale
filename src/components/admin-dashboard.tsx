@@ -43,6 +43,8 @@ export function AdminDashboard() {
     const [seasonName, setSeasonName] = useState("");
     const [tokenPrice, setTokenPrice] = useState(0);
     const [hardCap, setHardCap] = useState(0);
+    const [auctionUsdAmount, setAuctionUsdAmount] = useState(0);
+    const [auctionExnAmount, setAuctionExnAmount] = useState(0);
     const [isPresaleActive, setIsPresaleActive] = useState(true);
     const [presaleEndDate, setPresaleEndDate] = useState<Date | undefined>(new Date());
     
@@ -92,6 +94,8 @@ export function AdminDashboard() {
                 setSeasonName(presaleData.presaleInfo.seasonName);
                 setTokenPrice(presaleData.presaleInfo.tokenPrice);
                 setHardCap(presaleData.presaleInfo.hardCap);
+                setAuctionUsdAmount(presaleData.presaleInfo.auctionUsdAmount);
+                setAuctionExnAmount(presaleData.presaleInfo.auctionExnAmount);
                 setIsPresaleActive(presaleData.isPresaleActive);
                 setPresaleEndDate(new Date(presaleDateData.presaleEndDate));
 
@@ -134,7 +138,7 @@ export function AdminDashboard() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    presaleInfo: { seasonName, tokenPrice, hardCap }
+                    presaleInfo: { seasonName, tokenPrice, hardCap, auctionUsdAmount, auctionExnAmount }
                 }),
             });
             if (!res.ok) throw new Error('Failed to update presale info');
@@ -287,16 +291,26 @@ export function AdminDashboard() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Presale Configuration</CardTitle>
-                        <CardDescription>Manage the presale settings and stages.</CardDescription>
+                        <CardDescription>Manage the presale settings, auction deal, and stages.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="seasonName">Season Name</Label>
-                            <Input id="seasonName" value={seasonName} onChange={(e) => setSeasonName(e.target.value)} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="tokenPrice">Token Price (USD)</Label>
-                            <Input id="tokenPrice" type="number" value={tokenPrice} onChange={(e) => setTokenPrice(parseFloat(e.target.value) || 0)} />
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="seasonName">Season Name</Label>
+                                <Input id="seasonName" value={seasonName} onChange={(e) => setSeasonName(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="tokenPrice">Base Token Price (USD)</Label>
+                                <Input id="tokenPrice" type="number" value={tokenPrice} onChange={(e) => setTokenPrice(parseFloat(e.target.value) || 0)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="auctionUsdAmount">Auction Price (USD)</Label>
+                                <Input id="auctionUsdAmount" type="number" value={auctionUsdAmount} onChange={(e) => setAuctionUsdAmount(parseFloat(e.target.value) || 0)} />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="auctionExnAmount">Auction EXN Amount</Label>
+                                <Input id="auctionExnAmount" type="number" value={auctionExnAmount} onChange={(e) => setAuctionExnAmount(parseInt(e.target.value, 10) || 0)} />
+                            </div>
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="hardCap">Hard Cap (Total Supply for Presale)</Label>

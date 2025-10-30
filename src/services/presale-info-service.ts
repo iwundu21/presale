@@ -8,6 +8,8 @@ export type PresaleInfo = {
     seasonName: string;
     tokenPrice: number;
     hardCap: number;
+    auctionUsdAmount: number;
+    auctionExnAmount: number;
 };
 
 export type PresaleData = {
@@ -19,6 +21,8 @@ const presaleInfoSchema = z.object({
   seasonName: z.string(),
   tokenPrice: z.number(),
   hardCap: z.number(),
+  auctionUsdAmount: z.number(),
+  auctionExnAmount: z.number(),
 });
 
 const defaultData: PresaleData = {
@@ -26,6 +30,8 @@ const defaultData: PresaleData = {
         seasonName: "Presale",
         tokenPrice: 0.09,
         hardCap: 700000000,
+        auctionUsdAmount: 50,
+        auctionExnAmount: 50000,
     },
     isPresaleActive: true
 };

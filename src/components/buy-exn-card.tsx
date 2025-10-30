@@ -15,10 +15,7 @@ import { useDashboard } from "./dashboard-client-provider";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 
 const SOL_GAS_BUFFER = 0.0009; // Reserve 0.0009 SOL for gas fees
-const PURCHASE_AMOUNT_USD = 50;
-const PURCHASE_AMOUNT_EXN = 50000;
 const MAX_PURCHASE_USD = 5000;
-const AUCTION_PRICE_PER_EXN = PURCHASE_AMOUNT_USD / PURCHASE_AMOUNT_EXN;
 const LISTING_PRICE_PER_EXN = 0.094;
 
 
@@ -34,6 +31,10 @@ export function BuyExnCard() {
   const [isFetchingBalance, setIsFetchingBalance] = useState(false);
   const [balanceError, setBalanceError] = useState("");
   const [limitError, setLimitError] = useState("");
+  
+  const purchaseAmountUsd = presaleInfo?.auctionUsdAmount || 50;
+  const purchaseAmountExn = presaleInfo?.auctionExnAmount || 50000;
+  const auctionPricePerExn = purchaseAmountUsd && purchaseAmountExn ? purchaseAmountUsd / purchaseAmountExn : 0;
 
   const exnPrice = presaleInfo?.tokenPrice || 0.09; // This is now the "value" price, not purchase price
   const userTotalInvestedUSD = exnBalance * exnPrice;
@@ -72,10 +73,10 @@ export function BuyExnCard() {
   useEffect(() => {
     const price = tokenPrices[currency];
     if (price) {
-        const amount = PURCHASE_AMOUNT_USD / price;
+        const amount = purchaseAmountUsd / price;
         setPayAmount(amount.toFixed(currency === 'SOL' ? 5 : 2));
     }
-  }, [currency, tokenPrices]);
+  }, [currency, tokenPrices, purchaseAmountUsd]);
 
 
   useEffect(() => {
@@ -97,19 +98,19 @@ export function BuyExnCard() {
   }, [payAmount, currency, balances]);
 
   useEffect(() => {
-    const totalFutureInvestment = userTotalInvestedUSD + PURCHASE_AMOUNT_USD;
+    const totalFutureInvestment = userTotalInvestedUSD + purchaseAmountUsd;
 
     if (totalFutureInvestment > MAX_PURCHASE_USD) {
         setLimitError(`Purchase exceeds wallet limit of $${MAX_PURCHASE_USD}.`);
     } else {
         setLimitError("");
     }
-  }, [userTotalInvestedUSD]);
+  }, [userTotalInvestedUSD, purchaseAmountUsd]);
 
 
   const handleBuyNow = () => {
     if (isConnected) {
-      handlePurchase(PURCHASE_AMOUNT_EXN, parseFloat(payAmount), currency);
+      handlePurchase(purchaseAmountExn, parseFloat(payAmount), currency);
     }
   };
 
@@ -180,7 +181,7 @@ export function BuyExnCard() {
             <div className="flex items-center gap-2">
               <div className="text-2xl font-bold flex-grow">
                 {isLoadingPrices ? <Skeleton className="h-8 w-24" /> : `${payAmount} ${currency}`}
-                <div className="text-sm font-normal text-muted-foreground">(${PURCHASE_AMOUNT_USD.toFixed(2)} USD)</div>
+                <div className="text-sm font-normal text-muted-foreground">(${purchaseAmountUsd.toFixed(2)} USD)</div>
               </div>
                <Select value={currency} onValueChange={(val) => setCurrency(val as Currency)} disabled={!isPresaleActive || isLoadingPurchase}>
                   <SelectTrigger className="w-[120px] h-auto bg-secondary border-secondary text-white font-medium focus:ring-0">
@@ -209,7 +210,7 @@ export function BuyExnCard() {
               <span className="text-sm text-muted-foreground">You Receive</span>
               <span className="text-white font-medium">EXN</span>
             </div>
-            <div className="text-2xl font-bold">{PURCHASE_AMOUNT_EXN.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{purchaseAmountExn.toLocaleString()}</div>
           </div>
         </div>
 
@@ -217,7 +218,7 @@ export function BuyExnCard() {
             <div className="flex justify-around items-center">
                 <div>
                     <p className="text-xs text-muted-foreground">Auction Price</p>
-                    <p className="text-lg font-bold text-primary">${AUCTION_PRICE_PER_EXN.toPrecision(1)}</p>
+                    <p className="text-lg font-bold text-primary">${auctionPricePerExn > 0 ? auctionPricePerExn.toPrecision(1) : '...'}</p>
                 </div>
                  <div className="flex items-center gap-2 text-primary">
                     <TrendingUp className="h-5 w-5" />
