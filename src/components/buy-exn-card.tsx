@@ -152,7 +152,7 @@ export function BuyExnCard() {
             </div>
         </div>
         <CardDescription>
-            Your Total Contribution: <strong>${userTotalInvestedUSD.toLocaleString(undefined, {maximumFractionDigits: 2})} / ${MAX_PURCHASE_USD.toLocaleString()}</strong>
+            Secure your EXN tokens at a special auction price before the public listing.
         </CardDescription>
       </div>
       
@@ -266,3 +266,4 @@ export function BuyExnCard() {
     </div>
   );
 }
+
