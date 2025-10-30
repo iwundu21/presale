@@ -18,20 +18,14 @@ type LandingPageProps = {
   isPresaleActive: boolean;
 };
 
-const SEASON_PRICES: { [key: string]: number } = {
-    "Early Stage": 0.09,
-    "Investors": 0.15,
-    "Whale": 0.25,
-};
-const SEASON_ORDER = Object.keys(SEASON_PRICES);
+const AUCTION_PRICE = 0.001;
 
 export function LandingPage({ presaleEndDate, presaleInfo, isPresaleActive }: LandingPageProps) {
     const { wallet, connected, connecting } = useWallet();
     const { setVisible } = useWalletModal();
     const router = useRouter();
     const [isClient, setIsClient] = useState(false);
-    const [nextSeason, setNextSeason] = useState<{ name: string; price: number } | null>(null);
-
+    
     useEffect(() => {
         setIsClient(true);
         document.title = "Exnus Presale";
@@ -47,19 +41,6 @@ export function LandingPage({ presaleEndDate, presaleInfo, isPresaleActive }: La
         }
     }, [connected, connecting, router]);
 
-    useEffect(() => {
-      const currentSeasonIndex = SEASON_ORDER.indexOf(presaleInfo.seasonName);
-      if (currentSeasonIndex !== -1 && currentSeasonIndex < SEASON_ORDER.length - 1) {
-        const nextSeasonName = SEASON_ORDER[currentSeasonIndex + 1];
-        setNextSeason({
-          name: nextSeasonName,
-          price: SEASON_PRICES[nextSeasonName]
-        });
-      } else {
-        setNextSeason(null); // It's the last season or not found
-      }
-    }, [presaleInfo.seasonName]);
-
   return (
     <main className="flex-grow flex flex-col">
       {/* Hero Section */}
@@ -69,17 +50,14 @@ export function LandingPage({ presaleEndDate, presaleInfo, isPresaleActive }: La
                 <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 mb-4">
                    <Badge variant="secondary" className="text-sm py-1 px-3 border border-border">
                       <BadgePercent className="h-4 w-4 mr-2 text-primary" />
-                      {presaleInfo.seasonName}
+                      {presaleInfo.seasonName} Auction
                    </Badge>
                     <p className="text-md text-foreground/80">
-                        Current Price: <span className="font-bold text-primary">${presaleInfo.tokenPrice.toFixed(2)}</span>
+                        Auction Price: <span className="font-bold text-primary">${AUCTION_PRICE}</span>
                     </p>
-                    {nextSeason && (
-                       <div className="flex items-center gap-2 text-sm text-foreground/80">
-                           <ChevronsRight className="h-4 w-4 text-primary/70" />
-                           Next: <span className="font-semibold text-white/90">{nextSeason.name} at ${nextSeason.price.toFixed(2)}</span>
-                       </div>
-                    )}
+                    <p className="text-md text-foreground/80">
+                        Expected Listing Price: <span className="font-bold text-green-400">$0.094</span>
+                    </p>
                 </div>
                 <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">
                   Welcome to the Future of <span className="text-primary">Exnus</span>
