@@ -4,7 +4,6 @@
 import { usePathname } from 'next/navigation';
 import { WalletConnect } from "./wallet-connect";
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import { AdminHeader } from './admin-header';
 
 
