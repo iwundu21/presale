@@ -14,15 +14,51 @@ export async function POST(request: Request) {
         const body = await request.json();
         const { wallet, balance } = updateBalanceSchema.parse(body);
 
-        // Use Prisma's Decimal type for the database operation
         const decimalBalance = new Prisma.Decimal(balance);
 
-        const updatedUser = await prisma.user.update({
-            where: { wallet: wallet },
-            data: { balance: decimalBalance },
+        const updatedUser = await prisma.$transaction(async (tx) => {
+            // Get the current user state before updating
+            const currentUser = await tx.user.findUnique({
+                where: { wallet: wallet },
+            });
+
+            if (!currentUser) {
+                // Although upsert would handle this, we need to throw a specific error
+                // that our outer catch block can interpret as a 404.
+                throw new Prisma.PrismaClientKnownRequestError('User not found', {
+                    code: 'P2025',
+                    clientVersion: '2.19.0'
+                });
+            }
+
+            const oldBalance = currentUser.balance;
+
+            // Update the user's balance
+            const user = await tx.user.update({
+                where: { wallet: wallet },
+                data: { balance: decimalBalance },
+            });
+
+            // If the new balance is an increase, increment the auction slots sold
+            if (decimalBalance.greaterThan(oldBalance)) {
+                await tx.config.upsert({
+                    where: { id: 'auctionSlotsSold' },
+                    update: { 
+                        value: { 
+                            // Using Prisma's atomic increment operation
+                            increment: 1 
+                        }
+                    },
+                    create: { id: 'auctionSlotsSold', value: { value: 1 } },
+                });
+            } else if (decimalBalance.lessThan(oldBalance)) {
+                // Optional: handle balance decrease (e.g., decrement slots if needed)
+                // For now, we do nothing as per the requirement to only track additions.
+            }
+            
+            return user;
         });
 
-        // Convert the Decimal back to a number for the JSON response
         const responseUser = {
             ...updatedUser,
             balance: updatedUser.balance.toNumber(),
@@ -36,9 +72,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Invalid input', details: error.errors }, { status: 400 });
         }
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            // P2025: Record to update not found.
             if (error.code === 'P2025') {
-                 return NextResponse.json({ message: `User not found.` }, { status: 404 });
+                 return NextResponse.json({ message: `User with wallet not found.` }, { status: 404 });
             }
         }
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';

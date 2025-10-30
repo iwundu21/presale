@@ -53,14 +53,15 @@ export async function POST(request: Request) {
                         },
                     });
 
-                    // Update auction slots sold
-                    const currentSlotsSold = await tx.config.findUnique({ where: { id: 'auctionSlotsSold' } });
-                    const newSlotsSold = ((currentSlotsSold?.value as { value: number })?.value || 0) + 1;
-                    
+                    // Atomically increment auction slots sold
                     await tx.config.upsert({
                         where: { id: 'auctionSlotsSold' },
-                        update: { value: { value: newSlotsSold } },
-                        create: { id: 'auctionSlotsSold', value: { value: newSlotsSold } },
+                        update: { 
+                            value: { 
+                                increment: 1 
+                            }
+                        },
+                        create: { id: 'auctionSlotsSold', value: { value: 1 } },
                     });
                 }
             }
@@ -86,6 +87,3 @@ export async function POST(request: Request) {
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }
-
-
-
