@@ -400,7 +400,7 @@ export function AdminDashboard() {
                     <CardHeader className="flex-row items-center justify-between">
                         <div>
                             <CardTitle>User Balances</CardTitle>
-                            <CardDescription>A list of all users with a non-zero token balance.</CardDescription>
+                            <CardDescription>A list of all registered users and their token balances.</CardDescription>
                         </div>
                         <div className="relative w-full max-w-sm">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -417,7 +417,7 @@ export function AdminDashboard() {
                              <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div>
                         ) : filteredUsers.length === 0 ? (
                             <p className="text-muted-foreground text-center py-4">
-                                {searchQuery ? "No users found for your search." : "No users with a balance found."}
+                                {searchQuery ? "No users found for your search." : "No users found."}
                             </p>
                         ) : (
                             <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>

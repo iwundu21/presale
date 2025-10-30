@@ -13,7 +13,7 @@ export async function GET() {
         // Use a raw query to cast the Decimal to a Float/Double directly in the database.
         // This avoids any issues with Decimal.js serialization in the serverless environment.
         const users = await prisma.$queryRaw<UserData[]>(
-            Prisma.sql`SELECT "wallet", "balance"::double precision FROM "User" WHERE "balance" > 0 ORDER BY "wallet" ASC`
+            Prisma.sql`SELECT "wallet", "balance"::double precision FROM "User" ORDER BY "wallet" ASC`
         );
         
         return NextResponse.json(users, { status: 200 });
