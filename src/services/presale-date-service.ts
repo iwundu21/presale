@@ -17,21 +17,26 @@ const getDefaultEndDate = () => {
  */
 export async function getPresaleEndDate(): Promise<Date> {
   try {
-    let config = await prisma.config.findUnique({ where: { id: 'presaleEndDate' } });
-    if (!config) {
-        const defaultEndDate = getDefaultEndDate().toISOString();
-        config = await prisma.config.create({
-            data: { id: 'presaleEndDate', value: { value: defaultEndDate } },
-        });
-        return new Date(defaultEndDate);
+    const config = await prisma.config.findUnique({ where: { id: 'presaleEndDate' } });
+    if (config) {
+        let endDateString;
+        if (typeof config.value === 'object' && config.value !== null && 'value' in config.value) {
+            endDateString = config.value.value as string;
+        } else if (typeof config.value === 'string') {
+            endDateString = config.value;
+        } else {
+            console.error('Invalid date format in DB, using fallback.');
+            return getDefaultEndDate();
+        }
+        
+        const date = new Date(endDateString);
+        if (isNaN(date.getTime())) {
+           console.error('Invalid date value parsed from DB, using fallback.');
+           return getDefaultEndDate();
+        }
+        return date;
     }
-    const endDateString = (config.value as { value: string }).value;
-    const date = new Date(endDateString);
-    if (isNaN(date.getTime())) {
-       console.error('Invalid date format from DB, using fallback.');
-       return getDefaultEndDate();
-    }
-    return date;
+    return getDefaultEndDate();
   } catch (error) {
     console.error("Error fetching presale end date:", error);
     return getDefaultEndDate();
@@ -53,7 +58,7 @@ export async function setPresaleEndDate(newDate: Date | null): Promise<void> {
 
     await prisma.config.upsert({
         where: { id: 'presaleEndDate' },
-        update: { value: { value: parsedDate } },
-        create: { id: 'presaleEndDate', value: { value: parsedDate } },
+        update: { value: parsedDate },
+        create: { id: 'presaleEndDate', value: parsedDate },
     });
 }
