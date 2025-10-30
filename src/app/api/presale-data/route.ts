@@ -91,9 +91,17 @@ export async function POST(request: Request) {
         const updatedIsPresaleActiveValue = await getOrCreateConfig('isPresaleActive', { value: true });
         const updatedAuctionSlotsSoldValue = await getOrCreateConfig('auctionSlotsSold', { value: 0 });
         const updatedInfo = presaleInfoSchema.safeParse(updatedPresaleInfoValue);
+        
+        const totalSoldAggregate = await prisma.user.aggregate({
+            _sum: {
+                balance: true,
+            }
+        });
+        const totalExnSold = totalSoldAggregate._sum.balance?.toNumber() || 0;
 
         return NextResponse.json({
             message: 'Presale data updated successfully',
+            totalExnSoldForCurrentStage: totalExnSold,
             presaleInfo: updatedInfo.success ? updatedInfo.data : defaultPresaleInfo,
             isPresaleActive: (updatedIsPresaleActiveValue as { value: boolean })?.value ?? true,
             auctionSlotsSold: (updatedAuctionSlotsSoldValue as { value: number })?.value ?? 0,
