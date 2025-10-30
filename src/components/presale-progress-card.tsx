@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Flame } from "lucide-react";
@@ -22,7 +21,7 @@ export function PresaleProgressCard() {
     const totalRaisedFromAuction = auctionSlotsSold * auctionUsdAmount;
     
     const hardCap = presaleInfo?.hardCap || 700000000;
-    // Keep remaining based on total supply for now, as it reflects the overall pool
+    // This reflects the overall supply remaining for the entire presale
     const remainingTokens = hardCap - totalExnSoldForCurrentStage;
 
 
@@ -46,7 +45,7 @@ export function PresaleProgressCard() {
                         <p className="text-xs text-muted-foreground">Auction Tokens Sold</p>
                     </div>
                     <div>
-                        <p className="text-lg font-bold text-white break-all">{formatNumber(remainingTokens, { notation: 'standard', maximumFractionDigits: 4 })}</p>
+                        <p className="text-lg font-bold text-white break-all">{formatNumber(remainingTokens, { notation: 'standard', maximumFractionDigits: 0 })}</p>
                         <p className="text-xs text-muted-foreground">Remaining in Supply</p>
                     </div>
                      <div>
