@@ -34,8 +34,8 @@ async function getOrCreateConfig(id: string, defaultValue: any) {
 export async function GET() {
     try {
         const presaleInfoValue = await getOrCreateConfig('presaleInfo', defaultPresaleInfo);
-        const isPresaleActiveValue = await getOrCreateConfig('isPresaleActive', { value: true });
-        const auctionSlotsSoldValue = await getOrCreateConfig('auctionSlotsSold', { value: 0 });
+        const isPresaleActiveValue = await getOrCreateConfig('isPresaleActive', true);
+        const auctionSlotsSoldValue = await getOrCreateConfig('auctionSlotsSold', 0);
         
         const presaleInfo = presaleInfoSchema.safeParse(presaleInfoValue);
         
@@ -49,8 +49,8 @@ export async function GET() {
         return NextResponse.json({
             totalExnSoldForCurrentStage: totalExnSold,
             presaleInfo: presaleInfo.success ? presaleInfo.data : defaultPresaleInfo,
-            isPresaleActive: (isPresaleActiveValue as { value: boolean })?.value ?? true,
-            auctionSlotsSold: (auctionSlotsSoldValue as { value: number })?.value ?? 0,
+            isPresaleActive: isPresaleActiveValue as boolean,
+            auctionSlotsSold: auctionSlotsSoldValue as number,
         }, { status: 200 });
 
     } catch (error) {
@@ -82,14 +82,14 @@ export async function POST(request: Request) {
         if (typeof isPresaleActive === 'boolean') {
              await prisma.config.upsert({
                 where: { id: 'isPresaleActive' },
-                update: { value: { value: isPresaleActive } },
-                create: { id: 'isPresaleActive', value: { value: isPresaleActive } },
+                update: { value: isPresaleActive },
+                create: { id: 'isPresaleActive', value: isPresaleActive },
             });
         }
 
         const updatedPresaleInfoValue = await getOrCreateConfig('presaleInfo', defaultPresaleInfo);
-        const updatedIsPresaleActiveValue = await getOrCreateConfig('isPresaleActive', { value: true });
-        const updatedAuctionSlotsSoldValue = await getOrCreateConfig('auctionSlotsSold', { value: 0 });
+        const updatedIsPresaleActiveValue = await getOrCreateConfig('isPresaleActive', true);
+        const updatedAuctionSlotsSoldValue = await getOrCreateConfig('auctionSlotsSold', 0);
         const updatedInfo = presaleInfoSchema.safeParse(updatedPresaleInfoValue);
         
         const totalSoldAggregate = await prisma.user.aggregate({
@@ -103,8 +103,8 @@ export async function POST(request: Request) {
             message: 'Presale data updated successfully',
             totalExnSoldForCurrentStage: totalExnSold,
             presaleInfo: updatedInfo.success ? updatedInfo.data : defaultPresaleInfo,
-            isPresaleActive: (updatedIsPresaleActiveValue as { value: boolean })?.value ?? true,
-            auctionSlotsSold: (updatedAuctionSlotsSoldValue as { value: number })?.value ?? 0,
+            isPresaleActive: updatedIsPresaleActiveValue as boolean,
+            auctionSlotsSold: updatedAuctionSlotsSoldValue as number,
         }, { status: 200 });
 
     } catch (error: any) {

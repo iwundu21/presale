@@ -58,13 +58,13 @@ export async function POST(request: Request) {
                         where: { id: 'auctionSlotsSold' },
                     });
 
-                    const currentSlotsSold = (currentSlotsConfig?.value as { value: number })?.value ?? 0;
+                    const currentSlotsSold = (currentSlotsConfig?.value as number) ?? 0;
                     const newSlotsSold = currentSlotsSold + 1;
 
                     await tx.config.upsert({
                         where: { id: 'auctionSlotsSold' },
-                        update: { value: { value: newSlotsSold } },
-                        create: { id: 'auctionSlotsSold', value: { value: newSlotsSold } },
+                        update: { value: newSlotsSold },
+                        create: { id: 'auctionSlotsSold', value: newSlotsSold },
                     });
                 }
             }

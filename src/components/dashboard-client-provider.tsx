@@ -447,9 +447,3 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
-
-    
-
-    
-
-    
