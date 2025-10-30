@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowDown, Zap, HelpCircle, TrendingUp, Ticket } from "lucide-react";
+import { ArrowDown, Zap, HelpCircle, TrendingUp, Ticket, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,14 +16,13 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "./ui/t
 import { Progress } from "./ui/progress";
 
 const SOL_GAS_BUFFER = 0.0009; // Reserve 0.0009 SOL for gas fees
-const MAX_PURCHASE_USD = 5000;
 const LISTING_PRICE_PER_EXN = 0.094;
 
 
 type Currency = "USDC" | "SOL";
 
 export function BuyExnCard() {
-  const { connected: isConnected, handlePurchase, tokenPrices, isLoadingPrices, presaleInfo, isPresaleActive, isLoadingPurchase, isHardCapReached, exnBalance, auctionSlotsSold } = useDashboard();
+  const { connected: isConnected, handlePurchase, tokenPrices, isLoadingPrices, presaleInfo, isPresaleActive, isLoadingPurchase, isHardCapReached, hasPurchasedAuction, auctionSlotsSold } = useDashboard();
   const { publicKey } = useWallet();
   const { connection } = useConnection();
   const [currency, setCurrency] = useState<Currency>("USDC");
@@ -31,7 +30,6 @@ export function BuyExnCard() {
   const [balances, setBalances] = useState({ SOL: 0, USDC: 0 });
   const [isFetchingBalance, setIsFetchingBalance] = useState(false);
   const [balanceError, setBalanceError] = useState("");
-  const [limitError, setLimitError] = useState("");
   
   const purchaseAmountUsd = presaleInfo?.auctionUsdAmount || 50;
   const purchaseAmountExn = presaleInfo?.auctionExnAmount || 50000;
@@ -41,9 +39,6 @@ export function BuyExnCard() {
   const auctionPricePerExn = purchaseAmountUsd && purchaseAmountExn ? purchaseAmountUsd / purchaseAmountExn : 0;
   const progressPercentage = totalSlots > 0 ? (auctionSlotsSold / totalSlots) * 100 : 0;
 
-  const exnPrice = presaleInfo?.tokenPrice || 0.09; // This is now the "value" price, not purchase price
-  const userTotalInvestedUSD = exnBalance * exnPrice;
-  const hasReachedMax = userTotalInvestedUSD >= MAX_PURCHASE_USD;
   
   useEffect(() => {
     const fetchBalances = async () => {
@@ -102,33 +97,21 @@ export function BuyExnCard() {
     }
   }, [payAmount, currency, balances]);
 
-  useEffect(() => {
-    const totalFutureInvestment = userTotalInvestedUSD + purchaseAmountUsd;
-
-    if (totalFutureInvestment > MAX_PURCHASE_USD) {
-        setLimitError(`Purchase exceeds wallet limit of $${MAX_PURCHASE_USD}.`);
-    } else {
-        setLimitError("");
-    }
-  }, [userTotalInvestedUSD, purchaseAmountUsd]);
-
-
   const handleBuyNow = () => {
     if (isConnected) {
       handlePurchase(purchaseAmountExn, parseFloat(payAmount), currency);
     }
   };
 
-  const isPurchaseDisabled = !isConnected || isLoadingPrices || !!balanceError || !!limitError || !isPresaleActive || isLoadingPurchase || isHardCapReached || hasReachedMax || isAuctionSoldOut;
+  const isPurchaseDisabled = !isConnected || isLoadingPrices || !!balanceError || !isPresaleActive || isLoadingPurchase || isHardCapReached || isAuctionSoldOut || hasPurchasedAuction;
 
   const getButtonText = () => {
+    if (hasPurchasedAuction) return "You have already purchased";
     if (isAuctionSoldOut) return "Auction Sold Out";
-    if (hasReachedMax) return "Maximum contribution reached";
     if (isHardCapReached) return "Hard Cap Reached";
     if (!isPresaleActive) return "Presale is currently closed";
     if (isLoadingPrices) return 'Loading Prices...';
     if (!isConnected) return "Connect Wallet to Buy";
-    if (limitError) return limitError;
     if (balanceError) return balanceError;
     if (isLoadingPurchase) return "Processing...";
     return "Buy EXN Now";
@@ -164,10 +147,13 @@ export function BuyExnCard() {
          </div>
        </div>
 
-       {hasReachedMax ? (
-         <div className="text-center bg-green-500/10 border border-green-500/50 text-green-400 p-4 rounded-lg mt-4">
-            <p className="font-bold">Congratulations!</p>
-            <p className="text-sm">You have reached the maximum contribution limit for this wallet.</p>
+       {hasPurchasedAuction ? (
+         <div className="text-center bg-green-500/10 border border-green-500/50 text-green-400 p-4 rounded-lg mt-4 space-y-2">
+            <div className="flex items-center justify-center gap-2 font-bold text-lg">
+                <CheckCircle className="h-5 w-5" />
+                <p>Congratulations!</p>
+            </div>
+            <p className="text-sm">You have secured your EXN in the auction. Welcome to the ecosystem!</p>
         </div>
       ) : (
       <div className="space-y-4 pt-4">
@@ -213,11 +199,7 @@ export function BuyExnCard() {
                 </Select>
             </div>
           </div>
-          {limitError ? (
-            <p className="text-xs text-red-400 mt-1 pl-1">{limitError}</p>
-          ) : balanceError ? (
-            <p className="text-xs text-red-400 mt-1 pl-1">{balanceError}</p>
-          ): null}
+          {balanceError && <p className="text-xs text-red-400 mt-1 pl-1">{balanceError}</p>}
 
         <div className="flex justify-center my-2">
           <ArrowDown className="h-5 w-5 text-muted-foreground" />
@@ -267,3 +249,4 @@ export function BuyExnCard() {
   );
 }
 
+    

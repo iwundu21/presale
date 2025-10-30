@@ -42,6 +42,7 @@ type DashboardContextType = {
     presaleInfo: PresaleInfo | null;
     isPresaleActive: boolean;
     isHardCapReached: boolean;
+    hasPurchasedAuction: boolean;
     auctionSlotsSold: number;
 }
 
@@ -66,6 +67,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const isMounted = useRef(false);
   const [exnBalance, setExnBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [hasPurchasedAuction, setHasPurchasedAuction] = useState(false);
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
   const [totalExnSoldForCurrentStage, setTotalExnSoldForCurrentStage] = useState(0);
@@ -110,6 +112,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             if(userData.transactions) {
                 const parsedTxs = userData.transactions.map((tx: any) => ({...tx, date: new Date(tx.date)}));
                 setTransactions(parsedTxs);
+                const hasCompletedPurchase = parsedTxs.some((tx: Transaction) => tx.status === 'Completed');
+                setHasPurchasedAuction(hasCompletedPurchase);
             }
         } else {
              console.error('Failed to fetch user data:', userDataRes.status === 'rejected' ? userDataRes.reason : await userDataRes.value.text());
@@ -217,6 +221,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             if (transactions) {
                  const parsedTxs = transactions.map((t: any) => ({...t, date: new Date(t.date)}));
                  setTransactions(parsedTxs);
+                 const hasCompletedPurchase = parsedTxs.some((tx: Transaction) => tx.status === 'Completed');
+                 setHasPurchasedAuction(hasCompletedPurchase);
             }
         }
         // Manually trigger a refresh of presale data after a purchase
@@ -256,6 +262,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
     if (auctionSlotsSold >= presaleInfo.auctionSlots) {
         toast({ title: "Auction Sold Out", description: "All auction slots have been purchased.", variant: "destructive" });
+        return;
+    }
+    if (hasPurchasedAuction) {
+        toast({ title: "Already Purchased", description: "You have already purchased the auction deal with this wallet.", variant: "destructive" });
         return;
     }
     
@@ -409,7 +419,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             setIsLoadingPurchase(false);
         }
     }
-  }, [publicKey, connection, sendTransaction, toast, wallet, persistTransaction, isHardCapReached, presaleInfo, auctionSlotsSold]);
+  }, [publicKey, connection, sendTransaction, toast, wallet, persistTransaction, isHardCapReached, presaleInfo, auctionSlotsSold, hasPurchasedAuction]);
   
   if (!isClient || connecting || (!connected && isClient)) {
       return <DashboardLoadingSkeleton />; 
@@ -427,6 +437,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     presaleInfo,
     isPresaleActive,
     isHardCapReached,
+    hasPurchasedAuction,
     auctionSlotsSold,
   };
 
@@ -436,3 +447,5 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     </DashboardContext.Provider>
   );
 }
+
+    
