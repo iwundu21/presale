@@ -13,6 +13,7 @@ import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { USDC_MINT } from "@/config";
 import { useDashboard } from "./dashboard-client-provider";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
+import { Progress } from "./ui/progress";
 
 const SOL_GAS_BUFFER = 0.0009; // Reserve 0.0009 SOL for gas fees
 const MAX_PURCHASE_USD = 5000;
@@ -38,6 +39,7 @@ export function BuyExnCard() {
   const isAuctionSoldOut = auctionSlotsSold >= totalSlots;
 
   const auctionPricePerExn = purchaseAmountUsd && purchaseAmountExn ? purchaseAmountUsd / purchaseAmountExn : 0;
+  const progressPercentage = totalSlots > 0 ? (auctionSlotsSold / totalSlots) * 100 : 0;
 
   const exnPrice = presaleInfo?.tokenPrice || 0.09; // This is now the "value" price, not purchase price
   const userTotalInvestedUSD = exnBalance * exnPrice;
@@ -137,7 +139,7 @@ export function BuyExnCard() {
   return (
     <div className="w-full rounded-lg border border-border p-6 space-y-4">
       <div className="space-y-1.5">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-start">
             <div className="flex items-center gap-3 mb-1">
                 <div className="p-2 bg-primary/20 rounded-md">
                     <Zap className="h-6 w-6 text-primary"/>
@@ -146,7 +148,7 @@ export function BuyExnCard() {
             </div>
              <div className="flex items-center gap-2 text-sm font-medium text-primary">
                 <Ticket className="h-5 w-5" />
-                <span>{totalSlots - auctionSlotsSold} Slots Available</span>
+                <span>Auction Deal</span>
             </div>
         </div>
         <CardDescription>
@@ -154,6 +156,14 @@ export function BuyExnCard() {
         </CardDescription>
       </div>
       
+       <div className="space-y-2 pt-2">
+         <Progress value={progressPercentage} className="h-2" />
+         <div className="flex justify-between text-xs text-muted-foreground">
+           <span>Taken: {auctionSlotsSold.toLocaleString()}</span>
+           <span>Remaining: {(totalSlots - auctionSlotsSold).toLocaleString()}</span>
+         </div>
+       </div>
+
        {hasReachedMax ? (
          <div className="text-center bg-green-500/10 border border-green-500/50 text-green-400 p-4 rounded-lg mt-4">
             <p className="font-bold">Congratulations!</p>
