@@ -62,6 +62,14 @@ export function AdminDashboard() {
     const [newBalance, setNewBalance] = useState<number>(0);
     const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
 
+    const fetchPresaleData = async () => {
+         const presaleDataRes = await fetch('/api/presale-data');
+         if (!presaleDataRes.ok) {
+            throw new Error('Failed to fetch presale data');
+         }
+         const presaleData = await presaleDataRes.json();
+         setData(d => ({ ...(d as AdminData), ...presaleData }));
+    }
 
     useEffect(() => {
         const fetchData = async () => {
@@ -218,7 +226,7 @@ export function AdminDashboard() {
             const usersToDownload: UserData[] = await response.json();
 
             if (usersToDownload.length === 0) {
-                toast({ title: "No Data", description: "There are no users with a balance to export yet." });
+                toast({ title: "No Data", description: "There are no users to export yet." });
                 setIsDownloading(false);
                 return;
             }
@@ -272,7 +280,10 @@ export function AdminDashboard() {
             const updatedUser = await res.json();
             
             // Update the user in the local state
-            setUsers(prevUsers => prevUsers.map(u => u.wallet === updatedUser.wallet ? { ...updatedUser, balance: updatedUser.balance } : u));
+            setUsers(prevUsers => prevUsers.map(u => u.wallet === updatedUser.wallet ? { ...u, balance: updatedUser.balance } : u));
+            
+            // Refresh presale data to get updated slot count
+            await fetchPresaleData();
 
 
             toast({ title: "Success", description: "User balance updated successfully.", variant: "success" });

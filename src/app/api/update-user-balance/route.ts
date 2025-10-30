@@ -23,11 +23,11 @@ export async function POST(request: Request) {
             });
 
             if (!currentUser) {
-                // Although upsert would handle this, we need to throw a specific error
-                // that our outer catch block can interpret as a 404.
-                throw new Prisma.PrismaClientKnownRequestError('User not found', {
+                // This will be caught by the outer catch block
+                throw new Prisma.PrismaClientKnownRequestError('User not found.', {
                     code: 'P2025',
-                    clientVersion: '2.19.0'
+                    clientVersion: '5.x.x', 
+                    meta: { modelName: 'User' }
                 });
             }
 
@@ -41,19 +41,17 @@ export async function POST(request: Request) {
 
             // If the new balance is an increase, increment the auction slots sold
             if (decimalBalance.greaterThan(oldBalance)) {
+                const currentSlotsConfig = await tx.config.findUnique({
+                    where: { id: 'auctionSlotsSold' },
+                });
+                const currentSlotsSold = (currentSlotsConfig?.value as { value: number })?.value ?? 0;
+                const newSlotsSold = currentSlotsSold + 1;
+
                 await tx.config.upsert({
                     where: { id: 'auctionSlotsSold' },
-                    update: { 
-                        value: { 
-                            // Using Prisma's atomic increment operation
-                            increment: 1 
-                        }
-                    },
-                    create: { id: 'auctionSlotsSold', value: { value: 1 } },
+                    update: { value: { value: newSlotsSold } },
+                    create: { id: 'auctionSlotsSold', value: { value: newSlotsSold } },
                 });
-            } else if (decimalBalance.lessThan(oldBalance)) {
-                // Optional: handle balance decrease (e.g., decrement slots if needed)
-                // For now, we do nothing as per the requirement to only track additions.
             }
             
             return user;
@@ -72,6 +70,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: 'Invalid input', details: error.errors }, { status: 400 });
         }
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            // "An operation failed because it depends on one or more records that were required but not found."
             if (error.code === 'P2025') {
                  return NextResponse.json({ message: `User with wallet not found.` }, { status: 404 });
             }
