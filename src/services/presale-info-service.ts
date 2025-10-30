@@ -31,7 +31,7 @@ const presaleInfoSchema = z.object({
 const defaultData: PresaleInfo = {
     seasonName: "Presale",
     tokenPrice: 0.09,
-    hardCap: 700000000,
+    hardCap: 0,
     auctionUsdAmount: 50,
     auctionExnAmount: 50000,
     auctionSlots: 850,

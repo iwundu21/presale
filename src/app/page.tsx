@@ -1,24 +1,9 @@
 
-import { LandingPage } from "@/components/landing-page";
-import { getPresaleData } from "@/services/presale-info-service";
-import { getPresaleEndDate } from "@/services/presale-date-service";
+"use client";
 
-// This export ensures the page is always dynamically rendered,
-// fetching the latest data from the database on every request.
-export const revalidate = 0;
-
-export default async function Home() {
-  // Fetch live data from the server
-  const [presaleData, presaleEndDate] = await Promise.all([
-    getPresaleData(),
-    getPresaleEndDate(),
-  ]);
-
-  return (
-    <LandingPage 
-      presaleEndDate={presaleEndDate}
-      presaleInfo={presaleData.presaleInfo}
-      isPresaleActive={presaleData.isPresaleActive}
-    />
-  );
+// This is the main entry point for the landing page content.
+// The actual page content is now rendered within AppProviders
+// to resolve conflicts between Server and Client Components.
+export default function Home() {
+  return null;
 }
