@@ -3,7 +3,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import type { Transaction } from '@/components/dashboard-client-provider';
-import { Prisma } from '@prisma/client';
 
 export async function POST(request: Request) {
     try {
