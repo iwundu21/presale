@@ -102,14 +102,19 @@ export function AdminDashboard() {
 
                 setUsers(usersData);
                 
-                setSeasonName(presaleData.presaleInfo.seasonName);
-                setTokenPrice(presaleData.presaleInfo.tokenPrice);
-                setHardCap(presaleData.presaleInfo.hardCap);
-                setAuctionUsdAmount(presaleData.presaleInfo.auctionUsdAmount);
-                setAuctionExnAmount(presaleData.presaleInfo.auctionExnAmount);
-                setAuctionSlots(presaleData.presaleInfo.auctionSlots);
+                if (presaleData.presaleInfo) {
+                    setSeasonName(presaleData.presaleInfo.seasonName);
+                    setTokenPrice(presaleData.presaleInfo.tokenPrice);
+                    setHardCap(presaleData.presaleInfo.hardCap);
+                    setAuctionUsdAmount(presaleData.presaleInfo.auctionUsdAmount);
+                    setAuctionExnAmount(presaleData.presaleInfo.auctionExnAmount);
+                    setAuctionSlots(presaleData.presaleInfo.auctionSlots);
+                }
                 setIsPresaleActive(presaleData.isPresaleActive);
-                setPresaleEndDate(new Date(presaleDateData.presaleEndDate));
+                if (presaleDateData.presaleEndDate) {
+                    setPresaleEndDate(new Date(presaleDateData.presaleEndDate));
+                }
+
 
             } catch (error) {
                 console.error(error);
@@ -156,7 +161,7 @@ export function AdminDashboard() {
             if (!res.ok) throw new Error('Failed to update presale info');
             const updatedData = await res.json();
             
-            setData(d => d ? { ...d, presaleInfo: updatedData.presaleInfo } : null);
+            setData(d => d ? { ...d, presaleInfo: updatedData.presaleInfo, auctionSlotsSold: updatedData.auctionSlotsSold } : null);
 
             toast({ title: "Success", description: "Presale info updated successfully.", variant: "success" });
         } catch (error) {
@@ -306,7 +311,7 @@ export function AdminDashboard() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Presale Configuration</CardTitle>
-                        <CardDescription>Manage the presale settings, auction deal, and stages.</CardDescription>
+                        <CardDescription>Manage the general presale settings and stages.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="grid md:grid-cols-3 gap-6">
@@ -323,28 +328,32 @@ export function AdminDashboard() {
                                 <Input id="hardCap" type="number" value={hardCap} onChange={(e) => setHardCap(parseInt(e.target.value, 10) || 0)} />
                             </div>
                         </div>
-                        <div className="border-t border-border pt-6">
-                            <h3 className="text-lg font-medium">Auction Deal Settings</h3>
-                             <CardDescription>Configure the special auction package.</CardDescription>
-                             <div className="grid md:grid-cols-3 gap-6 mt-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="auctionUsdAmount">Auction Price (USD)</Label>
-                                    <Input id="auctionUsdAmount" type="number" value={auctionUsdAmount} onChange={(e) => setAuctionUsdAmount(parseFloat(e.target.value) || 0)} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="auctionExnAmount">Auction EXN Amount</Label>
-                                    <Input id="auctionExnAmount" type="number" value={auctionExnAmount} onChange={(e) => setAuctionExnAmount(parseInt(e.target.value, 10) || 0)} />
-                                </div>
-                                 <div className="space-y-2">
-                                    <Label htmlFor="auctionSlots">Total Auction Slots</Label>
-                                    <Input id="auctionSlots" type="number" value={auctionSlots} onChange={(e) => setAuctionSlots(parseInt(e.target.value, 10) || 0)} />
-                                </div>
-                             </div>
-                              <div className="mt-4 text-sm text-muted-foreground">
-                                Slots Sold: {data?.auctionSlotsSold || 0} / {data?.presaleInfo.auctionSlots || 0}
-                             </div>
-                        </div>
+                    </CardContent>
+                </Card>
 
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Auction Deal Settings</CardTitle>
+                        <CardDescription>Configure the special auction package.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                         <div className="grid md:grid-cols-3 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="auctionUsdAmount">Auction Price (USD)</Label>
+                                <Input id="auctionUsdAmount" type="number" value={auctionUsdAmount} onChange={(e) => setAuctionUsdAmount(parseFloat(e.target.value) || 0)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="auctionExnAmount">Auction EXN Amount</Label>
+                                <Input id="auctionExnAmount" type="number" value={auctionExnAmount} onChange={(e) => setAuctionExnAmount(parseInt(e.target.value, 10) || 0)} />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="auctionSlots">Total Auction Slots</Label>
+                                <Input id="auctionSlots" type="number" value={auctionSlots} onChange={(e) => setAuctionSlots(parseInt(e.target.value, 10) || 0)} />
+                            </div>
+                         </div>
+                          <div className="mt-4 text-sm text-muted-foreground">
+                            Slots Sold: {data?.auctionSlotsSold || 0} / {data?.presaleInfo?.auctionSlots || 0}
+                         </div>
                         <Button onClick={handleUpdateInfo} disabled={isUpdating.info}>
                             {isUpdating.info && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Update Presale Info
@@ -544,4 +553,5 @@ export function AdminDashboard() {
             </div>
         </main>
     );
-}
+
+    
