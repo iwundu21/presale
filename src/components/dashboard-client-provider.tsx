@@ -42,6 +42,7 @@ type DashboardContextType = {
     presaleInfo: PresaleInfo | null;
     isPresaleActive: boolean;
     isHardCapReached: boolean;
+    auctionSlotsSold: number;
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
@@ -68,6 +69,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
   const [totalExnSoldForCurrentStage, setTotalExnSoldForCurrentStage] = useState(0);
+  const [auctionSlotsSold, setAuctionSlotsSold] = useState(0);
   const [tokenPrices, setTokenPrices] = useState<TokenPrices>({ SOL: null, USDC: null });
   const [isLoadingPrices, setIsLoadingPrices] = useState(true);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
@@ -119,6 +121,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             setTotalExnSoldForCurrentStage(presaleData.totalExnSoldForCurrentStage || 0);
             setPresaleInfo(presaleData.presaleInfo || null);
             setIsPresaleActive(presaleData.isPresaleActive === undefined ? true : presaleData.isPresaleActive);
+            setAuctionSlotsSold(presaleData.auctionSlotsSold || 0);
         } else {
             console.error('Failed to fetch presale data:', presaleDataRes.status === 'rejected' ? presaleDataRes.reason : await presaleDataRes.value.text());
             throw new Error('Could not load presale progress.');
@@ -171,6 +174,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
                 if (isMounted.current && res.ok) {
                     const data = await res.json();
                     setTotalExnSoldForCurrentStage(data.totalExnSoldForCurrentStage || 0);
+                    setAuctionSlotsSold(data.auctionSlotsSold || 0);
                 }
             } catch (error: any) {
                  if (error.name !== 'AbortError' && isMounted.current) {
@@ -215,6 +219,13 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
                  setTransactions(parsedTxs);
             }
         }
+        // Manually trigger a refresh of presale data after a purchase
+        const presaleDataRes = await fetch('/api/presale-data');
+        if (isMounted.current && presaleDataRes.ok) {
+            const presaleData = await presaleDataRes.json();
+            setAuctionSlotsSold(presaleData.auctionSlotsSold || 0);
+        }
+
         return result;
 
     } catch (error) {
@@ -241,6 +252,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
     if (isHardCapReached) {
         toast({ title: "Hard Cap Reached", description: "The presale has reached its hard cap. No more purchases can be made.", variant: "destructive" });
+        return;
+    }
+    if (auctionSlotsSold >= presaleInfo.auctionSlots) {
+        toast({ title: "Auction Sold Out", description: "All auction slots have been purchased.", variant: "destructive" });
         return;
     }
     
@@ -394,7 +409,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             setIsLoadingPurchase(false);
         }
     }
-  }, [publicKey, connection, sendTransaction, toast, wallet, persistTransaction, isHardCapReached, presaleInfo]);
+  }, [publicKey, connection, sendTransaction, toast, wallet, persistTransaction, isHardCapReached, presaleInfo, auctionSlotsSold]);
   
   if (!isClient || connecting || (!connected && isClient)) {
       return <DashboardLoadingSkeleton />; 
@@ -412,6 +427,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     presaleInfo,
     isPresaleActive,
     isHardCapReached,
+    auctionSlotsSold,
   };
 
   return (

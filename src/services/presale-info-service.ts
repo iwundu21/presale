@@ -10,11 +10,13 @@ export type PresaleInfo = {
     hardCap: number;
     auctionUsdAmount: number;
     auctionExnAmount: number;
+    auctionSlots: number;
 };
 
 export type PresaleData = {
     presaleInfo: PresaleInfo;
     isPresaleActive: boolean;
+    auctionSlotsSold: number;
 };
 
 const presaleInfoSchema = z.object({
@@ -23,17 +25,16 @@ const presaleInfoSchema = z.object({
   hardCap: z.number(),
   auctionUsdAmount: z.number(),
   auctionExnAmount: z.number(),
+  auctionSlots: z.number(),
 });
 
-const defaultData: PresaleData = {
-    presaleInfo: {
-        seasonName: "Presale",
-        tokenPrice: 0.09,
-        hardCap: 700000000,
-        auctionUsdAmount: 50,
-        auctionExnAmount: 50000,
-    },
-    isPresaleActive: true
+const defaultData: PresaleInfo = {
+    seasonName: "Presale",
+    tokenPrice: 0.09,
+    hardCap: 700000000,
+    auctionUsdAmount: 50,
+    auctionExnAmount: 50000,
+    auctionSlots: 850,
 };
 
 async function getOrCreateConfig(id: string, defaultValue: any) {
@@ -58,18 +59,24 @@ async function getOrCreateConfig(id: string, defaultValue: any) {
  */
 export async function getPresaleData(): Promise<PresaleData> {
   try {
-    const presaleInfoValue = await getOrCreateConfig('presaleInfo', defaultData.presaleInfo);
-    const isPresaleActiveValue = await getOrCreateConfig('isPresaleActive', { value: defaultData.isPresaleActive });
+    const presaleInfoValue = await getOrCreateConfig('presaleInfo', defaultData);
+    const isPresaleActiveValue = await getOrCreateConfig('isPresaleActive', { value: true });
+    const auctionSlotsSoldValue = await getOrCreateConfig('auctionSlotsSold', { value: 0 });
 
     const presaleInfo = presaleInfoSchema.safeParse(presaleInfoValue);
 
     return {
-        presaleInfo: presaleInfo.success ? presaleInfo.data : defaultData.presaleInfo,
-        isPresaleActive: (isPresaleActiveValue as { value: boolean })?.value ?? defaultData.isPresaleActive,
+        presaleInfo: presaleInfo.success ? presaleInfo.data : defaultData,
+        isPresaleActive: (isPresaleActiveValue as { value: boolean })?.value ?? true,
+        auctionSlotsSold: (auctionSlotsSoldValue as { value: number })?.value ?? 0,
     };
   } catch (error) {
     console.error("Error fetching presale data:", error);
-    return defaultData;
+    return {
+        presaleInfo: defaultData,
+        isPresaleActive: true,
+        auctionSlotsSold: 0,
+    };
   }
 }
 

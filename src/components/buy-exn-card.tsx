@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowDown, Zap, HelpCircle, TrendingUp } from "lucide-react";
+import { ArrowDown, Zap, HelpCircle, TrendingUp, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,7 +22,7 @@ const LISTING_PRICE_PER_EXN = 0.094;
 type Currency = "USDC" | "SOL";
 
 export function BuyExnCard() {
-  const { connected: isConnected, handlePurchase, tokenPrices, isLoadingPrices, presaleInfo, isPresaleActive, isLoadingPurchase, isHardCapReached, exnBalance } = useDashboard();
+  const { connected: isConnected, handlePurchase, tokenPrices, isLoadingPrices, presaleInfo, isPresaleActive, isLoadingPurchase, isHardCapReached, exnBalance, auctionSlotsSold } = useDashboard();
   const { publicKey } = useWallet();
   const { connection } = useConnection();
   const [currency, setCurrency] = useState<Currency>("USDC");
@@ -34,6 +34,9 @@ export function BuyExnCard() {
   
   const purchaseAmountUsd = presaleInfo?.auctionUsdAmount || 50;
   const purchaseAmountExn = presaleInfo?.auctionExnAmount || 50000;
+  const totalSlots = presaleInfo?.auctionSlots || 850;
+  const isAuctionSoldOut = auctionSlotsSold >= totalSlots;
+
   const auctionPricePerExn = purchaseAmountUsd && purchaseAmountExn ? purchaseAmountUsd / purchaseAmountExn : 0;
 
   const exnPrice = presaleInfo?.tokenPrice || 0.09; // This is now the "value" price, not purchase price
@@ -114,10 +117,10 @@ export function BuyExnCard() {
     }
   };
 
-  const currentBalance = balances[currency as keyof typeof balances];
-  const isPurchaseDisabled = !isConnected || isLoadingPrices || !!balanceError || !!limitError || !isPresaleActive || isLoadingPurchase || isHardCapReached || hasReachedMax;
+  const isPurchaseDisabled = !isConnected || isLoadingPrices || !!balanceError || !!limitError || !isPresaleActive || isLoadingPurchase || isHardCapReached || hasReachedMax || isAuctionSoldOut;
 
   const getButtonText = () => {
+    if (isAuctionSoldOut) return "Auction Sold Out";
     if (hasReachedMax) return "Maximum contribution reached";
     if (isHardCapReached) return "Hard Cap Reached";
     if (!isPresaleActive) return "Presale is currently closed";
@@ -129,16 +132,22 @@ export function BuyExnCard() {
     return "Buy EXN Now";
   }
 
-  const currentPrice = tokenPrices[currency];
+  const currentBalance = balances[currency as keyof typeof balances];
 
   return (
     <div className="w-full rounded-lg border border-border p-6 space-y-4">
       <div className="space-y-1.5">
-        <div className="flex items-center gap-3 mb-1">
-            <div className="p-2 bg-primary/20 rounded-md">
-                <Zap className="h-6 w-6 text-primary"/>
+        <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3 mb-1">
+                <div className="p-2 bg-primary/20 rounded-md">
+                    <Zap className="h-6 w-6 text-primary"/>
+                </div>
+                <CardTitle className="text-2xl font-bold text-white">Buy EXN Tokens</CardTitle>
             </div>
-            <CardTitle className="text-2xl font-bold text-white">Buy EXN Tokens</CardTitle>
+             <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                <Ticket className="h-5 w-5" />
+                <span>{totalSlots - auctionSlotsSold} Slots Available</span>
+            </div>
         </div>
         <CardDescription>
             Your Total Contribution: <strong>${userTotalInvestedUSD.toLocaleString(undefined, {maximumFractionDigits: 2})} / ${MAX_PURCHASE_USD.toLocaleString()}</strong>

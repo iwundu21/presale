@@ -22,6 +22,7 @@ type AdminData = {
     presaleInfo: PresaleInfo;
     isPresaleActive: boolean;
     presaleEndDate: string;
+    auctionSlotsSold: number;
 };
 
 type UserData = {
@@ -45,6 +46,7 @@ export function AdminDashboard() {
     const [hardCap, setHardCap] = useState(0);
     const [auctionUsdAmount, setAuctionUsdAmount] = useState(0);
     const [auctionExnAmount, setAuctionExnAmount] = useState(0);
+    const [auctionSlots, setAuctionSlots] = useState(0);
     const [isPresaleActive, setIsPresaleActive] = useState(true);
     const [presaleEndDate, setPresaleEndDate] = useState<Date | undefined>(new Date());
     
@@ -86,7 +88,8 @@ export function AdminDashboard() {
                 setData({
                     presaleInfo: presaleData.presaleInfo,
                     isPresaleActive: presaleData.isPresaleActive,
-                    presaleEndDate: presaleDateData.presaleEndDate
+                    presaleEndDate: presaleDateData.presaleEndDate,
+                    auctionSlotsSold: presaleData.auctionSlotsSold,
                 });
 
                 setUsers(usersData);
@@ -96,6 +99,7 @@ export function AdminDashboard() {
                 setHardCap(presaleData.presaleInfo.hardCap);
                 setAuctionUsdAmount(presaleData.presaleInfo.auctionUsdAmount);
                 setAuctionExnAmount(presaleData.presaleInfo.auctionExnAmount);
+                setAuctionSlots(presaleData.presaleInfo.auctionSlots);
                 setIsPresaleActive(presaleData.isPresaleActive);
                 setPresaleEndDate(new Date(presaleDateData.presaleEndDate));
 
@@ -138,7 +142,7 @@ export function AdminDashboard() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    presaleInfo: { seasonName, tokenPrice, hardCap, auctionUsdAmount, auctionExnAmount }
+                    presaleInfo: { seasonName, tokenPrice, hardCap, auctionUsdAmount, auctionExnAmount, auctionSlots }
                 }),
             });
             if (!res.ok) throw new Error('Failed to update presale info');
@@ -294,7 +298,7 @@ export function AdminDashboard() {
                         <CardDescription>Manage the presale settings, auction deal, and stages.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        <div className="grid md:grid-cols-2 gap-6">
+                        <div className="grid md:grid-cols-3 gap-6">
                             <div className="space-y-2">
                                 <Label htmlFor="seasonName">Season Name</Label>
                                 <Input id="seasonName" value={seasonName} onChange={(e) => setSeasonName(e.target.value)} />
@@ -303,19 +307,33 @@ export function AdminDashboard() {
                                 <Label htmlFor="tokenPrice">Base Token Price (USD)</Label>
                                 <Input id="tokenPrice" type="number" value={tokenPrice} onChange={(e) => setTokenPrice(parseFloat(e.target.value) || 0)} />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="auctionUsdAmount">Auction Price (USD)</Label>
-                                <Input id="auctionUsdAmount" type="number" value={auctionUsdAmount} onChange={(e) => setAuctionUsdAmount(parseFloat(e.target.value) || 0)} />
-                            </div>
                              <div className="space-y-2">
-                                <Label htmlFor="auctionExnAmount">Auction EXN Amount</Label>
-                                <Input id="auctionExnAmount" type="number" value={auctionExnAmount} onChange={(e) => setAuctionExnAmount(parseInt(e.target.value, 10) || 0)} />
+                                <Label htmlFor="hardCap">Hard Cap (Total Supply for Presale)</Label>
+                                <Input id="hardCap" type="number" value={hardCap} onChange={(e) => setHardCap(parseInt(e.target.value, 10) || 0)} />
                             </div>
                         </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="hardCap">Hard Cap (Total Supply for Presale)</Label>
-                            <Input id="hardCap" type="number" value={hardCap} onChange={(e) => setHardCap(parseInt(e.target.value, 10) || 0)} />
+                        <div className="border-t border-border pt-6">
+                            <h3 className="text-lg font-medium">Auction Deal Settings</h3>
+                             <CardDescription>Configure the special auction package.</CardDescription>
+                             <div className="grid md:grid-cols-3 gap-6 mt-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="auctionUsdAmount">Auction Price (USD)</Label>
+                                    <Input id="auctionUsdAmount" type="number" value={auctionUsdAmount} onChange={(e) => setAuctionUsdAmount(parseFloat(e.target.value) || 0)} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="auctionExnAmount">Auction EXN Amount</Label>
+                                    <Input id="auctionExnAmount" type="number" value={auctionExnAmount} onChange={(e) => setAuctionExnAmount(parseInt(e.target.value, 10) || 0)} />
+                                </div>
+                                 <div className="space-y-2">
+                                    <Label htmlFor="auctionSlots">Total Auction Slots</Label>
+                                    <Input id="auctionSlots" type="number" value={auctionSlots} onChange={(e) => setAuctionSlots(parseInt(e.target.value, 10) || 0)} />
+                                </div>
+                             </div>
+                              <div className="mt-4 text-sm text-muted-foreground">
+                                Slots Sold: {data?.auctionSlotsSold || 0} / {data?.presaleInfo.auctionSlots || 0}
+                             </div>
                         </div>
+
                         <Button onClick={handleUpdateInfo} disabled={isUpdating.info}>
                             {isUpdating.info && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Update Presale Info
@@ -516,5 +534,3 @@ export function AdminDashboard() {
         </main>
     );
 }
-
-    

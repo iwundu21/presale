@@ -9,6 +9,7 @@ const defaultPresaleInfo = {
     hardCap: 700000000,
     auctionUsdAmount: 50,
     auctionExnAmount: 50000,
+    auctionSlots: 850,
 };
 
 const presaleInfoSchema = z.object({
@@ -17,6 +18,7 @@ const presaleInfoSchema = z.object({
   hardCap: z.number(),
   auctionUsdAmount: z.number(),
   auctionExnAmount: z.number(),
+  auctionSlots: z.number(),
 });
 
 async function getOrCreateConfig(id: string, defaultValue: any) {
@@ -33,6 +35,7 @@ export async function GET() {
     try {
         const presaleInfoValue = await getOrCreateConfig('presaleInfo', defaultPresaleInfo);
         const isPresaleActiveValue = await getOrCreateConfig('isPresaleActive', { value: true });
+        const auctionSlotsSoldValue = await getOrCreateConfig('auctionSlotsSold', { value: 0 });
         
         const presaleInfo = presaleInfoSchema.safeParse(presaleInfoValue);
         
@@ -47,6 +50,7 @@ export async function GET() {
             totalExnSoldForCurrentStage: totalExnSold,
             presaleInfo: presaleInfo.success ? presaleInfo.data : defaultPresaleInfo,
             isPresaleActive: (isPresaleActiveValue as { value: boolean })?.value ?? true,
+            auctionSlotsSold: (auctionSlotsSoldValue as { value: number })?.value ?? 0,
         }, { status: 200 });
 
     } catch (error) {
@@ -57,6 +61,7 @@ export async function GET() {
             totalExnSoldForCurrentStage: 0,
             presaleInfo: defaultPresaleInfo,
             isPresaleActive: true,
+            auctionSlotsSold: 0,
         }, { status: 200 });
     }
 }
@@ -84,12 +89,14 @@ export async function POST(request: Request) {
 
         const updatedPresaleInfoValue = await getOrCreateConfig('presaleInfo', defaultPresaleInfo);
         const updatedIsPresaleActiveValue = await getOrCreateConfig('isPresaleActive', { value: true });
+        const updatedAuctionSlotsSoldValue = await getOrCreateConfig('auctionSlotsSold', { value: 0 });
         const updatedInfo = presaleInfoSchema.safeParse(updatedPresaleInfoValue);
 
         return NextResponse.json({
             message: 'Presale data updated successfully',
             presaleInfo: updatedInfo.success ? updatedInfo.data : defaultPresaleInfo,
             isPresaleActive: (updatedIsPresaleActiveValue as { value: boolean })?.value ?? true,
+            auctionSlotsSold: (updatedAuctionSlotsSoldValue as { value: number })?.value ?? 0,
         }, { status: 200 });
 
     } catch (error: any) {
