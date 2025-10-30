@@ -37,21 +37,6 @@ const defaultData: PresaleInfo = {
     auctionSlots: 850,
 };
 
-async function getOrCreateConfig(id: string, defaultValue: any) {
-  try {
-    let config = await prisma.config.findUnique({ where: { id } });
-    if (!config) {
-      config = await prisma.config.create({
-        data: { id, value: defaultValue },
-      });
-    }
-    return config.value;
-  } catch (error) {
-    console.error(`Error in getOrCreateConfig for id: ${id}`, error);
-    return defaultValue;
-  }
-}
-
 /**
  * Gets the current presale data (season, price, active status) from the API.
  * This is a server-side function.
@@ -59,16 +44,16 @@ async function getOrCreateConfig(id: string, defaultValue: any) {
  */
 export async function getPresaleData(): Promise<PresaleData> {
   try {
-    const presaleInfoValue = await getOrCreateConfig('presaleInfo', defaultData);
-    const isPresaleActiveValue = await getOrCreateConfig('isPresaleActive', { value: true });
-    const auctionSlotsSoldValue = await getOrCreateConfig('auctionSlotsSold', { value: 0 });
+    const presaleInfoConfig = await prisma.config.findUnique({ where: { id: 'presaleInfo' } });
+    const isPresaleActiveConfig = await prisma.config.findUnique({ where: { id: 'isPresaleActive' } });
+    const auctionSlotsSoldConfig = await prisma.config.findUnique({ where: { id: 'auctionSlotsSold' } });
 
-    const presaleInfo = presaleInfoSchema.safeParse(presaleInfoValue);
+    const presaleInfo = presaleInfoSchema.safeParse(presaleInfoConfig?.value);
 
     return {
         presaleInfo: presaleInfo.success ? presaleInfo.data : defaultData,
-        isPresaleActive: (isPresaleActiveValue as { value: boolean })?.value ?? true,
-        auctionSlotsSold: (auctionSlotsSoldValue as { value: number })?.value ?? 0,
+        isPresaleActive: (isPresaleActiveConfig?.value as boolean) ?? true,
+        auctionSlotsSold: (auctionSlotsSoldConfig?.value as number) ?? 0,
     };
   } catch (error) {
     console.error("Error fetching presale data:", error);
@@ -100,7 +85,7 @@ export async function setPresaleInfo(newInfo: PresaleInfo): Promise<void> {
 export async function setPresaleStatus(isActive: boolean): Promise<void> {
     await prisma.config.upsert({
         where: { id: 'isPresaleActive' },
-        update: { value: { value: isActive } },
-        create: { id: 'isPresaleActive', value: { value: isActive } },
+        update: { value: isActive },
+        create: { id: 'isPresaleActive', value: isActive },
     });
 }

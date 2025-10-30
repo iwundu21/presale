@@ -21,24 +21,14 @@ const presaleInfoSchema = z.object({
   auctionSlots: z.number(),
 });
 
-async function getOrCreateConfig(id: string, defaultValue: any) {
-  let config = await prisma.config.findUnique({ where: { id } });
-  if (!config) {
-    config = await prisma.config.create({
-      data: { id, value: defaultValue },
-    });
-  }
-  return config.value;
-}
-
 export async function GET() {
     try {
-        const presaleInfoValue = await getOrCreateConfig('presaleInfo', defaultPresaleInfo);
-        const isPresaleActiveValue = await getOrCreateConfig('isPresaleActive', true);
-        const auctionSlotsSoldValue = await getOrCreateConfig('auctionSlotsSold', 0);
-        
-        const presaleInfo = presaleInfoSchema.safeParse(presaleInfoValue);
-        
+        const presaleInfoConfig = await prisma.config.findUnique({ where: { id: 'presaleInfo' } });
+        const isPresaleActiveConfig = await prisma.config.findUnique({ where: { id: 'isPresaleActive' } });
+        const auctionSlotsSoldConfig = await prisma.config.findUnique({ where: { id: 'auctionSlotsSold' } });
+
+        const presaleInfo = presaleInfoSchema.safeParse(presaleInfoConfig?.value);
+
         const totalSoldAggregate = await prisma.user.aggregate({
             _sum: {
                 balance: true,
@@ -49,20 +39,18 @@ export async function GET() {
         return NextResponse.json({
             totalExnSoldForCurrentStage: totalExnSold,
             presaleInfo: presaleInfo.success ? presaleInfo.data : defaultPresaleInfo,
-            isPresaleActive: isPresaleActiveValue as boolean,
-            auctionSlotsSold: auctionSlotsSoldValue as number,
+            isPresaleActive: (isPresaleActiveConfig?.value as boolean) ?? true,
+            auctionSlotsSold: (auctionSlotsSoldConfig?.value as number) ?? 0,
         }, { status: 200 });
 
     } catch (error) {
         console.error('API Presale-Data Error:', error);
-        // If there's an error (e.g. database down), return default values with a 200 status
-        // so the frontend can still render with fallback data.
         return NextResponse.json({
             totalExnSoldForCurrentStage: 0,
             presaleInfo: defaultPresaleInfo,
             isPresaleActive: true,
             auctionSlotsSold: 0,
-        }, { status: 200 });
+        }, { status: 500 });
     }
 }
 
@@ -87,10 +75,10 @@ export async function POST(request: Request) {
             });
         }
 
-        const updatedPresaleInfoValue = await getOrCreateConfig('presaleInfo', defaultPresaleInfo);
-        const updatedIsPresaleActiveValue = await getOrCreateConfig('isPresaleActive', true);
-        const updatedAuctionSlotsSoldValue = await getOrCreateConfig('auctionSlotsSold', 0);
-        const updatedInfo = presaleInfoSchema.safeParse(updatedPresaleInfoValue);
+        const presaleInfoConfig = await prisma.config.findUnique({ where: { id: 'presaleInfo' } });
+        const isPresaleActiveConfig = await prisma.config.findUnique({ where: { id: 'isPresaleActive' } });
+        const auctionSlotsSoldConfig = await prisma.config.findUnique({ where: { id: 'auctionSlotsSold' } });
+        const updatedInfo = presaleInfoSchema.safeParse(presaleInfoConfig?.value);
         
         const totalSoldAggregate = await prisma.user.aggregate({
             _sum: {
@@ -103,8 +91,8 @@ export async function POST(request: Request) {
             message: 'Presale data updated successfully',
             totalExnSoldForCurrentStage: totalExnSold,
             presaleInfo: updatedInfo.success ? updatedInfo.data : defaultPresaleInfo,
-            isPresaleActive: updatedIsPresaleActiveValue as boolean,
-            auctionSlotsSold: updatedAuctionSlotsSoldValue as number,
+            isPresaleActive: (isPresaleActiveConfig?.value as boolean) ?? true,
+            auctionSlotsSold: (auctionSlotsSoldConfig?.value as number) ?? 0,
         }, { status: 200 });
 
     } catch (error: any) {
