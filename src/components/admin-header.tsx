@@ -3,6 +3,7 @@
 
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useState, useEffect } from 'react';
+import { Logo } from './logo';
 
 export function AdminHeader() {
     const [isClient, setIsClient] = useState(false);
@@ -15,7 +16,7 @@ export function AdminHeader() {
         <header className="p-4 border-b border-white/10 sticky top-0 bg-background/80 backdrop-blur-sm z-10">
             <div className="container mx-auto flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                    <h1 className="text-2xl font-bold text-white">Exnus Admin</h1>
+                    <Logo isAdmin />
                 </div>
                  {isClient && <WalletMultiButton style={{ 
                     '--dapp-name': 'Exnus Admin',
