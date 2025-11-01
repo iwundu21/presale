@@ -17,6 +17,9 @@ import { Input } from "./ui/input";
 
 const SOL_GAS_BUFFER = 0.0009; // Reserve 0.0009 SOL for gas fees
 const LISTING_PRICE_PER_EXN = 0.12;
+const MIN_PURCHASE_USD = 50;
+const MAX_PURCHASE_USD = 5000;
+
 
 type Currency = "USDC" | "SOL";
 
@@ -32,6 +35,7 @@ export function BuyExnCard() {
   const [balances, setBalances] = useState({ SOL: 0, USDC: 0 });
   const [isFetchingBalance, setIsFetchingBalance] = useState(false);
   const [balanceError, setBalanceError] = useState("");
+  const [purchaseLimitError, setPurchaseLimitError] = useState("");
   
   const tokenPrice = presaleInfo?.tokenPrice || 0.09;
 
@@ -91,15 +95,19 @@ export function BuyExnCard() {
       }
   };
 
+  const usdValue = parseFloat(payAmount) * (tokenPrices[currency] || 0);
+
   useEffect(() => {
     const numericPayAmount = parseFloat(payAmount);
-    if (isNaN(numericPayAmount)) {
+    // Reset errors if input is empty or invalid
+    if (isNaN(numericPayAmount) || numericPayAmount <= 0) {
       setBalanceError("");
+      setPurchaseLimitError("");
       return;
     }
-    
-    const maxBalance = currency === 'SOL' ? balances.SOL - SOL_GAS_BUFFER : balances[currency as keyof typeof balances];
 
+    // Check balance
+    const maxBalance = currency === 'SOL' ? balances.SOL - SOL_GAS_BUFFER : balances[currency as keyof typeof balances];
     if (numericPayAmount > maxBalance) {
       setBalanceError(`Insufficient ${currency} balance.`);
     } else if (currency !== 'SOL' && balances.SOL < SOL_GAS_BUFFER) {
@@ -107,7 +115,17 @@ export function BuyExnCard() {
     } else {
       setBalanceError("");
     }
-  }, [payAmount, currency, balances]);
+
+    // Check purchase limits
+    if (usdValue < MIN_PURCHASE_USD) {
+      setPurchaseLimitError(`Minimum purchase is $${MIN_PURCHASE_USD}.`);
+    } else if (usdValue > MAX_PURCHASE_USD) {
+      setPurchaseLimitError(`Maximum purchase is $${MAX_PURCHASE_USD}.`);
+    } else {
+      setPurchaseLimitError("");
+    }
+
+  }, [payAmount, currency, balances, usdValue]);
 
   const handleBuyNow = () => {
     const numericExnAmount = parseFloat(exnAmount);
@@ -117,7 +135,7 @@ export function BuyExnCard() {
     }
   };
 
-  const isPurchaseDisabled = !isConnected || isLoadingPrices || !!balanceError || !isPresaleActive || isLoadingPurchase || isHardCapReached || parseFloat(payAmount) <= 0 || parseFloat(exnAmount) <= 0;
+  const isPurchaseDisabled = !isConnected || isLoadingPrices || !!balanceError || !!purchaseLimitError || !isPresaleActive || isLoadingPurchase || isHardCapReached || parseFloat(payAmount) <= 0;
 
   const getButtonText = () => {
     if (isHardCapReached) return "Hard Cap Reached";
@@ -125,12 +143,12 @@ export function BuyExnCard() {
     if (isLoadingPrices) return 'Loading Prices...';
     if (!isConnected) return "Connect Wallet to Buy";
     if (balanceError) return balanceError;
+    if (purchaseLimitError) return purchaseLimitError;
     if (isLoadingPurchase) return "Processing...";
     return "Buy EXN Now";
   }
 
   const currentBalance = balances[currency as keyof typeof balances];
-  const usdValue = parseFloat(payAmount) * (tokenPrices[currency] || 0);
 
   return (
     <div className="w-full rounded-lg border border-border p-6 space-y-4">
@@ -193,7 +211,7 @@ export function BuyExnCard() {
             </div>
              {payAmount && !isNaN(usdValue) && usdValue > 0 && <div className="text-sm font-normal text-muted-foreground">~ ${usdValue.toFixed(2)} USD</div>}
           </div>
-          {balanceError && <p className="text-xs text-red-400 mt-1 pl-1">{balanceError}</p>}
+          {(balanceError || purchaseLimitError) && <p className="text-xs text-red-400 mt-1 pl-1">{balanceError || purchaseLimitError}</p>}
 
         <div className="flex justify-center my-2">
           <ArrowDown className="h-5 w-5 text-muted-foreground" />
@@ -229,5 +247,3 @@ export function BuyExnCard() {
     </div>
   );
 }
-
-    
