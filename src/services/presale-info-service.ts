@@ -44,16 +44,25 @@ const defaultData: PresaleInfo = {
  */
 export async function getPresaleData(): Promise<PresaleData> {
   try {
-    const presaleInfoConfig = await prisma.config.findUnique({ where: { id: 'presaleInfo' } });
-    const isPresaleActiveConfig = await prisma.config.findUnique({ where: { id: 'isPresaleActive' } });
-    const auctionSlotsSoldConfig = await prisma.config.findUnique({ where: { id: 'auctionSlotsSold' } });
+    const configs = await prisma.config.findMany({
+        where: {
+            id: { in: ['presaleInfo', 'isPresaleActive', 'auctionSlotsSold'] }
+        }
+    });
 
-    const presaleInfo = presaleInfoSchema.safeParse(presaleInfoConfig?.value);
+    const configMap = new Map(configs.map(c => [c.id, c.value]));
+
+    const presaleInfoRaw = configMap.get('presaleInfo');
+    const presaleInfoParsed = presaleInfoSchema.safeParse(presaleInfoRaw);
+    const presaleInfo = presaleInfoParsed.success ? presaleInfoParsed.data : defaultData;
+
+    const isPresaleActive = (configMap.get('isPresaleActive') as boolean) ?? true;
+    const auctionSlotsSold = (configMap.get('auctionSlotsSold') as number) ?? 0;
 
     return {
-        presaleInfo: presaleInfo.success ? presaleInfo.data : defaultData,
-        isPresaleActive: (isPresaleActiveConfig?.value as boolean) ?? true,
-        auctionSlotsSold: (auctionSlotsSoldConfig?.value as number) ?? 0,
+        presaleInfo: presaleInfo,
+        isPresaleActive: isPresaleActive,
+        auctionSlotsSold: auctionSlotsSold,
     };
   } catch (error) {
     console.error("Error fetching presale data:", error);

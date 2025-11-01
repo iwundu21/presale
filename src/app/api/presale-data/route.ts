@@ -4,6 +4,17 @@ import prisma from '@/lib/prisma';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 
+const presaleInfoSchema = z.object({
+  seasonName: z.string(),
+  tokenPrice: z.number(),
+  hardCap: z.number(),
+  auctionUsdAmount: z.number(),
+  auctionExnAmount: z.number(),
+  auctionSlots: z.number(),
+});
+
+const dateSchema = z.string().datetime();
+
 const defaultPresaleInfo = { 
     seasonName: "Presale", 
     tokenPrice: 0.09, 
@@ -19,97 +30,106 @@ const getDefaultEndDate = () => {
     return d.toISOString();
 };
 
-const presaleInfoSchema = z.object({
-  seasonName: z.string(),
-  tokenPrice: z.number(),
-  hardCap: z.number(),
-  auctionUsdAmount: z.number(),
-  auctionExnAmount: z.number(),
-  auctionSlots: z.number(),
-});
-
-const dateSchema = z.string().datetime();
-
 
 export async function GET() {
     try {
-        const presaleInfoConfig = await prisma.config.findUnique({ where: { id: 'presaleInfo' } });
-        const isPresaleActiveConfig = await prisma.config.findUnique({ where: { id: 'isPresaleActive' } });
-        const auctionSlotsSoldConfig = await prisma.config.findUnique({ where: { id: 'auctionSlotsSold' } });
-        const endDateConfig = await prisma.config.findUnique({ where: { id: 'presaleEndDate' } });
+        const configs = await prisma.config.findMany({
+            where: {
+                id: { in: ['presaleInfo', 'isPresaleActive', 'auctionSlotsSold', 'presaleEndDate'] }
+            }
+        });
 
-        const presaleInfo = presaleInfoSchema.safeParse(presaleInfoConfig?.value);
+        const configMap = new Map(configs.map(c => [c.id, c.value]));
+
+        const presaleInfoRaw = configMap.get('presaleInfo');
+        const presaleInfoParsed = presaleInfoSchema.safeParse(presaleInfoRaw);
+        const presaleInfo = presaleInfoParsed.success ? presaleInfoParsed.data : defaultPresaleInfo;
+
+        const isPresaleActive = (configMap.get('isPresaleActive') as boolean) ?? true;
+        const auctionSlotsSold = (configMap.get('auctionSlotsSold') as number) ?? 0;
+        
+        let presaleEndDate = configMap.get('presaleEndDate') as string | undefined;
+        if (!presaleEndDate || isNaN(new Date(presaleEndDate).getTime())) {
+            presaleEndDate = getDefaultEndDate();
+        }
+
         const totalSoldAggregate = await prisma.user.aggregate({
             _sum: {
                 balance: true,
             }
         });
         const totalExnSold = totalSoldAggregate._sum.balance?.toNumber() || 0;
-        
-        let presaleEndDate;
-        if (endDateConfig && typeof endDateConfig.value === 'string') {
-             presaleEndDate = endDateConfig.value;
-        } else {
-            presaleEndDate = getDefaultEndDate();
-        }
 
         return NextResponse.json({
             totalExnSoldForCurrentStage: totalExnSold,
-            presaleInfo: presaleInfo.success ? presaleInfo.data : defaultPresaleInfo,
-            isPresaleActive: (isPresaleActiveConfig?.value as boolean) ?? true,
-            auctionSlotsSold: (auctionSlotsSoldConfig?.value as number) ?? 0,
+            presaleInfo: presaleInfo,
+            isPresaleActive: isPresaleActive,
+            auctionSlotsSold: auctionSlotsSold,
             presaleEndDate: presaleEndDate,
         }, { status: 200 });
 
     } catch (error) {
         console.error('API Presale-Data GET Error:', error);
-        return NextResponse.json({
-            totalExnSoldForCurrentStage: 0,
-            presaleInfo: defaultPresaleInfo,
-            isPresaleActive: true,
-            auctionSlotsSold: 0,
-            presaleEndDate: getDefaultEndDate(),
-        }, { status: 200 });
+        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }
 
 export async function POST(request: Request) {
      try {
-        const { presaleInfo, isPresaleActive, presaleEndDate } = await request.json();
+        const body = await request.json();
 
-        if (presaleInfo) {
-            const parsedInfo = presaleInfoSchema.parse(presaleInfo);
-            await prisma.config.upsert({
+        // Use transactions for multiple updates
+        const updateTasks: any[] = [];
+
+        if (body.presaleInfo) {
+            const parsedInfo = presaleInfoSchema.parse(body.presaleInfo);
+            updateTasks.push(prisma.config.upsert({
                 where: { id: 'presaleInfo' },
                 update: { value: parsedInfo },
                 create: { id: 'presaleInfo', value: parsedInfo },
-            });
+            }));
         }
 
-        if (typeof isPresaleActive === 'boolean') {
-             await prisma.config.upsert({
+        if (typeof body.isPresaleActive === 'boolean') {
+             updateTasks.push(prisma.config.upsert({
                 where: { id: 'isPresaleActive' },
-                update: { value: isPresaleActive },
-                create: { id: 'isPresaleActive', value: isPresaleActive },
-            });
+                update: { value: body.isPresaleActive },
+                create: { id: 'isPresaleActive', value: body.isPresaleActive },
+            }));
         }
         
-        if (presaleEndDate) {
-            const parsedDate = dateSchema.parse(presaleEndDate);
-            await prisma.config.upsert({
+        if (body.presaleEndDate) {
+            const parsedDate = dateSchema.parse(body.presaleEndDate);
+            updateTasks.push(prisma.config.upsert({
                 where: { id: 'presaleEndDate' },
                 update: { value: parsedDate },
                 create: { id: 'presaleEndDate', value: parsedDate },
-            });
+            }));
         }
 
-        // Re-fetch all data to ensure the response is complete and consistent
-        const presaleInfoConfig = await prisma.config.findUnique({ where: { id: 'presaleInfo' } });
-        const isPresaleActiveConfig = await prisma.config.findUnique({ where: { id: 'isPresaleActive' } });
-        const auctionSlotsSoldConfig = await prisma.config.findUnique({ where: { id: 'auctionSlotsSold' } });
-        const endDateConfig = await prisma.config.findUnique({ where: { id: 'presaleEndDate' } });
+        if (updateTasks.length > 0) {
+            await prisma.$transaction(updateTasks);
+        }
+
+        // After updates, re-fetch all data to return the consistent state
+        const configs = await prisma.config.findMany({
+            where: {
+                id: { in: ['presaleInfo', 'isPresaleActive', 'auctionSlotsSold', 'presaleEndDate'] }
+            }
+        });
+        const configMap = new Map(configs.map(c => [c.id, c.value]));
+
+        const presaleInfoRaw = configMap.get('presaleInfo');
+        const presaleInfoParsed = presaleInfoSchema.safeParse(presaleInfoRaw);
+        const updatedInfo = presaleInfoParsed.success ? presaleInfoParsed.data : defaultPresaleInfo;
+
+        const updatedIsPresaleActive = (configMap.get('isPresaleActive') as boolean) ?? true;
+        const updatedAuctionSlotsSold = (configMap.get('auctionSlotsSold') as number) ?? 0;
         
-        const updatedInfo = presaleInfoSchema.safeParse(presaleInfoConfig?.value);
+        let updatedEndDate = configMap.get('presaleEndDate') as string | undefined;
+        if (!updatedEndDate || isNaN(new Date(updatedEndDate).getTime())) {
+            updatedEndDate = getDefaultEndDate();
+        }
         
         const totalSoldAggregate = await prisma.user.aggregate({
             _sum: {
@@ -117,20 +137,13 @@ export async function POST(request: Request) {
             }
         });
         const totalExnSold = totalSoldAggregate._sum.balance?.toNumber() || 0;
-        
-        let updatedEndDate;
-        if (endDateConfig && typeof endDateConfig.value === 'string') {
-             updatedEndDate = endDateConfig.value;
-        } else {
-            updatedEndDate = getDefaultEndDate();
-        }
 
         return NextResponse.json({
             message: 'Presale data updated successfully',
             totalExnSoldForCurrentStage: totalExnSold,
-            presaleInfo: updatedInfo.success ? updatedInfo.data : defaultPresaleInfo,
-            isPresaleActive: (isPresaleActiveConfig?.value as boolean) ?? true,
-            auctionSlotsSold: (auctionSlotsSoldConfig?.value as number) ?? 0,
+            presaleInfo: updatedInfo,
+            isPresaleActive: updatedIsPresaleActive,
+            auctionSlotsSold: updatedAuctionSlotsSold,
             presaleEndDate: updatedEndDate,
         }, { status: 200 });
 
