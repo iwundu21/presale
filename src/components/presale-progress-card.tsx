@@ -54,11 +54,6 @@ export function PresaleProgressCard() {
                     </div>
                 </div>
 
-                 <div className="text-center bg-muted/20 p-3 rounded-lg border border-border">
-                    <p className="text-sm font-semibold text-white break-all">
-                        Total Raised: ${formatNumber(totalRaised, { notation: 'standard', maximumFractionDigits: 0 })}
-                    </p>
-                 </div>
             </div>
         </div>
     );
