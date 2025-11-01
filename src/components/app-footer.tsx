@@ -2,7 +2,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 
 export function AppFooter() {
     return (
@@ -13,18 +12,15 @@ export function AppFooter() {
                     <Link href="/terms" className="hover:text-white transition-colors">Terms & Conditions</Link>
                     <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
                 </div>
-                <div className="flex items-center gap-6">
-                    <a href="https://x.com/exnusprotocol?s=09" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-muted-foreground hover:text-white transition-colors">
-                        <Image src="/x.jpg" alt="X Logo" width={20} height={20} className="h-5 w-5" />
-                        <span className="text-xs">X</span>
+                <div className="flex items-center gap-4">
+                    <a href="https://x.com/exnusprotocol?s=09" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-white transition-colors">
+                        X
                     </a>
-                    <a href="https://discord.gg/v8MpYYFdP8" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-muted-foreground hover:text-white transition-colors">
-                        <Image src="/discord.jpg" alt="Discord Logo" width={20} height={20} className="h-5 w-5" />
-                        <span className="text-xs">Discord</span>
+                    <a href="https://discord.gg/v8MpYYFdP8" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-white transition-colors">
+                        Discord
                     </a>
-                    <a href="https://t.me/Exnusprotocol" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-muted-foreground hover:text-white transition-colors">
-                        <Image src="/tg.jpg" alt="Telegram Logo" width={20} height={20} className="h-5 w-5" />
-                        <span className="text-xs">Telegram</span>
+                    <a href="https://t.me/Exnusprotocol" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-white transition-colors">
+                        Telegram
                     </a>
                 </div>
             </div>
