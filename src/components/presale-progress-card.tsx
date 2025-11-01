@@ -20,7 +20,7 @@ export function PresaleProgressCard() {
     const hardCap = presaleInfo?.hardCap || 0;
     const progressPercentage = hardCap > 0 ? (totalExnSoldForCurrentStage / hardCap) * 100 : 0;
     const totalRaised = totalExnSoldForCurrentStage * (presaleInfo?.tokenPrice || 0);
-    const remainingExn = hardCap - totalExnSoldForCurrentStage;
+    const remainingExn = hardCap > totalExnSoldForCurrentStage ? hardCap - totalExnSoldForCurrentStage : 0;
 
     return (
         <div className="w-full rounded-lg border border-border p-6 space-y-4">
