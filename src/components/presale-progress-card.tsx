@@ -15,12 +15,18 @@ const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
 };
 
 export function PresaleProgressCard() {
-    const { totalExnSoldForCurrentStage, presaleInfo } = useDashboard();
+    const { totalExnSoldForCurrentStage, presaleInfo, isPresaleActive, isHardCapReached } = useDashboard();
     
     const hardCap = presaleInfo?.hardCap || 0;
     const progressPercentage = hardCap > 0 ? (totalExnSoldForCurrentStage / hardCap) * 100 : 0;
-    const totalRaised = totalExnSoldForCurrentStage * (presaleInfo?.tokenPrice || 0);
     const remainingExn = hardCap > totalExnSoldForCurrentStage ? hardCap - totalExnSoldForCurrentStage : 0;
+
+    const getMessage = () => {
+        if (!isPresaleActive || isHardCapReached) {
+            return "The presale has concluded. Thank you for your participation!";
+        }
+        return "The presale is live! Join the revolution.";
+    }
 
     return (
         <div className="w-full rounded-lg border border-border p-6 space-y-4">
@@ -32,7 +38,7 @@ export function PresaleProgressCard() {
                     <CardTitle className="text-2xl font-bold text-white">{presaleInfo?.seasonName || "Presale"} Progress</CardTitle>
                 </div>
                  <CardDescription>
-                    The presale is live! Join the revolution.
+                    {getMessage()}
                 </CardDescription>
             </div>
             <div className="space-y-4 pt-4">
