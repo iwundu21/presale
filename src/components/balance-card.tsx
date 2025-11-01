@@ -7,7 +7,14 @@ import { CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 
 export function BalanceCard() {
-    const { exnBalance } = useDashboard();
+    const { exnBalance, isPresaleActive } = useDashboard();
+
+    const getClaimingMessage = () => {
+        if (isPresaleActive) {
+            return "Token claiming will be enabled at the end of the presale.";
+        }
+        return "Stay tuned. We are calculating your total purchase for the upcoming token claim.";
+    }
 
     return (
         <div className="w-full rounded-lg border border-border p-4 flex items-center justify-between flex-wrap gap-4">
@@ -24,7 +31,7 @@ export function BalanceCard() {
             </div>
             <div className="flex items-center gap-4">
                 <p className="text-xs text-muted-foreground text-right">
-                    Token claiming will be enabled at the end of the presale.
+                    {getClaimingMessage()}
                 </p>
                 <Button disabled>Claim</Button>
             </div>
