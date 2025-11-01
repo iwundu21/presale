@@ -190,7 +190,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             clearInterval(intervalId);
         };
     }
-  }, [connected, publicKey, fetchDashboardData]);
+  }, [connected, publicKey]);
   
   useEffect(() => {
     if (isClient && !connected && !connecting) {
