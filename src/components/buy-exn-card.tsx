@@ -18,13 +18,13 @@ import { Input } from "./ui/input";
 const SOL_GAS_BUFFER = 0.0009; // Reserve 0.0009 SOL for gas fees
 const LISTING_PRICE_PER_EXN = 0.12;
 const MIN_PURCHASE_USD = 50;
-const MAX_PURCHASE_USD = 5000;
+const MAX_PURCHASE_USD_TOTAL = 5000;
 
 
 type Currency = "USDC" | "SOL";
 
 export function BuyExnCard() {
-  const { connected: isConnected, handlePurchase, tokenPrices, isLoadingPrices, presaleInfo, isPresaleActive, isLoadingPurchase, isHardCapReached } = useDashboard();
+  const { connected: isConnected, handlePurchase, tokenPrices, isLoadingPrices, presaleInfo, isPresaleActive, isLoadingPurchase, isHardCapReached, totalUSDPurchased } = useDashboard();
   const { publicKey } = useWallet();
   const { connection } = useConnection();
 
@@ -107,7 +107,7 @@ export function BuyExnCard() {
     }
 
     // Check balance
-    const maxBalance = currency === 'SOL' ? balances.SOL - SOL_GAS_BUFFER : balances[currency as keyof typeof balances];
+    const maxBalance = currency === 'SOL' ? balances.SOL - SOL_GAS_BUFFER : balances.USDC;
     if (numericPayAmount > maxBalance) {
       setBalanceError(`Insufficient ${currency} balance.`);
     } else if (currency !== 'SOL' && balances.SOL < SOL_GAS_BUFFER) {
@@ -119,13 +119,13 @@ export function BuyExnCard() {
     // Check purchase limits
     if (usdValue < MIN_PURCHASE_USD) {
       setPurchaseLimitError(`Minimum purchase is $${MIN_PURCHASE_USD}.`);
-    } else if (usdValue > MAX_PURCHASE_USD) {
-      setPurchaseLimitError(`Maximum purchase is $${MAX_PURCHASE_USD}.`);
+    } else if (totalUSDPurchased + usdValue > MAX_PURCHASE_USD_TOTAL) {
+       setPurchaseLimitError(`This purchase exceeds the wallet maximum of ${MAX_PURCHASE_USD_TOTAL.toLocaleString()} USDC.`);
     } else {
       setPurchaseLimitError("");
     }
 
-  }, [payAmount, currency, balances, usdValue]);
+  }, [payAmount, currency, balances, usdValue, totalUSDPurchased]);
 
   const handleBuyNow = () => {
     const numericExnAmount = parseFloat(exnAmount);
@@ -134,6 +134,8 @@ export function BuyExnCard() {
       handlePurchase(numericExnAmount, numericPayAmount, currency);
     }
   };
+  
+  const remainingPurchaseable = MAX_PURCHASE_USD_TOTAL - totalUSDPurchased;
 
   const isPurchaseDisabled = !isConnected || isLoadingPrices || !!balanceError || !!purchaseLimitError || !isPresaleActive || isLoadingPurchase || isHardCapReached || parseFloat(payAmount) <= 0;
 
@@ -148,7 +150,7 @@ export function BuyExnCard() {
     return "Buy EXN Now";
   }
 
-  const currentBalance = balances[currency as keyof typeof balances];
+  const currentBalance = balances[currency];
 
   return (
     <div className="w-full rounded-lg border border-border p-6 space-y-4">
@@ -233,6 +235,13 @@ export function BuyExnCard() {
           </div>
         </div>
       </div>
+      
+       <div className="text-center text-xs text-muted-foreground pt-2">
+            You have contributed ${totalUSDPurchased.toLocaleString(undefined, {maximumFractionDigits: 2})} of ${MAX_PURCHASE_USD_TOTAL.toLocaleString()} USDC total.
+            <br/>
+            You can still purchase up to ${remainingPurchaseable.toLocaleString(undefined, {maximumFractionDigits: 2})} USDC worth of tokens.
+       </div>
+
 
       <div className="flex-col gap-4 pt-4">
         <Button 

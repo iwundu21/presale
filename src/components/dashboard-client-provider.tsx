@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, createContext, useContext, useRef } from "react";
+import { useState, useEffect, useCallback, createContext, useContext, useRef, useMemo } from "react";
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
@@ -42,6 +42,7 @@ type DashboardContextType = {
     presaleInfo: PresaleInfo | null;
     isPresaleActive: boolean;
     isHardCapReached: boolean;
+    totalUSDPurchased: number;
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
@@ -76,6 +77,11 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const [isPresaleActive, setIsPresaleActive] = useState(true);
   
   const isHardCapReached = presaleInfo ? totalExnSoldForCurrentStage >= presaleInfo.hardCap : false;
+
+  const totalUSDPurchased = useMemo(() => {
+    if (!presaleInfo) return 0;
+    return exnBalance * presaleInfo.tokenPrice;
+  }, [exnBalance, presaleInfo]);
 
   useEffect(() => {
     setIsClient(true);
@@ -419,6 +425,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     presaleInfo,
     isPresaleActive,
     isHardCapReached,
+    totalUSDPurchased,
   };
 
   return (
