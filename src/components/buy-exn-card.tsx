@@ -117,7 +117,7 @@ export function BuyExnCard() {
     }
   };
 
-  const isPurchaseDisabled = !isConnected || isLoadingPrices || !!balanceError || !isPresaleActive || isLoadingPurchase || isHardCapReached;
+  const isPurchaseDisabled = !isConnected || isLoadingPrices || !!balanceError || !isPresaleActive || isLoadingPurchase || isHardCapReached || parseFloat(payAmount) <= 0 || parseFloat(exnAmount) <= 0;
 
   const getButtonText = () => {
     if (isHardCapReached) return "Hard Cap Reached";
@@ -142,7 +142,7 @@ export function BuyExnCard() {
             <CardTitle className="text-2xl font-bold text-white">Buy EXN Tokens</CardTitle>
         </div>
         <CardDescription>
-            Secure your EXN tokens at the special presale price of ${tokenPrice.toPrecision(2)} before the public listing at ${LISTING_PRICE_PER_EXN}.
+            Secure your EXN tokens at the special presale price of ${tokenPrice.toPrecision(2)} before the public listing at <span className="text-green-400 font-semibold">${LISTING_PRICE_PER_EXN}</span>.
         </CardDescription>
       </div>
       
@@ -229,3 +229,5 @@ export function BuyExnCard() {
     </div>
   );
 }
+
+    
