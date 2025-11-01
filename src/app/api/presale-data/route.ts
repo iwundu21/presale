@@ -52,7 +52,7 @@ export async function GET() {
                 balance: true,
             }
         });
-        const totalExnSold = totalSoldAggregate._sum.balance?.toNumber() || 0;
+        const totalExnSold = totalSoldAggregate._sum.balance || 0;
 
         return NextResponse.json({
             totalExnSoldForCurrentStage: totalExnSold,
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
                 balance: true,
             }
         });
-        const totalExnSold = totalSoldAggregate._sum.balance?.toNumber() || 0;
+        const totalExnSold = totalSoldAggregate._sum.balance || 0;
 
         return NextResponse.json({
             message: 'Presale data updated successfully',
