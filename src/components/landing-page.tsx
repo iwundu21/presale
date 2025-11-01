@@ -1,7 +1,6 @@
-
 "use client";
 import { Button } from "@/components/ui/button";
-import { Bot, BrainCircuit, Rocket, ArrowRight, Info } from "lucide-react";
+import { ShieldCheck, BrainCircuit, Rocket, ArrowRight, Info } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useState } from "react";
 import { PresaleCountdown } from "./presale-countdown";
@@ -94,11 +93,11 @@ export function LandingPage({ presaleEndDate, presaleInfo, isPresaleActive }: La
                   <div className="p-6">
                       <div className="flex justify-center mb-4">
                           <div className="p-4 bg-primary/20 rounded-full">
-                            <Bot className="h-10 w-10 text-primary"/>
+                            <ShieldCheck className="h-10 w-10 text-primary"/>
                           </div>
                       </div>
-                      <h3 className="text-xl font-bold mb-2 text-white">AI-Powered</h3>
-                      <p className="text-muted-foreground">Harness the potential of decentralized AI to build powerful, autonomous applications that operate securely and transparently on-chain.</p>
+                      <h3 className="text-xl font-bold mb-2 text-white">Secure & Transparent</h3>
+                      <p className="text-muted-foreground">Operate with confidence on a platform where all interactions are securely recorded on-chain and are fully transparent.</p>
                   </div>
                     <div className="p-6">
                       <div className="flex justify-center mb-4">
