@@ -42,8 +42,6 @@ type DashboardContextType = {
     presaleInfo: PresaleInfo | null;
     isPresaleActive: boolean;
     isHardCapReached: boolean;
-    hasPurchasedAuction: boolean;
-    auctionSlotsSold: number;
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
@@ -67,11 +65,9 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const isMounted = useRef(false);
   const [exnBalance, setExnBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [hasPurchasedAuction, setHasPurchasedAuction] = useState(false);
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
   const [totalExnSoldForCurrentStage, setTotalExnSoldForCurrentStage] = useState(0);
-  const [auctionSlotsSold, setAuctionSlotsSold] = useState(0);
   const [tokenPrices, setTokenPrices] = useState<TokenPrices>({ SOL: null, USDC: null });
   const [isLoadingPrices, setIsLoadingPrices] = useState(true);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
@@ -112,8 +108,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             if(userData.transactions) {
                 const parsedTxs = userData.transactions.map((tx: any) => ({...tx, date: new Date(tx.date)}));
                 setTransactions(parsedTxs);
-                const hasCompletedPurchase = parsedTxs.some((tx: Transaction) => tx.status === 'Completed');
-                setHasPurchasedAuction(hasCompletedPurchase);
             }
         } else {
              console.error('Failed to fetch user data:', userDataRes.status === 'rejected' ? userDataRes.reason : await userDataRes.value.text());
@@ -125,7 +119,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             setTotalExnSoldForCurrentStage(presaleData.totalExnSoldForCurrentStage || 0);
             setPresaleInfo(presaleData.presaleInfo || null);
             setIsPresaleActive(presaleData.isPresaleActive === undefined ? true : presaleData.isPresaleActive);
-            setAuctionSlotsSold(presaleData.auctionSlotsSold || 0);
         } else {
             console.error('Failed to fetch presale data:', presaleDataRes.status === 'rejected' ? presaleDataRes.reason : await presaleDataRes.value.text());
             throw new Error('Could not load presale progress.');
@@ -178,7 +171,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
                 if (isMounted.current && res.ok) {
                     const data = await res.json();
                     setTotalExnSoldForCurrentStage(data.totalExnSoldForCurrentStage || 0);
-                    setAuctionSlotsSold(data.auctionSlotsSold || 0);
                 }
             } catch (error: any) {
                  if (error.name !== 'AbortError' && isMounted.current) {
@@ -221,15 +213,13 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             if (transactions) {
                  const parsedTxs = transactions.map((t: any) => ({...t, date: new Date(t.date)}));
                  setTransactions(parsedTxs);
-                 const hasCompletedPurchase = parsedTxs.some((tx: Transaction) => tx.status === 'Completed');
-                 setHasPurchasedAuction(hasCompletedPurchase);
             }
         }
         // Manually trigger a refresh of presale data after a purchase
         const presaleDataRes = await fetch('/api/presale-data');
         if (isMounted.current && presaleDataRes.ok) {
             const presaleData = await presaleDataRes.json();
-            setAuctionSlotsSold(presaleData.auctionSlotsSold || 0);
+            setTotalExnSoldForCurrentStage(presaleData.totalExnSoldForCurrentStage || 0);
         }
 
         return result;
@@ -248,7 +238,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   }, [publicKey, toast]);
 
   const handlePurchase = useCallback(async (exnAmount: number, paidAmount: number, currency: string) => {
-    if (!publicKey || !wallet?.adapter.connected || !presaleInfo) {
+    if (!publicKey || !wallet?.adapter.connected) {
       toast({ title: "Wallet not connected", description: "Please connect your wallet and try again.", variant: "destructive" });
       return;
     }
@@ -258,14 +248,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     }
     if (isHardCapReached) {
         toast({ title: "Hard Cap Reached", description: "The presale has reached its hard cap. No more purchases can be made.", variant: "destructive" });
-        return;
-    }
-    if (auctionSlotsSold >= presaleInfo.auctionSlots) {
-        toast({ title: "Auction Sold Out", description: "All auction slots have been purchased.", variant: "destructive" });
-        return;
-    }
-    if (hasPurchasedAuction) {
-        toast({ title: "Already Purchased", description: "You have already purchased the auction deal with this wallet.", variant: "destructive" });
         return;
     }
     
@@ -419,7 +401,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             setIsLoadingPurchase(false);
         }
     }
-  }, [publicKey, connection, sendTransaction, toast, wallet, persistTransaction, isHardCapReached, presaleInfo, auctionSlotsSold, hasPurchasedAuction]);
+  }, [publicKey, connection, sendTransaction, toast, wallet, persistTransaction, isHardCapReached]);
   
   if (!isClient || connecting || (!connected && isClient)) {
       return <DashboardLoadingSkeleton />; 
@@ -437,8 +419,6 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
     presaleInfo,
     isPresaleActive,
     isHardCapReached,
-    hasPurchasedAuction,
-    auctionSlotsSold,
   };
 
   return (

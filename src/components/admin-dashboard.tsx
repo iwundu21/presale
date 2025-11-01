@@ -22,7 +22,6 @@ type AdminData = {
     presaleInfo: PresaleInfo;
     isPresaleActive: boolean;
     presaleEndDate: string;
-    auctionSlotsSold: number;
 };
 
 type UserData = {
@@ -500,4 +499,5 @@ export function AdminDashboard() {
     );
 
     
+
 

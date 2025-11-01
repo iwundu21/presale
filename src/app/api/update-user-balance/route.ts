@@ -17,45 +17,9 @@ export async function POST(request: Request) {
 
         const decimalBalance = new Prisma.Decimal(balance);
 
-        const updatedUser = await prisma.$transaction(async (tx) => {
-            // Get the current user state before updating
-            const currentUser = await tx.user.findUnique({
-                where: { wallet: wallet },
-            });
-
-            if (!currentUser) {
-                // This will be caught by the outer catch block
-                throw new Prisma.PrismaClientKnownRequestError('User not found.', {
-                    code: 'P2025',
-                    clientVersion: '5.x.x', 
-                    meta: { modelName: 'User' }
-                });
-            }
-
-            const oldBalance = currentUser.balance;
-
-            // Update the user's balance
-            const user = await tx.user.update({
-                where: { wallet: wallet },
-                data: { balance: decimalBalance },
-            });
-
-            // If the new balance is an increase, increment the auction slots sold
-            if (decimalBalance.greaterThan(oldBalance)) {
-                const currentSlotsConfig = await tx.config.findUnique({
-                    where: { id: 'auctionSlotsSold' },
-                });
-                const currentSlotsSold = (currentSlotsConfig?.value as number) ?? 0;
-                const newSlotsSold = currentSlotsSold + 1;
-
-                await tx.config.upsert({
-                    where: { id: 'auctionSlotsSold' },
-                    update: { value: newSlotsSold },
-                    create: { id: 'auctionSlotsSold', value: newSlotsSold },
-                });
-            }
-            
-            return user;
+        const updatedUser = await prisma.user.update({
+            where: { wallet: wallet },
+            data: { balance: decimalBalance },
         });
 
         const responseUser = {

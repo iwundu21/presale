@@ -1,8 +1,10 @@
+
 "use client";
 
 import { Flame } from "lucide-react";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { useDashboard } from "./dashboard-client-provider";
+import { Progress } from "./ui/progress";
 
 const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
     return new Intl.NumberFormat('en-US', {
@@ -13,17 +15,11 @@ const formatNumber = (num: number, options: Intl.NumberFormatOptions = {}) => {
 };
 
 export function PresaleProgressCard() {
-    const { totalExnSoldForCurrentStage, presaleInfo, auctionSlotsSold } = useDashboard();
-    
-    const auctionUsdAmount = presaleInfo?.auctionUsdAmount || 0;
-    const auctionExnAmount = presaleInfo?.auctionExnAmount || 0;
-    const totalSoldFromAuction = auctionSlotsSold * auctionExnAmount;
-    const totalRaisedFromAuction = auctionSlotsSold * auctionUsdAmount;
+    const { totalExnSoldForCurrentStage, presaleInfo } = useDashboard();
     
     const hardCap = presaleInfo?.hardCap || 0;
-    // This reflects the overall supply remaining for the entire presale
-    const remainingTokens = hardCap - totalExnSoldForCurrentStage;
-
+    const progressPercentage = hardCap > 0 ? (totalExnSoldForCurrentStage / hardCap) * 100 : 0;
+    const totalRaised = totalExnSoldForCurrentStage * (presaleInfo?.tokenPrice || 0);
 
     return (
         <div className="w-full rounded-lg border border-border p-6 space-y-4">
@@ -39,23 +35,17 @@ export function PresaleProgressCard() {
                 </CardDescription>
             </div>
             <div className="space-y-4 pt-4">
-                <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                        <p className="text-lg font-bold text-white break-all">{formatNumber(totalSoldFromAuction, { notation: 'standard', maximumFractionDigits: 0 })}</p>
-                        <p className="text-xs text-muted-foreground">Auction Tokens Sold</p>
-                    </div>
-                    <div>
-                        <p className="text-lg font-bold text-white break-all">{formatNumber(remainingTokens, { notation: 'standard', maximumFractionDigits: 0 })}</p>
-                        <p className="text-xs text-muted-foreground">Remaining in Supply</p>
-                    </div>
-                     <div>
-                        <p className="text-lg font-bold text-white break-all">{formatNumber(hardCap)}</p>
-                        <p className="text-xs text-muted-foreground">Total Presale Supply</p>
+                <div className="space-y-2">
+                    <Progress value={progressPercentage} className="h-2" />
+                    <div className="flex justify-between text-xs font-medium text-muted-foreground">
+                        <span>{formatNumber(totalExnSoldForCurrentStage, { notation: 'standard' })} EXN Sold</span>
+                        <span>{formatNumber(hardCap)} EXN</span>
                     </div>
                 </div>
+
                  <div className="text-center bg-muted/20 p-3 rounded-lg border border-border">
                     <p className="text-sm font-semibold text-white break-all">
-                        Total Raised from Auction: ${formatNumber(totalRaisedFromAuction, { notation: 'standard', maximumFractionDigits: 0 })}
+                        Total Raised: ${formatNumber(totalRaised, { notation: 'standard', maximumFractionDigits: 0 })}
                     </p>
                  </div>
             </div>

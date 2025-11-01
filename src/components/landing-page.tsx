@@ -1,12 +1,11 @@
 
 "use client";
 import { Button } from "@/components/ui/button";
-import { Bot, BrainCircuit, Rocket, ArrowRight, BadgePercent, Info, ChevronsRight } from "lucide-react";
+import { Bot, BrainCircuit, Rocket, ArrowRight, Info } from "lucide-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useState } from "react";
 import { PresaleCountdown } from "./presale-countdown";
 import type { PresaleInfo } from "@/services/presale-info-service";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useRouter } from "next/navigation";
@@ -18,7 +17,7 @@ type LandingPageProps = {
   isPresaleActive: boolean;
 };
 
-const AUCTION_PRICE = 0.001;
+const LISTING_PRICE = 0.12;
 
 export function LandingPage({ presaleEndDate, presaleInfo, isPresaleActive }: LandingPageProps) {
     const { wallet, connected, connecting } = useWallet();
@@ -47,16 +46,12 @@ export function LandingPage({ presaleEndDate, presaleInfo, isPresaleActive }: La
       <section className="flex-grow flex items-center justify-center container mx-auto text-center py-20 lg:py-24 landing-hero">
         <div className="space-y-8">
             <div>
-                <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 mb-4">
-                   <Badge variant="secondary" className="text-sm py-1 px-3 border border-border">
-                      <BadgePercent className="h-4 w-4 mr-2 text-primary" />
-                      {presaleInfo.seasonName} Auction
-                   </Badge>
+                 <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 mb-4">
                     <p className="text-md text-foreground/80">
-                        Auction Price: <span className="font-bold text-primary">${AUCTION_PRICE}</span>
+                        Price: <span className="font-bold text-primary">${presaleInfo.tokenPrice}</span>
                     </p>
                     <p className="text-md text-foreground/80">
-                        Expected Listing Price: <span className="font-bold text-green-400">$0.12</span>
+                        Expected Listing Price: <span className="font-bold text-green-400">${LISTING_PRICE}</span>
                     </p>
                 </div>
                 <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">
@@ -146,5 +141,3 @@ export function LandingPage({ presaleEndDate, presaleInfo, isPresaleActive }: La
     </main>
   );
 }
-
-    

@@ -9,9 +9,6 @@ const presaleInfoSchema = z.object({
   seasonName: z.string(),
   tokenPrice: z.number(),
   hardCap: z.number(),
-  auctionUsdAmount: z.number(),
-  auctionExnAmount: z.number(),
-  auctionSlots: z.number(),
 });
 
 const dateSchema = z.string().datetime();
@@ -20,9 +17,6 @@ const defaultPresaleInfo = {
     seasonName: "Presale", 
     tokenPrice: 0.09, 
     hardCap: 0,
-    auctionUsdAmount: 50,
-    auctionExnAmount: 50000,
-    auctionSlots: 850,
 };
 
 const getDefaultEndDate = () => {
@@ -36,7 +30,7 @@ export async function GET() {
     try {
         const configs = await prisma.config.findMany({
             where: {
-                id: { in: ['presaleInfo', 'isPresaleActive', 'auctionSlotsSold', 'presaleEndDate'] }
+                id: { in: ['presaleInfo', 'isPresaleActive', 'presaleEndDate'] }
             }
         });
 
@@ -47,7 +41,6 @@ export async function GET() {
         const presaleInfo = presaleInfoParsed.success ? presaleInfoParsed.data : defaultPresaleInfo;
 
         const isPresaleActive = (configMap.get('isPresaleActive') as boolean) ?? true;
-        const auctionSlotsSold = (configMap.get('auctionSlotsSold') as number) ?? 0;
         
         let presaleEndDate = configMap.get('presaleEndDate') as string | undefined;
         if (!presaleEndDate || isNaN(new Date(presaleEndDate).getTime())) {
@@ -65,13 +58,13 @@ export async function GET() {
             totalExnSoldForCurrentStage: totalExnSold,
             presaleInfo: presaleInfo,
             isPresaleActive: isPresaleActive,
-            auctionSlotsSold: auctionSlotsSold,
             presaleEndDate: presaleEndDate,
         }, { status: 200 });
 
     } catch (error) {
         console.error('API Presale-Data GET Error:', error);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+        return NextResponse.json({ message: 'Internal Server Error', error: errorMessage }, { status: 500 });
     }
 }
 
@@ -115,7 +108,7 @@ export async function POST(request: Request) {
         // After updates, re-fetch all data to return the consistent state
         const configs = await prisma.config.findMany({
             where: {
-                id: { in: ['presaleInfo', 'isPresaleActive', 'auctionSlotsSold', 'presaleEndDate'] }
+                id: { in: ['presaleInfo', 'isPresaleActive', 'presaleEndDate'] }
             }
         });
         const configMap = new Map(configs.map(c => [c.id, c.value]));
@@ -125,7 +118,6 @@ export async function POST(request: Request) {
         const updatedInfo = presaleInfoParsed.success ? presaleInfoParsed.data : defaultPresaleInfo;
 
         const updatedIsPresaleActive = (configMap.get('isPresaleActive') as boolean) ?? true;
-        const updatedAuctionSlotsSold = (configMap.get('auctionSlotsSold') as number) ?? 0;
         
         let updatedEndDate = configMap.get('presaleEndDate') as string | undefined;
         if (!updatedEndDate || isNaN(new Date(updatedEndDate).getTime())) {
@@ -144,7 +136,6 @@ export async function POST(request: Request) {
             totalExnSoldForCurrentStage: totalExnSold,
             presaleInfo: updatedInfo,
             isPresaleActive: updatedIsPresaleActive,
-            auctionSlotsSold: updatedAuctionSlotsSold,
             presaleEndDate: updatedEndDate,
         }, { status: 200 });
 

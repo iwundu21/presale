@@ -8,33 +8,23 @@ export type PresaleInfo = {
     seasonName: string;
     tokenPrice: number;
     hardCap: number;
-    auctionUsdAmount: number;
-    auctionExnAmount: number;
-    auctionSlots: number;
 };
 
 export type PresaleData = {
     presaleInfo: PresaleInfo;
     isPresaleActive: boolean;
-    auctionSlotsSold: number;
 };
 
 const presaleInfoSchema = z.object({
   seasonName: z.string(),
   tokenPrice: z.number(),
   hardCap: z.number(),
-  auctionUsdAmount: z.number(),
-  auctionExnAmount: z.number(),
-  auctionSlots: z.number(),
 });
 
 const defaultData: PresaleInfo = {
     seasonName: "Presale",
     tokenPrice: 0.09,
     hardCap: 0,
-    auctionUsdAmount: 50,
-    auctionExnAmount: 50000,
-    auctionSlots: 850,
 };
 
 /**
@@ -46,7 +36,7 @@ export async function getPresaleData(): Promise<PresaleData> {
   try {
     const configs = await prisma.config.findMany({
         where: {
-            id: { in: ['presaleInfo', 'isPresaleActive', 'auctionSlotsSold'] }
+            id: { in: ['presaleInfo', 'isPresaleActive'] }
         }
     });
 
@@ -57,19 +47,16 @@ export async function getPresaleData(): Promise<PresaleData> {
     const presaleInfo = presaleInfoParsed.success ? presaleInfoParsed.data : defaultData;
 
     const isPresaleActive = (configMap.get('isPresaleActive') as boolean) ?? true;
-    const auctionSlotsSold = (configMap.get('auctionSlotsSold') as number) ?? 0;
 
     return {
         presaleInfo: presaleInfo,
         isPresaleActive: isPresaleActive,
-        auctionSlotsSold: auctionSlotsSold,
     };
   } catch (error) {
     console.error("Error fetching presale data:", error);
     return {
         presaleInfo: defaultData,
         isPresaleActive: true,
-        auctionSlotsSold: 0,
     };
   }
 }

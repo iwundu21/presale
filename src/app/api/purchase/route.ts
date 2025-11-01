@@ -41,7 +41,7 @@ export async function POST(request: Request) {
                     }
                 });
 
-                // 4. If completed, update user balance and auction slots sold
+                // 4. If completed, update user balance
                 if (transaction.status === 'Completed') {
                     // Update user balance
                     await tx.user.update({
@@ -51,19 +51,6 @@ export async function POST(request: Request) {
                                 increment: transaction.amountExn,
                             },
                         },
-                    });
-
-                    // Atomically increment auction slots sold
-                    const currentSlotsConfig = await tx.config.findUnique({
-                        where: { id: 'auctionSlotsSold' },
-                    });
-                    const currentSlotsSold = (currentSlotsConfig?.value as number) ?? 0;
-                    const newSlotsSold = currentSlotsSold + 1;
-
-                    await tx.config.upsert({
-                        where: { id: 'auctionSlotsSold' },
-                        update: { value: newSlotsSold },
-                        create: { id: 'auctionSlotsSold', value: newSlotsSold },
                     });
                 }
             }
