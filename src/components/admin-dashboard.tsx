@@ -59,74 +59,55 @@ export function AdminDashboard() {
     const [newBalance, setNewBalance] = useState<number>(0);
     const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
 
-    const fetchPresaleData = async () => {
-         const presaleDataRes = await fetch('/api/presale-data');
-         if (!presaleDataRes.ok) {
-            throw new Error('Failed to fetch presale data');
-         }
-         const presaleData = await presaleDataRes.json();
-         setData(d => ({ ...(d as AdminData), ...presaleData }));
+    const fetchAllAdminData = async () => {
+        try {
+            const [presaleDataRes, usersRes] = await Promise.all([
+                fetch('/api/presale-data'),
+                fetch('/api/all-users-data')
+            ]);
+
+            if (!presaleDataRes.ok) {
+                throw new Error('Failed to fetch presale data');
+            }
+             if (!usersRes.ok) {
+                throw new Error('Failed to fetch user data');
+            }
+
+            const presaleData = await presaleDataRes.json();
+            const usersData = await usersRes.json();
+
+            setData(presaleData);
+            setUsers(usersData);
+            
+            if (presaleData.presaleInfo) {
+                setSeasonName(presaleData.presaleInfo.seasonName);
+                setTokenPrice(presaleData.presaleInfo.tokenPrice);
+                setHardCap(presaleData.presaleInfo.hardCap);
+            }
+            setIsPresaleActive(presaleData.isPresaleActive);
+            if (presaleData.presaleEndDate) {
+                setPresaleEndDate(new Date(presaleData.presaleEndDate));
+            }
+
+        } catch (error) {
+            console.error(error);
+            toast({
+                title: "Error",
+                description: "Could not load admin data. Please refresh.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsLoading(false);
+            setIsLoadingUsers(false);
+        }
     }
 
     useEffect(() => {
-        const fetchData = async () => {
-            setIsLoading(true);
-            setIsLoadingUsers(true);
-            try {
-                const [presaleDataRes, presaleDateRes, usersRes] = await Promise.all([
-                    fetch('/api/presale-data'),
-                    fetch('/api/presale-date'),
-                    fetch('/api/all-users-data')
-                ]);
-
-                if (!presaleDataRes.ok || !presaleDateRes.ok) {
-                    throw new Error('Failed to fetch initial admin data');
-                }
-                 if (!usersRes.ok) {
-                    throw new Error('Failed to fetch user data');
-                }
-
-                const presaleData = await presaleDataRes.json();
-                const presaleDateData = await presaleDateRes.json();
-                const usersData = await usersRes.json();
-
-                setData({
-                    presaleInfo: presaleData.presaleInfo,
-                    isPresaleActive: presaleData.isPresaleActive,
-                    presaleEndDate: presaleDateData.presaleEndDate,
-                    auctionSlotsSold: presaleData.auctionSlotsSold,
-                });
-
-                setUsers(usersData);
-                
-                if (presaleData.presaleInfo) {
-                    setSeasonName(presaleData.presaleInfo.seasonName);
-                    setTokenPrice(presaleData.presaleInfo.tokenPrice);
-                    setHardCap(presaleData.presaleInfo.hardCap);
-                }
-                setIsPresaleActive(presaleData.isPresaleActive);
-                if (presaleDateData.presaleEndDate) {
-                    setPresaleEndDate(new Date(presaleDateData.presaleEndDate));
-                }
-
-
-            } catch (error) {
-                console.error(error);
-                toast({
-                    title: "Error",
-                    description: "Could not load admin data. Please refresh.",
-                    variant: "destructive",
-                });
-            } finally {
-                setIsLoading(false);
-                setIsLoadingUsers(false);
-            }
-        };
-
-        fetchData();
+        setIsLoading(true);
+        setIsLoadingUsers(true);
+        fetchAllAdminData();
     }, [toast]);
     
-    // Filter users based on search query
     const filteredUsers = users.filter(user =>
         user.wallet.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -156,8 +137,7 @@ export function AdminDashboard() {
             if (!res.ok) throw new Error('Failed to update presale info');
             const updatedData = await res.json();
             
-            setData(d => d ? { ...d, presaleInfo: updatedData.presaleInfo, auctionSlotsSold: updatedData.auctionSlotsSold } : null);
-
+            setData(updatedData);
             toast({ title: "Success", description: "Presale info updated successfully.", variant: "success" });
         } catch (error) {
             console.error(error);
@@ -178,14 +158,13 @@ export function AdminDashboard() {
             if (!res.ok) throw new Error('Failed to update presale status');
             const updatedData = await res.json();
             
-            setData(d => d ? { ...d, isPresaleActive: updatedData.isPresaleActive } : null);
+            setData(updatedData);
             setIsPresaleActive(updatedData.isPresaleActive);
 
             toast({ title: "Success", description: `Presale is now ${newStatus ? 'active' : 'inactive'}.`, variant: "success" });
         } catch (error) {
              console.error(error);
              toast({ title: "Error", description: "Failed to update presale status.", variant: "destructive" });
-             // Revert UI on failure
              setIsPresaleActive(!newStatus);
         } finally {
              setIsUpdating(prev => ({ ...prev, status: false }));
@@ -196,7 +175,7 @@ export function AdminDashboard() {
         if (!presaleEndDate) return;
         setIsUpdating(prev => ({ ...prev, date: true }));
          try {
-            const res = await fetch('/api/presale-date', {
+            const res = await fetch('/api/presale-data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ presaleEndDate: presaleEndDate.toISOString() }),
@@ -204,7 +183,7 @@ export function AdminDashboard() {
             if (!res.ok) throw new Error('Failed to update presale end date');
             const updatedData = await res.json();
             
-            setData(d => d ? { ...d, presaleEndDate: updatedData.presaleEndDate } : null);
+            setData(updatedData);
 
             toast({ title: "Success", description: "Presale end date updated.", variant: "success" });
         } catch (error) {
@@ -279,12 +258,9 @@ export function AdminDashboard() {
             }
             const updatedUser = await res.json();
             
-            // Update the user in the local state
             setUsers(prevUsers => prevUsers.map(u => u.wallet === updatedUser.wallet ? { ...u, balance: updatedUser.balance } : u));
             
-            // Refresh presale data to get updated slot count
-            await fetchPresaleData();
-
+            await fetchAllAdminData();
 
             toast({ title: "Success", description: "User balance updated successfully.", variant: "success" });
             setIsEditUserDialogOpen(false);
@@ -524,3 +500,4 @@ export function AdminDashboard() {
     );
 
     
+
