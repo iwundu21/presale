@@ -69,8 +69,8 @@ export function BuyExnCard() {
         try {
             const usdcTokenAccount = await getAssociatedTokenAddress(USDC_MINT, publicKey);
             const usdcTokenAccountInfo = await connection.getParsedAccountInfo(usdcTokenAccount);
-             if (usdcTokenAccountInfo.value) {
-                usdcBalance = (usdcTokenAccountInfo.value.data as any).parsed.info.tokenAmount.uiAmount;
+             if (usdcTokenAccountInfo.value && usdcTokenAccountInfo.value.data && 'parsed' in usdcTokenAccountInfo.value.data) {
+                usdcBalance = usdcTokenAccountInfo.value.data.parsed.info.tokenAmount.uiAmount;
             }
         } catch (e) {
             console.log("Could not fetch USDC balance for user, likely no account exists yet.");
@@ -235,7 +235,7 @@ export function BuyExnCard() {
                     <span className="text-muted-foreground">
                       Balance: {isFetchingBalance 
                         ? <Skeleton className="h-4 w-16 inline-block" /> 
-                        : `${currentBalance.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${currency}`
+                        : `${currentBalance.toLocaleString(undefined, { maximumFractionDigits: currency === 'SOL' ? 4 : 2 })} ${currency}`
                       }
                     </span>
                     <Button variant="ghost" size="sm" className="h-auto p-0.5 text-primary" onClick={handleSetMax}>Max</Button>
@@ -305,7 +305,5 @@ export function BuyExnCard() {
     </div>
   );
 }
-
-    
 
     
