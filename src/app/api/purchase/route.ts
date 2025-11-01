@@ -54,14 +54,16 @@ export async function POST(request: Request) {
                     });
 
                     // Atomically increment auction slots sold
+                    const currentSlotsConfig = await tx.config.findUnique({
+                        where: { id: 'auctionSlotsSold' },
+                    });
+                    const currentSlotsSold = (currentSlotsConfig?.value as number) ?? 0;
+                    const newSlotsSold = currentSlotsSold + 1;
+
                     await tx.config.upsert({
                         where: { id: 'auctionSlotsSold' },
-                        update: { 
-                            value: { 
-                                increment: 1 
-                            }
-                        },
-                        create: { id: 'auctionSlotsSold', value: { value: 1 } },
+                        update: { value: newSlotsSold },
+                        create: { id: 'auctionSlotsSold', value: newSlotsSold },
                     });
                 }
             }
