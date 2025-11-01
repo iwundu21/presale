@@ -56,7 +56,7 @@ export function LandingPage({ presaleEndDate, presaleInfo, isPresaleActive }: La
                         Auction Price: <span className="font-bold text-primary">${AUCTION_PRICE}</span>
                     </p>
                     <p className="text-md text-foreground/80">
-                        Expected Listing Price: <span className="font-bold text-green-400">$0.094</span>
+                        Expected Listing Price: <span className="font-bold text-green-400">$0.12</span>
                     </p>
                 </div>
                 <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">
@@ -146,3 +146,5 @@ export function LandingPage({ presaleEndDate, presaleInfo, isPresaleActive }: La
     </main>
   );
 }
+
+    

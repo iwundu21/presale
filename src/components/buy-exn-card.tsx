@@ -16,7 +16,7 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "./ui/t
 import { Progress } from "./ui/progress";
 
 const SOL_GAS_BUFFER = 0.0009; // Reserve 0.0009 SOL for gas fees
-const LISTING_PRICE_PER_EXN = 0.094;
+const LISTING_PRICE_PER_EXN = 0.12;
 
 
 type Currency = "USDC" | "SOL";
@@ -248,5 +248,7 @@ export function BuyExnCard() {
     </div>
   );
 }
+
+    
 
     
