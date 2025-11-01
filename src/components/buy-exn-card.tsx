@@ -117,7 +117,7 @@ export function BuyExnCard() {
     }
   };
 
-  const isPurchaseDisabled = !isConnected || isLoadingPrices || !!balanceError || !isPresaleActive || isLoadingPurchase || isHardCapReached || parseFloat(exnAmount) <= 0;
+  const isPurchaseDisabled = !isConnected || isLoadingPrices || !!balanceError || !isPresaleActive || isLoadingPurchase || isHardCapReached;
 
   const getButtonText = () => {
     if (isHardCapReached) return "Hard Cap Reached";
