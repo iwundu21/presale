@@ -43,11 +43,21 @@ export function BuyExnCard() {
   useEffect(() => {
     if (tokenPrice > 0 && tokenPrices.USDC && !payAmount && !exnAmount) {
       const minExn = MIN_PURCHASE_USD / tokenPrice;
-      const minPay = MIN_PURCHASE_USD / tokenPrices.USDC;
+      const minPay = MIN_PURCHASE_USD / (tokenPrices[currency] || tokenPrices.USDC || 1);
       setExnAmount(minExn.toFixed(2));
-      setPayAmount(minPay.toFixed(2));
+      setPayAmount(minPay.toFixed(currency === 'SOL' ? 5 : 2));
     }
-  }, [tokenPrices, tokenPrice, payAmount, exnAmount]);
+  }, [tokenPrices, tokenPrice, payAmount, exnAmount, currency]);
+
+  // Recalculate pay amount when currency changes
+  useEffect(() => {
+    const numericExnAmount = parseFloat(exnAmount);
+    if (!isNaN(numericExnAmount) && numericExnAmount > 0 && tokenPrices[currency] && tokenPrice > 0) {
+        const usdValue = numericExnAmount * tokenPrice;
+        const neededPay = usdValue / (tokenPrices[currency] || 1);
+        setPayAmount(neededPay.toFixed(currency === 'SOL' ? 5 : 2));
+    }
+  }, [currency, exnAmount, tokenPrices, tokenPrice]);
 
 
   const fetchBalances = useCallback(async () => {
@@ -84,7 +94,7 @@ export function BuyExnCard() {
     const amount = e.target.value;
     setPayAmount(amount);
     const numericAmount = parseFloat(amount);
-    if (!isNaN(numericAmount) && numericAmount > 0 && tokenPrices[currency]) {
+    if (!isNaN(numericAmount) && numericAmount > 0 && tokenPrices[currency] && tokenPrice > 0) {
         const usdValue = numericAmount * (tokenPrices[currency] || 0);
         const receivedExn = usdValue / tokenPrice;
         setExnAmount(receivedExn.toFixed(2));
@@ -97,7 +107,7 @@ export function BuyExnCard() {
       const amount = e.target.value;
       setExnAmount(amount);
       const numericAmount = parseFloat(amount);
-      if (!isNaN(numericAmount) && numericAmount > 0 && tokenPrices[currency]) {
+      if (!isNaN(numericAmount) && numericAmount > 0 && tokenPrices[currency] && tokenPrice > 0) {
           const usdValue = numericAmount * tokenPrice;
           const neededPay = usdValue / (tokenPrices[currency] || 1);
           setPayAmount(neededPay.toFixed(currency === 'SOL' ? 5 : 2));
@@ -295,5 +305,7 @@ export function BuyExnCard() {
     </div>
   );
 }
+
+    
 
     
