@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ArrowDown, Zap, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
@@ -29,8 +29,8 @@ export function BuyExnCard() {
   const { connection } = useConnection();
 
   const [currency, setCurrency] = useState<Currency>("USDC");
-  const [payAmount, setPayAmount] = useState("0");
-  const [exnAmount, setExnAmount] = useState("0");
+  const [payAmount, setPayAmount] = useState("");
+  const [exnAmount, setExnAmount] = useState("");
 
   const [balances, setBalances] = useState({ SOL: 0, USDC: 0 });
   const [isFetchingBalance, setIsFetchingBalance] = useState(false);
@@ -38,36 +38,47 @@ export function BuyExnCard() {
   const [purchaseLimitError, setPurchaseLimitError] = useState("");
   
   const tokenPrice = presaleInfo?.tokenPrice || 0.09;
+  
+  // Pre-fill with minimum purchase amount
+  useEffect(() => {
+    if (tokenPrice > 0 && tokenPrices.USDC && !payAmount && !exnAmount) {
+      const minExn = MIN_PURCHASE_USD / tokenPrice;
+      const minPay = MIN_PURCHASE_USD / tokenPrices.USDC;
+      setExnAmount(minExn.toFixed(2));
+      setPayAmount(minPay.toFixed(2));
+    }
+  }, [tokenPrices, tokenPrice, payAmount, exnAmount]);
+
+
+  const fetchBalances = useCallback(async () => {
+    if (!isConnected || !publicKey) return;
+    setIsFetchingBalance(true);
+    try {
+        const solBalance = await connection.getBalance(publicKey);
+        let usdcBalance = 0;
+        try {
+            const usdcTokenAccount = await getAssociatedTokenAddress(USDC_MINT, publicKey);
+            const usdcTokenAccountInfo = await connection.getParsedAccountInfo(usdcTokenAccount);
+             if (usdcTokenAccountInfo.value) {
+                usdcBalance = (usdcTokenAccountInfo.value.data as any).parsed.info.tokenAmount.uiAmount;
+            }
+        } catch (e) {
+            console.log("Could not fetch USDC balance for user, likely no account exists yet.");
+        }
+       
+        setBalances({
+            SOL: solBalance / LAMPORTS_PER_SOL,
+            USDC: usdcBalance,
+        });
+    } catch (error) {
+        console.error("Failed to fetch wallet balances", error);
+    }
+    setIsFetchingBalance(false);
+  }, [isConnected, publicKey, connection]);
 
   useEffect(() => {
-    const fetchBalances = async () => {
-        if (!isConnected || !publicKey) return;
-        setIsFetchingBalance(true);
-        try {
-            const solBalance = await connection.getBalance(publicKey);
-            let usdcBalance = 0;
-            try {
-                const usdcTokenAccount = await getAssociatedTokenAddress(USDC_MINT, publicKey);
-                const usdcTokenAccountInfo = await connection.getParsedAccountInfo(usdcTokenAccount);
-                 if (usdcTokenAccountInfo.value) {
-                    usdcBalance = (usdcTokenAccountInfo.value.data as any).parsed.info.tokenAmount.uiAmount;
-                }
-            } catch (e) {
-                console.log("Could not fetch USDC balance for user, likely no account exists yet.");
-            }
-           
-            setBalances({
-                SOL: solBalance / LAMPORTS_PER_SOL,
-                USDC: usdcBalance,
-            });
-        } catch (error) {
-            console.error("Failed to fetch wallet balances", error);
-        }
-        setIsFetchingBalance(false);
-    };
-
     fetchBalances();
-  }, [isConnected, publicKey, connection]);
+  }, [fetchBalances]);
   
   const handlePayAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const amount = e.target.value;
@@ -78,7 +89,7 @@ export function BuyExnCard() {
         const receivedExn = usdValue / tokenPrice;
         setExnAmount(receivedExn.toFixed(2));
     } else {
-        setExnAmount("0");
+        setExnAmount("");
     }
   };
 
@@ -91,9 +102,34 @@ export function BuyExnCard() {
           const neededPay = usdValue / (tokenPrices[currency] || 1);
           setPayAmount(neededPay.toFixed(currency === 'SOL' ? 5 : 2));
       } else {
-          setPayAmount("0");
+          setPayAmount("");
       }
   };
+
+  const handleSetMax = () => {
+    const remainingContributionLimitUSD = MAX_PURCHASE_USD_TOTAL - totalUSDPurchased;
+    if (remainingContributionLimitUSD <= 0) return;
+
+    const currentPriceOfSelectedCurrency = tokenPrices[currency] || 0;
+    if (currentPriceOfSelectedCurrency === 0) return;
+
+    // Calculate max amount user can spend from their balance
+    const maxSpendFromBalance = currency === 'SOL'
+        ? Math.max(0, balances.SOL - SOL_GAS_BUFFER)
+        : balances.USDC;
+    
+    const maxSpendFromBalanceUSD = maxSpendFromBalance * currentPriceOfSelectedCurrency;
+
+    // User can spend the lesser of their balance or the remaining purchase limit
+    const actualMaxSpendUSD = Math.min(maxSpendFromBalanceUSD, remainingContributionLimitUSD);
+
+    const maxPayAmount = actualMaxSpendUSD / currentPriceOfSelectedCurrency;
+    const maxExnAmount = actualMaxSpendUSD / tokenPrice;
+
+    setPayAmount(maxPayAmount.toFixed(currency === 'SOL' ? 5 : 2));
+    setExnAmount(maxExnAmount.toFixed(2));
+  };
+
 
   const usdValue = parseFloat(payAmount) * (tokenPrices[currency] || 0);
 
@@ -185,12 +221,15 @@ export function BuyExnCard() {
                     </TooltipProvider>
                 </div>
                 {isConnected && (
-                  <span className="text-muted-foreground">
-                    Balance: {isFetchingBalance 
-                      ? <Skeleton className="h-4 w-16 inline-block" /> 
-                      : `${currentBalance.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${currency}`
-                    }
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">
+                      Balance: {isFetchingBalance 
+                        ? <Skeleton className="h-4 w-16 inline-block" /> 
+                        : `${currentBalance.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${currency}`
+                      }
+                    </span>
+                    <Button variant="ghost" size="sm" className="h-auto p-0.5 text-primary" onClick={handleSetMax}>Max</Button>
+                  </div>
                 )}
             </div>
             <div className="flex items-center gap-2">
@@ -256,3 +295,5 @@ export function BuyExnCard() {
     </div>
   );
 }
+
+    
