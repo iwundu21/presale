@@ -16,7 +16,7 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "./ui/t
 import { Input } from "./ui/input";
 
 const SOL_GAS_BUFFER = 0.0009; // Reserve 0.0009 SOL for gas fees
-const LISTING_PRICE_PER_EXN = 0.12;
+const LISTING_PRICE_PER_EXN = "$0.05 to $0.064";
 const MIN_PURCHASE_USD = 50;
 const MAX_PURCHASE_USD_TOTAL = 5000;
 
@@ -208,7 +208,7 @@ export function BuyExnCard() {
             <CardTitle className="text-2xl font-bold text-white">Buy EXN Tokens</CardTitle>
         </div>
         <CardDescription>
-            Secure your EXN tokens at the special presale price of ${tokenPrice.toPrecision(2)} before the public listing at <span className="text-green-400 font-semibold">${LISTING_PRICE_PER_EXN}</span>.
+            Secure your EXN tokens at the special presale price of ${tokenPrice.toPrecision(2)} before the public listing at <span className="text-green-400 font-semibold">{LISTING_PRICE_PER_EXN}</span>.
         </CardDescription>
       </div>
       

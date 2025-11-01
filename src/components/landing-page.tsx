@@ -17,7 +17,7 @@ type LandingPageProps = {
   isPresaleActive: boolean;
 };
 
-const LISTING_PRICE = 0.12;
+const LISTING_PRICE = "$0.05 to $0.064";
 
 export function LandingPage({ presaleEndDate, presaleInfo, isPresaleActive }: LandingPageProps) {
     const { wallet, connected, connecting } = useWallet();
@@ -51,7 +51,7 @@ export function LandingPage({ presaleEndDate, presaleInfo, isPresaleActive }: La
                         Price: <span className="font-bold text-primary">${presaleInfo.tokenPrice}</span>
                     </p>
                     <p className="text-md text-foreground/80">
-                        Expected Listing Price: <span className="font-bold text-green-400">${LISTING_PRICE}</span>
+                        Expected Listing Price: <span className="font-bold text-green-400">{LISTING_PRICE}</span>
                     </p>
                 </div>
                 <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">
@@ -141,3 +141,5 @@ export function LandingPage({ presaleEndDate, presaleInfo, isPresaleActive }: La
     </main>
   );
 }
+
+    
