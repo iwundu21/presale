@@ -76,7 +76,10 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
   const [presaleInfo, setPresaleInfo] = useState<PresaleInfo | null>(null);
   const [isPresaleActive, setIsPresaleActive] = useState(true);
   
-  const isHardCapReached = presaleInfo ? totalExnSoldForCurrentStage >= presaleInfo.hardCap : false;
+  const isHardCapReached = useMemo(() => {
+    if (!presaleInfo || presaleInfo.hardCap === 0) return false;
+    return totalExnSoldForCurrentStage >= presaleInfo.hardCap;
+  }, [totalExnSoldForCurrentStage, presaleInfo]);
 
   const totalUSDPurchased = useMemo(() => {
     if (!presaleInfo) return 0;
@@ -177,6 +180,8 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
                 if (isMounted.current && res.ok) {
                     const data = await res.json();
                     setTotalExnSoldForCurrentStage(data.totalExnSoldForCurrentStage || 0);
+                    setPresaleInfo(data.presaleInfo || null);
+                    setIsPresaleActive(data.isPresaleActive === undefined ? true : data.isPresaleActive);
                 }
             } catch (error: any) {
                  if (error.name !== 'AbortError' && isMounted.current) {
@@ -190,7 +195,7 @@ export function DashboardClientProvider({ children }: DashboardClientProviderPro
             clearInterval(intervalId);
         };
     }
-  }, [connected, publicKey]);
+  }, [connected, publicKey, fetchDashboardData]);
   
   useEffect(() => {
     if (isClient && !connected && !connecting) {
