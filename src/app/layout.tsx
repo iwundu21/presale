@@ -15,6 +15,9 @@ export const metadata: Metadata = {
   },
   description: 'Purchase EXN Tokens',
   applicationName: 'Exnus Protocol Presale',
+  icons: {
+    icon: '/logo.png',
+  },
 };
 
 export default function RootLayout({
