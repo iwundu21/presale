@@ -98,7 +98,7 @@ export function LandingPage({ presaleEndDate, presaleInfo, isPresaleActive }: La
                           </div>
                       </div>
                       <h3 className="text-xl font-bold mb-2 text-white">AI-Powered</h3>
-                      <p className="text-muted-foreground">Leverage the power of cutting-edge AI models to bring your ideas to life. Exnus provides the fuel for a new generation of intelligent applications.</p>
+                      <p className="text-muted-foreground">Harness the potential of decentralized AI to build powerful, autonomous applications that operate securely and transparently on-chain.</p>
                   </div>
                     <div className="p-6">
                       <div className="flex justify-center mb-4">
