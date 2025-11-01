@@ -20,6 +20,7 @@ export function PresaleProgressCard() {
     const hardCap = presaleInfo?.hardCap || 0;
     const progressPercentage = hardCap > 0 ? (totalExnSoldForCurrentStage / hardCap) * 100 : 0;
     const totalRaised = totalExnSoldForCurrentStage * (presaleInfo?.tokenPrice || 0);
+    const remainingExn = hardCap - totalExnSoldForCurrentStage;
 
     return (
         <div className="w-full rounded-lg border border-border p-6 space-y-4">
@@ -37,9 +38,19 @@ export function PresaleProgressCard() {
             <div className="space-y-4 pt-4">
                 <div className="space-y-2">
                     <Progress value={progressPercentage} className="h-2" />
-                    <div className="flex justify-between text-xs font-medium text-muted-foreground">
-                        <span>{formatNumber(totalExnSoldForCurrentStage, { notation: 'standard' })} EXN Sold</span>
-                        <span>{formatNumber(hardCap)} EXN</span>
+                     <div className="grid grid-cols-3 gap-4 text-xs font-medium text-muted-foreground">
+                        <div className="text-left">
+                            <span>Total Sold</span>
+                            <p className="font-semibold text-white text-sm">{formatNumber(totalExnSoldForCurrentStage, { notation: 'standard' })}</p>
+                        </div>
+                        <div className="text-center">
+                            <span>Remaining</span>
+                            <p className="font-semibold text-white text-sm">{formatNumber(remainingExn, { notation: 'standard' })}</p>
+                        </div>
+                        <div className="text-right">
+                            <span>Total Supply</span>
+                            <p className="font-semibold text-white text-sm">{formatNumber(hardCap)}</p>
+                        </div>
                     </div>
                 </div>
 
