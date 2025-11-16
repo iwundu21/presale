@@ -37,19 +37,13 @@ export function BuyExnCard() {
   const [balances, setBalances] = useState({ SOL: 0, USDC: 0 });
   const [isFetchingBalance, setIsFetchingBalance] = useState(false);
   const [balanceError, setBalanceError] = useState("");
-  const [purchaseLimitError, setPurchaseLimitError] = useState("");
   
   const tokenPrice = presaleInfo?.tokenPrice || 0.09;
   
   // Recalculate pay amount when currency changes
   useEffect(() => {
-    const numericExnAmount = parseFloat(exnAmount);
-    if (!isNaN(numericExnAmount) && numericExnAmount > 0 && tokenPrices[currency] && tokenPrice > 0) {
-        const usdValue = numericExnAmount * tokenPrice;
-        const neededPay = usdValue / (tokenPrices[currency] || 1);
-        setPayAmount(neededPay.toFixed(currency === 'SOL' ? 5 : 2));
-    }
-  }, [currency, exnAmount, tokenPrices, tokenPrice]);
+    handleExnAmountChange(exnAmount);
+  }, [currency, tokenPrices, tokenPrice]);
 
 
   const fetchBalances = useCallback(async () => {
@@ -82,8 +76,7 @@ export function BuyExnCard() {
     fetchBalances();
   }, [fetchBalances]);
   
-  const handlePayAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const amount = e.target.value;
+  const handlePayAmountChange = (amount: string) => {
     setPayAmount(amount);
     const numericAmount = parseFloat(amount);
     if (!isNaN(numericAmount) && numericAmount > 0 && tokenPrices[currency] && tokenPrice > 0) {
@@ -95,8 +88,7 @@ export function BuyExnCard() {
     }
   };
 
-  const handleExnAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const amount = e.target.value;
+  const handleExnAmountChange = (amount: string) => {
       setExnAmount(amount);
       const numericAmount = parseFloat(amount);
       if (!isNaN(numericAmount) && numericAmount > 0 && tokenPrices[currency] && tokenPrice > 0) {
@@ -126,10 +118,8 @@ export function BuyExnCard() {
     const actualMaxSpendUSD = Math.min(maxSpendFromBalanceUSD, remainingContributionLimitUSD);
 
     const maxPayAmount = actualMaxSpendUSD / currentPriceOfSelectedCurrency;
-    const maxExnAmount = actualMaxSpendUSD / tokenPrice;
-
-    setPayAmount(maxPayAmount.toFixed(currency === 'SOL' ? 5 : 2));
-    setExnAmount(maxExnAmount.toFixed(2));
+    
+    handlePayAmountChange(maxPayAmount.toFixed(currency === 'SOL' ? 5 : 2));
   };
 
 
@@ -139,7 +129,6 @@ export function BuyExnCard() {
     const numericPayAmount = parseFloat(payAmount);
     if (isNaN(numericPayAmount) || numericPayAmount <= 0) {
       setBalanceError("");
-      setPurchaseLimitError("");
       return;
     }
 
@@ -153,14 +142,7 @@ export function BuyExnCard() {
       setBalanceError("");
     }
 
-    // Check purchase limits (max only)
-    if (totalUSDPurchased + usdValue > MAX_PURCHASE_USD_TOTAL) {
-       setPurchaseLimitError(`This purchase exceeds the wallet maximum of ${MAX_PURCHASE_USD_TOTAL.toLocaleString()} USDC.`);
-    } else {
-      setPurchaseLimitError("");
-    }
-
-  }, [payAmount, currency, balances, usdValue, totalUSDPurchased]);
+  }, [payAmount, currency, balances]);
 
   const handleBuyNow = () => {
     const numericExnAmount = parseFloat(exnAmount);
@@ -176,6 +158,16 @@ export function BuyExnCard() {
       return;
     }
 
+    const remainingContributionLimitUSD = MAX_PURCHASE_USD_TOTAL - totalUSDPurchased;
+    if (usdValue > remainingContributionLimitUSD) {
+        toast({
+            title: "Purchase Limit Exceeded",
+            description: `This purchase exceeds the wallet maximum of ${MAX_PURCHASE_USD_TOTAL.toLocaleString()} USDC. You can still purchase up to ${remainingContributionLimitUSD.toLocaleString(undefined, {maximumFractionDigits: 2})} USDC worth of tokens.`,
+            variant: "destructive"
+        });
+        return;
+    }
+
     if (isConnected && numericExnAmount > 0 && numericPayAmount > 0) {
       handlePurchase(numericExnAmount, numericPayAmount, currency);
     }
@@ -183,7 +175,7 @@ export function BuyExnCard() {
   
   const remainingPurchaseable = MAX_PURCHASE_USD_TOTAL - totalUSDPurchased;
 
-  const isPurchaseDisabled = !isConnected || isLoadingPrices || !!balanceError || !!purchaseLimitError || !isPresaleActive || isLoadingPurchase || isHardCapReached || parseFloat(payAmount) <= 0;
+  const isPurchaseDisabled = !isConnected || isLoadingPrices || !!balanceError || !isPresaleActive || isLoadingPurchase || isHardCapReached || parseFloat(payAmount) <= 0;
 
   const getButtonText = () => {
     if (isHardCapReached) return "Hard Cap Reached";
@@ -191,7 +183,6 @@ export function BuyExnCard() {
     if (isLoadingPrices) return 'Loading Prices...';
     if (!isConnected) return "Connect Wallet to Buy";
     if (balanceError) return balanceError;
-    if (purchaseLimitError) return purchaseLimitError;
     if (isLoadingPurchase) return "Processing...";
     return "Buy EXN Now";
   }
@@ -235,7 +226,7 @@ export function BuyExnCard() {
                     <span className="text-muted-foreground">
                       Balance: {isFetchingBalance 
                         ? <Skeleton className="h-4 w-16 inline-block" /> 
-                        : `${currentBalance} ${currency}`
+                        : `${balances[currency]} ${currency}`
                       }
                     </span>
                     <Button variant="ghost" size="sm" className="h-auto p-0.5 text-primary" onClick={handleSetMax}>Max</Button>
@@ -246,7 +237,7 @@ export function BuyExnCard() {
                <Input 
                   type="number"
                   value={payAmount}
-                  onChange={handlePayAmountChange}
+                  onChange={(e) => handlePayAmountChange(e.target.value)}
                   className="text-2xl font-bold flex-grow bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 h-auto"
                   placeholder="0.00"
                />
@@ -276,7 +267,7 @@ export function BuyExnCard() {
             <Input 
                 type="number"
                 value={exnAmount}
-                onChange={handleExnAmountChange}
+                onChange={(e) => handleExnAmountChange(e.target.value)}
                 className="text-2xl font-bold flex-grow bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 h-auto"
                 placeholder="0"
             />
