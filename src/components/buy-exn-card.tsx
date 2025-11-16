@@ -262,7 +262,8 @@ export function BuyExnCard() {
             </div>
              {payAmount && !isNaN(usdValue) && usdValue > 0 && <div className="text-sm font-normal text-muted-foreground">~ ${usdValue.toFixed(2)} USD</div>}
           </div>
-          {(balanceError || purchaseLimitError) && <p className="text-xs text-red-400 mt-1 pl-1">{balanceError || purchaseLimitError}</p>}
+          {(balanceError && payAmount) && <p className="text-xs text-red-400 mt-1 pl-1">{balanceError}</p>}
+          {(purchaseLimitError && payAmount) && <p className="text-xs text-red-400 mt-1 pl-1">{purchaseLimitError}</p>}
 
         <div className="flex justify-center my-2">
           <ArrowDown className="h-5 w-5 text-muted-foreground" />
@@ -305,7 +306,5 @@ export function BuyExnCard() {
     </div>
   );
 }
-
-    
 
     
