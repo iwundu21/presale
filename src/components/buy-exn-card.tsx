@@ -14,6 +14,7 @@ import { USDC_MINT } from "@/config";
 import { useDashboard } from "./dashboard-client-provider";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import { Input } from "./ui/input";
+import { useToast } from "@/hooks/use-toast";
 
 const SOL_GAS_BUFFER = 0.0009; // Reserve 0.0009 SOL for gas fees
 const LISTING_PRICE_PER_EXN = "$0.05 to $0.064";
@@ -27,6 +28,7 @@ export function BuyExnCard() {
   const { connected: isConnected, handlePurchase, tokenPrices, isLoadingPrices, presaleInfo, isPresaleActive, isLoadingPurchase, isHardCapReached, totalUSDPurchased } = useDashboard();
   const { publicKey } = useWallet();
   const { connection } = useConnection();
+  const { toast } = useToast();
 
   const [currency, setCurrency] = useState<Currency>("USDC");
   const [payAmount, setPayAmount] = useState("");
@@ -135,7 +137,6 @@ export function BuyExnCard() {
 
   useEffect(() => {
     const numericPayAmount = parseFloat(payAmount);
-    // Reset errors if input is empty or invalid
     if (isNaN(numericPayAmount) || numericPayAmount <= 0) {
       setBalanceError("");
       setPurchaseLimitError("");
@@ -152,10 +153,8 @@ export function BuyExnCard() {
       setBalanceError("");
     }
 
-    // Check purchase limits
-    if (usdValue < MIN_PURCHASE_USD) {
-      setPurchaseLimitError(`Minimum purchase is $${MIN_PURCHASE_USD}.`);
-    } else if (totalUSDPurchased + usdValue > MAX_PURCHASE_USD_TOTAL) {
+    // Check purchase limits (max only)
+    if (totalUSDPurchased + usdValue > MAX_PURCHASE_USD_TOTAL) {
        setPurchaseLimitError(`This purchase exceeds the wallet maximum of ${MAX_PURCHASE_USD_TOTAL.toLocaleString()} USDC.`);
     } else {
       setPurchaseLimitError("");
@@ -166,6 +165,17 @@ export function BuyExnCard() {
   const handleBuyNow = () => {
     const numericExnAmount = parseFloat(exnAmount);
     const numericPayAmount = parseFloat(payAmount);
+
+    // Validate minimum purchase on click
+    if (usdValue < MIN_PURCHASE_USD) {
+      toast({
+        title: "Minimum Purchase",
+        description: `The minimum purchase amount is $${MIN_PURCHASE_USD}.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (isConnected && numericExnAmount > 0 && numericPayAmount > 0) {
       handlePurchase(numericExnAmount, numericPayAmount, currency);
     }
@@ -252,7 +262,6 @@ export function BuyExnCard() {
             </div>
              {payAmount && !isNaN(usdValue) && usdValue > 0 && <div className="text-sm font-normal text-muted-foreground">~ ${usdValue.toFixed(2)} USD</div>}
           </div>
-          {(purchaseLimitError && payAmount) && <p className="text-xs text-red-400 mt-1 pl-1">{`Minimum purchase is $${MIN_PURCHASE_USD}.`}</p>}
 
         <div className="flex justify-center my-2">
           <ArrowDown className="h-5 w-5 text-muted-foreground" />
@@ -295,7 +304,5 @@ export function BuyExnCard() {
     </div>
   );
 }
-
-    
 
     
