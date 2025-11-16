@@ -39,16 +39,6 @@ export function BuyExnCard() {
   
   const tokenPrice = presaleInfo?.tokenPrice || 0.09;
   
-  // Pre-fill with minimum purchase amount
-  useEffect(() => {
-    if (tokenPrice > 0 && tokenPrices.USDC && !payAmount && !exnAmount) {
-      const minExn = MIN_PURCHASE_USD / tokenPrice;
-      const minPay = MIN_PURCHASE_USD / (tokenPrices[currency] || tokenPrices.USDC || 1);
-      setExnAmount(minExn.toFixed(2));
-      setPayAmount(minPay.toFixed(currency === 'SOL' ? 5 : 2));
-    }
-  }, [tokenPrices, tokenPrice, payAmount, exnAmount, currency]);
-
   // Recalculate pay amount when currency changes
   useEffect(() => {
     const numericExnAmount = parseFloat(exnAmount);
@@ -262,8 +252,7 @@ export function BuyExnCard() {
             </div>
              {payAmount && !isNaN(usdValue) && usdValue > 0 && <div className="text-sm font-normal text-muted-foreground">~ ${usdValue.toFixed(2)} USD</div>}
           </div>
-          {(balanceError && payAmount) && <p className="text-xs text-red-400 mt-1 pl-1">{balanceError}</p>}
-          {(purchaseLimitError && payAmount) && <p className="text-xs text-red-400 mt-1 pl-1">{purchaseLimitError}</p>}
+          {(purchaseLimitError && payAmount) && <p className="text-xs text-red-400 mt-1 pl-1">{`Minimum purchase is $${MIN_PURCHASE_USD}.`}</p>}
 
         <div className="flex justify-center my-2">
           <ArrowDown className="h-5 w-5 text-muted-foreground" />
@@ -306,5 +295,7 @@ export function BuyExnCard() {
     </div>
   );
 }
+
+    
 
     
