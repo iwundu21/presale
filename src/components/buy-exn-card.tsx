@@ -17,7 +17,7 @@ import { Input } from "./ui/input";
 
 const SOL_GAS_BUFFER = 0.0009; // Reserve 0.0009 SOL for gas fees
 const LISTING_PRICE_PER_EXN = "$0.05 to $0.064";
-const MIN_PURCHASE_USD = 50;
+const MIN_PURCHASE_USD = 10;
 const MAX_PURCHASE_USD_TOTAL = 5000;
 
 
@@ -305,5 +305,7 @@ export function BuyExnCard() {
     </div>
   );
 }
+
+    
 
     
