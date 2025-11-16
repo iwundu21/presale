@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -46,7 +47,7 @@ const parseFormattedNumber = (value: string): string => {
 
 
 export function BuyExnCard() {
-  const { connected: isConnected, handlePurchase, tokenPrices, isLoadingPrices, presaleInfo, isPresaleActive, isLoadingPurchase, isHardCapReached, totalUSDPurchased } = useDashboard();
+  const { connected: isConnected, handlePurchase, tokenPrices, isLoadingPrices, presaleInfo, isPresaleActive, isLoadingPurchase, isHardCapReached, totalUSDPurchased, totalExnSoldForCurrentStage } = useDashboard();
   const { publicKey } = useWallet();
   const { connection } = useConnection();
   const { toast } = useToast();
@@ -197,6 +198,18 @@ export function BuyExnCard() {
         });
         return;
     }
+    
+    const hardCap = presaleInfo?.hardCap || 0;
+    const remainingSupply = hardCap > 0 ? hardCap - totalExnSoldForCurrentStage : Infinity;
+    if (numericExnAmount > remainingSupply) {
+         toast({
+            title: "Purchase Exceeds Supply",
+            description: `Your purchase of ${numericExnAmount.toLocaleString()} EXN exceeds the remaining supply. You can purchase a maximum of ${remainingSupply.toLocaleString()} EXN.`,
+            variant: "destructive"
+        });
+        return;
+    }
+
 
     if (isConnected && numericExnAmount > 0 && numericPayAmount > 0) {
       handlePurchase(numericExnAmount, numericPayAmount, currency);
