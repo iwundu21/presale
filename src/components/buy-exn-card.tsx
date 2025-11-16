@@ -24,6 +24,27 @@ const MAX_PURCHASE_USD_TOTAL = 5000;
 
 type Currency = "USDC" | "SOL";
 
+// Helper to format numbers with commas
+const formatNumberInput = (value: string | number): string => {
+    if (typeof value === 'number') {
+        value = String(value);
+    }
+    if (!value) return "";
+    
+    // Remove all non-numeric characters except for the decimal point
+    const numericValue = value.replace(/[^0-9.]/g, '');
+    const parts = numericValue.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+    return parts.join('.');
+};
+
+// Helper to parse the formatted number back to a raw numeric string
+const parseFormattedNumber = (value: string): string => {
+    return value.replace(/,/g, '');
+};
+
+
 export function BuyExnCard() {
   const { connected: isConnected, handlePurchase, tokenPrices, isLoadingPrices, presaleInfo, isPresaleActive, isLoadingPurchase, isHardCapReached, totalUSDPurchased } = useDashboard();
   const { publicKey } = useWallet();
@@ -40,6 +61,9 @@ export function BuyExnCard() {
   
   const tokenPrice = presaleInfo?.tokenPrice || 0.09;
   
+  const rawPayAmount = parseFormattedNumber(payAmount);
+  const rawExnAmount = parseFormattedNumber(exnAmount);
+
   // Recalculate pay amount when currency changes
   useEffect(() => {
     handleExnAmountChange(exnAmount);
@@ -77,26 +101,32 @@ export function BuyExnCard() {
   }, [fetchBalances]);
   
   const handlePayAmountChange = (amount: string) => {
-    setPayAmount(amount);
-    const numericAmount = parseFloat(amount);
-    if (!isNaN(numericAmount) && numericAmount > 0 && tokenPrices[currency] && tokenPrice > 0) {
-        const usdValue = numericAmount * (tokenPrices[currency] || 0);
-        const receivedExn = usdValue / tokenPrice;
-        setExnAmount(receivedExn.toFixed(2));
-    } else {
-        setExnAmount("");
+    const rawAmount = parseFormattedNumber(amount);
+    if (/^\d*\.?\d*$/.test(rawAmount)) {
+        setPayAmount(formatNumberInput(rawAmount));
+        const numericAmount = parseFloat(rawAmount);
+        if (!isNaN(numericAmount) && numericAmount > 0 && tokenPrices[currency] && tokenPrice > 0) {
+            const usdValue = numericAmount * (tokenPrices[currency] || 0);
+            const receivedExn = usdValue / tokenPrice;
+            setExnAmount(formatNumberInput(receivedExn.toFixed(2)));
+        } else {
+            setExnAmount("");
+        }
     }
   };
 
   const handleExnAmountChange = (amount: string) => {
-      setExnAmount(amount);
-      const numericAmount = parseFloat(amount);
-      if (!isNaN(numericAmount) && numericAmount > 0 && tokenPrices[currency] && tokenPrice > 0) {
-          const usdValue = numericAmount * tokenPrice;
-          const neededPay = usdValue / (tokenPrices[currency] || 1);
-          setPayAmount(neededPay.toFixed(currency === 'SOL' ? 5 : 2));
-      } else {
-          setPayAmount("");
+    const rawAmount = parseFormattedNumber(amount);
+     if (/^\d*\.?\d*$/.test(rawAmount)) {
+        setExnAmount(formatNumberInput(rawAmount));
+        const numericAmount = parseFloat(rawAmount);
+        if (!isNaN(numericAmount) && numericAmount > 0 && tokenPrices[currency] && tokenPrice > 0) {
+            const usdValue = numericAmount * tokenPrice;
+            const neededPay = usdValue / (tokenPrices[currency] || 1);
+            setPayAmount(formatNumberInput(neededPay.toFixed(currency === 'SOL' ? 5 : 2)));
+        } else {
+            setPayAmount("");
+        }
       }
   };
 
@@ -119,14 +149,14 @@ export function BuyExnCard() {
 
     const maxPayAmount = actualMaxSpendUSD / currentPriceOfSelectedCurrency;
     
-    handlePayAmountChange(maxPayAmount.toFixed(currency === 'SOL' ? 5 : 2));
+    handlePayAmountChange(String(maxPayAmount));
   };
 
 
-  const usdValue = parseFloat(payAmount) * (tokenPrices[currency] || 0);
+  const usdValue = parseFloat(rawPayAmount) * (tokenPrices[currency] || 0);
 
   useEffect(() => {
-    const numericPayAmount = parseFloat(payAmount);
+    const numericPayAmount = parseFloat(rawPayAmount);
     if (isNaN(numericPayAmount) || numericPayAmount <= 0) {
       setBalanceError("");
       return;
@@ -142,11 +172,11 @@ export function BuyExnCard() {
       setBalanceError("");
     }
 
-  }, [payAmount, currency, balances]);
+  }, [payAmount, currency, balances, rawPayAmount]);
 
   const handleBuyNow = () => {
-    const numericExnAmount = parseFloat(exnAmount);
-    const numericPayAmount = parseFloat(payAmount);
+    const numericExnAmount = parseFloat(rawExnAmount);
+    const numericPayAmount = parseFloat(rawPayAmount);
 
     // Validate minimum purchase on click
     if (usdValue < MIN_PURCHASE_USD) {
@@ -175,7 +205,7 @@ export function BuyExnCard() {
   
   const remainingPurchaseable = MAX_PURCHASE_USD_TOTAL - totalUSDPurchased;
 
-  const isPurchaseDisabled = !isConnected || isLoadingPrices || !!balanceError || !isPresaleActive || isLoadingPurchase || isHardCapReached || parseFloat(payAmount) <= 0;
+  const isPurchaseDisabled = !isConnected || isLoadingPrices || !!balanceError || !isPresaleActive || isLoadingPurchase || isHardCapReached || parseFloat(rawPayAmount) <= 0;
 
   const getButtonText = () => {
     if (isHardCapReached) return "Hard Cap Reached";
@@ -226,7 +256,7 @@ export function BuyExnCard() {
                     <span className="text-muted-foreground">
                       Balance: {isFetchingBalance 
                         ? <Skeleton className="h-4 w-16 inline-block" /> 
-                        : `${balances[currency]} ${currency}`
+                        : `${currentBalance.toLocaleString(undefined, {maximumFractionDigits: currency === 'SOL' ? 5 : 2})} ${currency}`
                       }
                     </span>
                     <Button variant="ghost" size="sm" className="h-auto p-0.5 text-primary" onClick={handleSetMax}>Max</Button>
@@ -235,7 +265,8 @@ export function BuyExnCard() {
             </div>
             <div className="flex items-center gap-2">
                <Input 
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   value={payAmount}
                   onChange={(e) => handlePayAmountChange(e.target.value)}
                   className="text-2xl font-bold flex-grow bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 h-auto"
@@ -265,7 +296,8 @@ export function BuyExnCard() {
               <span className="text-white font-medium">EXN</span>
             </div>
             <Input 
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={exnAmount}
                 onChange={(e) => handleExnAmountChange(e.target.value)}
                 className="text-2xl font-bold flex-grow bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 h-auto"
